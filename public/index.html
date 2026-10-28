@@ -68,6 +68,7 @@
     <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></symbol>
     <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4.5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1V7" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></symbol>
     <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 15.5v-10M8 9.5l4-4 4 4M5.5 19.5h13" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-fullscreen" viewBox="0 0 24 24"><path d="M4 9V5a1 1 0 0 1 1-1h4M20 9V5a1 1 0 0 0-1-1h-4M4 15v4a1 1 0 0 0 1 1h4M20 15v4a1 1 0 0 1-1 1h-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></symbol>
     <symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   </svg>
 
@@ -271,32 +272,43 @@
           </div>
         </div>
 
-        <div class="home-search-row">
-          <div class="domain-wrap">
-            <button id="home-domain-btn" class="domain-btn" type="button" aria-label="Choose a board" aria-expanded="false" onclick="toggleDomainMenu('home-domain-menu', this)">
-              <img data-domain-icon alt="" width="20" height="20" hidden>
-              <span class="domain-fallback" data-domain-fallback>R34</span>
-              <span id="home-domain-label">Rule34.xxx</span>
-              <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevrons"/></svg>
-            </button>
-            <div id="home-domain-menu" class="domain-menu hidden" role="listbox"></div>
-          </div>
-          <div id="home-search-mount">
-            <div id="search-block">
-              <form class="search" role="search" onsubmit="return false">
-                <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-search"/></svg>
-                <input id="tag-search-input" type="search" enterkeyhint="search" autocomplete="off" placeholder="Search tags (e.g. genshin_impact -ai_generated)" aria-label="Search tags" />
-                <button id="pin-search-btn" class="btn btn-tiny btn-ghost" type="button" title="Save / Pin current search" aria-label="Pin current search" onclick="togglePinCurrentSearch()"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-star"/></svg></button>
-                <button id="clear-search-btn" class="btn btn-tiny btn-ghost hidden" type="button">Clear</button>
-                <button id="run-search-btn" class="btn btn-tiny btn-primary" type="button">Search</button>
-                <div id="tag-autocomplete" class="suggest hidden"></div>
-              </form>
-              <div id="search-history-bar" class="tag-row" style="margin-top:8px;"></div>
+        <div class="posts-tools home-posts-tools">
+          <div class="posts-domain">
+            <div class="domain-wrap">
+              <button id="home-domain-btn" class="domain-btn" type="button" aria-haspopup="listbox" aria-expanded="false" onclick="toggleDomainMenu('home-domain-menu', this)">
+                <img data-domain-icon alt="" width="20" height="20" hidden>
+                <span class="domain-fallback" data-domain-fallback>R34</span>
+                <span id="home-domain-label">Rule34.xxx</span>
+                <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevrons"/></svg>
+              </button>
+              <div id="home-domain-menu" class="domain-menu hidden" role="listbox"></div>
             </div>
+            <button type="button" class="filter-pill" onclick="selectSourceInPlace('multiboard', false)" title="Search top boards in parallel"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-layers"/></svg><span>Multi-Board</span></button>
+            <button type="button" class="filter-pill" onclick="openBoardsCompareModal()" title="Compare all 11 boards"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chart"/></svg><span class="hide-xs">Boards</span></button>
           </div>
-          <button id="home-go-btn" class="go-btn" type="button" aria-label="Search">
-            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-arrow"/></svg>
-          </button>
+          <div class="posts-right-tools">
+            <div class="seg view-mode-seg" role="group" aria-label="View mode">
+              <button type="button" class="view-mode-btn" onclick="switchTab('reels')" title="Vertical Posts Feed"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-reels"/></svg><span>Posts</span></button>
+              <button type="button" class="view-mode-btn is-on" onclick="switchTab('gallery')" title="Masonry Grid"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-grid"/></svg><span>Grid</span></button>
+            </div>
+            <button id="home-go-btn" class="go-btn hidden" type="button" aria-label="Search">
+              <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-arrow"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div id="home-search-mount" class="feed-search-wrap">
+          <div id="search-block">
+            <form class="search" role="search" onsubmit="return false">
+              <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-search"/></svg>
+              <input id="tag-search-input" type="search" enterkeyhint="search" autocomplete="off" placeholder="Search tags (e.g. genshin_impact -ai_generated)" aria-label="Search tags" />
+              <button id="pin-search-btn" class="btn btn-tiny btn-ghost" type="button" title="Save / Pin current search" aria-label="Pin current search" onclick="togglePinCurrentSearch()"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-star"/></svg></button>
+              <button id="clear-search-btn" class="btn btn-tiny btn-ghost hidden" type="button">Clear</button>
+              <button id="run-search-btn" class="btn btn-tiny btn-primary" type="button">Search</button>
+              <div id="tag-autocomplete" class="suggest hidden"></div>
+            </form>
+            <div id="search-history-bar" class="tag-row" style="margin-top:8px;"></div>
+          </div>
         </div>
 
         <div class="home-tags-wrap">
@@ -532,63 +544,63 @@
 
   <div id="post-modal" class="modal-back hidden" onclick="if (event.target === this) closePostModal()">
     <div class="modal" role="dialog" aria-modal="true" aria-label="Post">
-      <div class="modal-stage" style="position:relative;">
-        <button type="button" class="modal-nav-btn modal-nav-prev" onclick="stepModalPost(-1)" aria-label="Previous post" title="Previous (← / A)"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron-left"/></svg></button>
-        <div id="modal-media-container" style="position:absolute;inset:0;"></div>
-        <button type="button" class="modal-nav-btn modal-nav-next" onclick="stepModalPost(1)" aria-label="Next post" title="Next (→ / D)"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg></button>
+      <div class="modal-stage">
+        <div class="stage-topbar">
+          <div class="stage-meta-pills">
+            <span id="modal-source-badge" class="meta-badge">Board</span>
+            <span id="modal-score-badge" class="meta-badge">★ 0</span>
+            <span id="modal-dimensions" class="meta-badge">HD</span>
+          </div>
+          <div class="stage-tool-pills">
+            <button id="modal-hd-btn" class="btn btn-tiny btn-ghost" type="button" onclick="toggleModalHdQuality()" title="Toggle Original HD"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-hd"/></svg><span>HD</span></button>
+            <button id="modal-zoom-btn" class="btn btn-tiny btn-ghost" type="button" onclick="toggleModalZoom()" title="Zoom 2x (F)"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-zoom"/></svg><span>Zoom</span></button>
+            <a id="modal-original-url" class="btn btn-tiny btn-ghost" href="#" target="_blank" rel="noopener" title="Open original post on source board"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-external"/></svg><span>Original</span></a>
+          </div>
+        </div>
+        <div class="stage-viewport">
+          <button type="button" class="modal-nav-btn modal-nav-prev" onclick="stepModalPost(-1)" aria-label="Previous post" title="Previous (← / A)"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron-left"/></svg></button>
+          <div id="modal-media-container" class="modal-media-slot"></div>
+          <button type="button" class="modal-nav-btn modal-nav-next" onclick="stepModalPost(1)" aria-label="Next post" title="Next (→ / D)"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg></button>
+        </div>
       </div>
+
       <div class="modal-side">
         <header class="modal-side-header">
-          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
-            <span id="modal-source-badge" class="meta-badge">Board</span>
-            <span id="modal-score-badge" class="meta-badge">Score 0</span>
-            <span id="modal-dimensions" class="meta-badge" style="color:var(--muted);"></span>
+          <div class="modal-side-title">
+            <strong id="modal-post-title">Post Inspector</strong>
+            <span class="kbd-inline-hint">←/→ Nav · S Save · Esc</span>
           </div>
           <button id="close-post-modal" class="x" type="button" aria-label="Close"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-close"/></svg></button>
         </header>
 
-        <div class="modal-action-grid">
-          <button id="modal-save-btn" class="btn btn-ghost" type="button"><span class="ico-slot"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-heart"/></svg></span><span class="btn-label">Save</span></button>
-          <a id="modal-download-btn" class="btn btn-primary" href="#" download><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-download"/></svg><span>Download</span></a>
+        <div class="modal-side-actions">
+          <div class="modal-action-grid">
+            <button id="modal-save-btn" class="btn btn-ghost" type="button"><span class="ico-slot"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-heart"/></svg></span><span class="btn-label">Save</span></button>
+            <a id="modal-download-btn" class="btn btn-primary" href="#" download><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-download"/></svg><span>Download</span></a>
+          </div>
+          <div class="modal-sub-actions">
+            <select id="modal-collection-select" class="btn btn-ghost modal-folder-select" onchange="assignPostCollection(this.value)" aria-label="Collection folder" title="Save to Collection Folder"></select>
+            <button id="modal-ai-prompt-btn" class="btn btn-tiny btn-ghost" type="button" title="Copy tags as AI prompt"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-spark"/></svg><span>Prompt</span></button>
+            <button id="modal-ai-similar-btn" class="btn btn-tiny btn-ghost" type="button" title="Find similar posts by tags"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-search"/></svg><span>Similar</span></button>
+          </div>
+          <div id="modal-ai-prompt-box" class="hidden" style="padding:8px;border-radius:8px;background:#09090b;border:1px solid var(--line);font-family:monospace;font-size:11px;color:var(--muted);word-break:break-word;"></div>
         </div>
 
-        <div class="modal-sub-actions">
-          <select id="modal-collection-select" class="btn btn-ghost modal-folder-select" onchange="assignPostCollection(this.value)" aria-label="Collection folder" title="Save to Collection Folder"></select>
-          <button id="modal-hd-btn" class="btn btn-tiny btn-ghost" type="button" onclick="toggleModalHdQuality()"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-hd"/></svg><span>HD</span></button>
-          <button id="modal-zoom-btn" class="btn btn-tiny btn-ghost" type="button" onclick="toggleModalZoom()"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-zoom"/></svg><span>Zoom</span></button>
-          <a id="modal-original-url" class="btn btn-tiny btn-ghost" href="#" target="_blank" rel="noopener" title="Open original post on source board"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-external"/></svg><span>Source</span></a>
-        </div>
-
-        <div class="panel" style="padding:12px">
-          <div class="kicker">AI &amp; Discovery Tools</div>
-          <div class="pair" style="margin-top:8px">
-            <button id="modal-ai-prompt-btn" class="btn btn-ghost btn-tiny" type="button"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-spark"/></svg>Copy Prompt</button>
-            <button id="modal-ai-similar-btn" class="btn btn-ghost btn-tiny" type="button"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-search"/></svg>Find Similar</button>
+        <div class="modal-side-scroll">
+          <div class="modal-tags-section">
+            <div class="tag-head"><span class="kicker">Clickable Tags (+ include / − exclude)</span><span id="modal-tag-count" class="count">0</span></div>
+            <div id="modal-tags-list"></div>
           </div>
 
-          <div id="modal-ai-prompt-box" class="hidden" style="margin-top:8px;padding:8px;border-radius:8px;background:#09090b;border:1px solid var(--line);font-family:monospace;font-size:11px;color:var(--muted);word-break:break-word;"></div>
-        </div>
+          <div id="modal-related-wrap" class="modal-related-section">
+            <div class="tag-head"><span class="kicker">Similar Posts</span><button type="button" class="linkish" style="font-size:11px;" onclick="document.getElementById('modal-ai-similar-btn').click()">Search similar →</button></div>
+            <div id="modal-related-posts" class="modal-related-grid"></div>
+          </div>
 
-        <div id="modal-related-wrap">
-          <div class="tag-head"><span class="kicker">Similar Posts</span><button type="button" class="linkish" style="font-size:11px;" onclick="document.getElementById('modal-ai-similar-btn').click()">View all →</button></div>
-          <div id="modal-related-posts" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:6px;"></div>
-        </div>
-
-        <div>
-          <div class="tag-head"><span class="kicker">Tags</span><span id="modal-tag-count" class="count">0</span></div>
-          <div id="modal-tags-list"></div>
-        </div>
-
-        <div>
-          <div class="kicker">Reverse Image Search</div>
-          <div id="modal-source-links" class="tag-row" style="margin-top:8px"></div>
-        </div>
-
-        <div class="kbd-hint">
-          <span><kbd>←</kbd><kbd>→</kbd> Prev/Next</span>
-          <span><kbd>S</kbd> Save</span>
-          <span><kbd>F</kbd> Zoom</span>
-          <span><kbd>Esc</kbd> Close</span>
+          <div class="modal-reverse-section">
+            <div class="kicker">Reverse Image Search</div>
+            <div id="modal-source-links" class="tag-row" style="margin-top:6px"></div>
+          </div>
         </div>
       </div>
     </div>

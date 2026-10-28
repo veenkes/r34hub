@@ -435,6 +435,8 @@ function paintDomainButtons() {
   });
   const badge = document.getElementById('feed-status-badge');
   if (badge) badge.textContent = current.name;
+  const homeLbl = document.getElementById('home-domain-label');
+  if (homeLbl) homeLbl.textContent = current.name;
   const visit = document.getElementById('visit-board');
   if (visit) {
     if (current.domain) {
@@ -449,15 +451,19 @@ function paintDomainButtons() {
 function closeDomainMenus() {
   document.querySelectorAll('.domain-menu').forEach(menu => menu.classList.add('hidden'));
   document.querySelectorAll('.domain-btn').forEach(button => button.setAttribute('aria-expanded', 'false'));
+  document.body.classList.remove('domain-menu-open');
 }
 
 window.toggleDomainMenu = function(menuId, button) {
   const menu = document.getElementById(menuId);
   const willOpen = menu && menu.classList.contains('hidden');
   closeDomainMenus();
+  const autoBox = document.getElementById('tag-autocomplete');
+  if (autoBox) autoBox.classList.add('hidden');
   if (willOpen && menu) {
     menu.classList.remove('hidden');
     if (button) button.setAttribute('aria-expanded', 'true');
+    document.body.classList.add('domain-menu-open');
   }
 };
 
@@ -1312,6 +1318,7 @@ function playerInner(poster, proxy) {
       <input class="player-range" type="range" min="0" max="1000" value="0" step="1" aria-label="Progress" />
       <span class="player-time">0:00</span>
       <button type="button" class="player-btn" data-player-mute aria-label="Unmute">${icon('mute')}</button>
+      <button type="button" class="player-btn" data-player-fs aria-label="Fullscreen" title="Fullscreen">${icon('fullscreen')}</button>
     </div>`;
 }
 
@@ -1401,7 +1408,21 @@ function bindPlayer(root) {
   const time = root.querySelector('.player-time');
   const toggles = root.querySelectorAll('[data-player-toggle]');
   const muteBtn = root.querySelector('[data-player-mute]');
+  const fsBtn = root.querySelector('[data-player-fs]');
   if (!video) return;
+  if (fsBtn) {
+    fsBtn.addEventListener('click', event => {
+      event.stopPropagation();
+      const target = root.requestFullscreen ? root : video;
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      } else if (target.requestFullscreen) {
+        target.requestFullscreen().catch(() => {});
+      } else if (video.webkitEnterFullscreen) {
+        video.webkitEnterFullscreen();
+      }
+    });
+  }
   video.muted = mediaMuted;
   video.playsInline = true;
 
@@ -1464,6 +1485,54 @@ window.onGridVideoMeta = function(video) {
   if (!media) return;
   const durText = media.querySelector('[data-video-dur] .dur-text');
   if (durText) durText.textContent = fmtTime(video.duration);
+  const ctrlTime = media.querySelector('[data-v-time]');
+  if (ctrlTime) ctrlTime.textContent = `0:00 / ${fmtTime(video.duration)}`;
+};
+
+window.onGridVideoTimeUpdate = function(video) {
+  if (!video || !Number.isFinite(video.duration) || video.duration <= 0) return;
+  const media = video.closest('.card-media');
+  if (!media) return;
+  const prog = media.querySelector('.v-progress');
+  if (prog && !prog.dataset.scrubbing) {
+    prog.value = String(((video.currentTime / video.duration) * 100).toFixed(1));
+  }
+  const ctrlTime = media.querySelector('[data-v-time]');
+  if (ctrlTime) ctrlTime.textContent = `${fmtTime(video.currentTime)} / ${fmtTime(video.duration)}`;
+};
+
+window.onGridVideoScrub = function(input, event) {
+  if (event) event.stopPropagation();
+  const media = input && input.closest('.card-media');
+  const video = media && media.querySelector('video.grid-video');
+  if (!video || !Number.isFinite(video.duration) || video.duration <= 0) return;
+  video.currentTime = (Number(input.value) / 100) * video.duration;
+  const ctrlTime = media.querySelector('[data-v-time]');
+  if (ctrlTime) ctrlTime.textContent = `${fmtTime(video.currentTime)} / ${fmtTime(video.duration)}`;
+};
+
+window.toggleGridVideoMute = function(btn, event) {
+  if (event) event.stopPropagation();
+  const media = btn && btn.closest('.card-media');
+  const video = media && media.querySelector('video.grid-video');
+  if (!video) return;
+  video.muted = !video.muted;
+  mediaMuted = video.muted;
+  btn.innerHTML = icon(video.muted ? 'mute' : 'volume');
+  btn.setAttribute('aria-label', video.muted ? 'Unmute video' : 'Mute video');
+};
+
+window.fullscreenGridVideo = function(btn, event) {
+  if (event) event.stopPropagation();
+  const media = btn && btn.closest('.card-media');
+  const video = media && media.querySelector('video.grid-video');
+  if (!video) return;
+  if (video.paused) playCardVideo(media, false);
+  if (video.requestFullscreen) {
+    video.requestFullscreen().catch(() => {});
+  } else if (video.webkitEnterFullscreen) {
+    video.webkitEnterFullscreen();
+  }
 };
 
 window.onGridVideoPlayState = function(video, playing) {
@@ -1471,11 +1540,10 @@ window.onGridVideoPlayState = function(video, playing) {
   const media = video.closest('.card-media');
   if (!media) return;
   media.classList.toggle('is-playing', Boolean(playing));
-  const btn = media.querySelector('.play-badge');
-  if (btn) {
+  media.querySelectorAll('.play-badge, [data-v-play]').forEach(btn => {
     btn.innerHTML = icon(playing ? 'pause' : 'play');
     btn.setAttribute('aria-label', playing ? 'Pause video' : 'Play video');
-  }
+  });
 };
 
 window.onGridVideoError = function(video) {
@@ -1782,8 +1850,8 @@ function buildSponsoredCardHTML(idx = 16) {
         <button type="button" class="btn btn-tiny btn-ghost" onclick="triggerAdClick('infeed_native','${esc(offer.id)}','grid-ad-${idx}','anime')">
           ${icon('spark')}<span class="btn-label">${esc(offer.cta)}</span>
         </button>
-        <button type="button" class="btn btn-tiny btn-ghost" onclick="openProModal()">
-          <span class="btn-label">No ads</span>
+        <button type="button" class="btn btn-tiny btn-primary" style="background:rgba(16,185,129,0.18);border-color:rgba(16,185,129,0.45);color:#34d399;" onclick="openProModal()" title="Unlock R34Hub Pro — Zero Ads & Original HD">
+          <span class="btn-label">Go Pro · No Ads</span>
         </button>
       </div>
     </article>
@@ -1875,11 +1943,19 @@ function buildPostCardHTML(post, idx) {
             webkit-playsinline
             preload="metadata"
             onloadedmetadata="onGridVideoMeta(this)"
+            ontimeupdate="onGridVideoTimeUpdate(this)"
             onplay="onGridVideoPlayState(this, true)"
             onpause="onGridVideoPlayState(this, false)"
             onerror="onGridVideoError(this)"
           ></video>
           <button type="button" class="play-badge" data-preview aria-label="Play or pause video">${icon('play')}</button>
+          <div class="grid-video-controls" onclick="event.stopPropagation()">
+            <button type="button" class="gv-btn" data-v-play data-preview aria-label="Play or pause video">${icon('play')}</button>
+            <input type="range" class="v-progress" min="0" max="100" step="0.1" value="0" aria-label="Video progress" oninput="onGridVideoScrub(this, event)" onclick="event.stopPropagation()" />
+            <span class="gv-time" data-v-time>0:00</span>
+            <button type="button" class="gv-btn" data-v-mute aria-label="Unmute video" onclick="toggleGridVideoMute(this, event)">${icon('mute')}</button>
+            <button type="button" class="gv-btn" data-v-fs aria-label="Fullscreen video" onclick="fullscreenGridVideo(this, event)">${icon('fullscreen')}</button>
+          </div>
         ` : ''}
         <div class="card-float">
           <span class="pill">${esc(shortBoardName(post))}</span>
@@ -2553,9 +2629,9 @@ function showModalMedia(post) {
   box.replaceChildren();
   stopAllCardVideos();
   document.querySelectorAll('.reel.is-active video').forEach(video => video.pause());
-  if (post.mediaType === 'video') {
+  if (post.mediaType === 'video' || /\.(mp4|webm)(\?|$)/i.test(post.fileUrl || '')) {
     const player = document.createElement('div');
-    player.className = 'player';
+    player.className = 'player custom-video-player';
     player.dataset.file = post.fileUrl || '';
     player.dataset.proxyFile = post.proxiedFileUrl || '';
     const poster = cardStill(post);
@@ -2564,6 +2640,7 @@ function showModalMedia(post) {
     const video = player.querySelector('video');
     bindPlayer(player);
     video.muted = mediaMuted;
+    loadVideo(video, post.proxiedFileUrl || post.fileUrl || '', post.fileUrl || post.proxiedFileUrl || '', true);
     return;
   }
   const sharp = sharpUrl(post);
@@ -2735,7 +2812,9 @@ window.openPostModal = function(postId) {
   if (!post) return;
   state.activePost = post;
   showModalMedia(post);
-  document.getElementById('modal-source-badge').textContent = post.sourceName || 'Board';
+  document.getElementById('modal-source-badge').textContent = shortBoardName(post);
+  const titleEl = document.getElementById('modal-post-title');
+  if (titleEl) titleEl.textContent = `${shortBoardName(post)} #${post.rawId || post.id}`;
   document.getElementById('modal-score-badge').innerHTML = `${icon('star')} ${esc(post.score || 0)}`;
   document.getElementById('modal-dimensions').textContent = `${post.width || '?'} × ${post.height || '?'} · ${String(post.fileExt || '').toUpperCase()}`;
   document.getElementById('modal-original-url').href = post.originalPostUrl || '#';

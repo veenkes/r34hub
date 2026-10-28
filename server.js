@@ -1153,7 +1153,7 @@ app.get('/api/posts', async (req, res) => {
     posts = finalizePosts(posts, effectiveSort, limit * 2, rating);
     posts = applyClientFilters(posts);
 
-    if ((mediaFilter === 'video' || effectiveSort === 'video') && posts.length < 12) {
+    if ((mediaFilter === 'video' || effectiveSort === 'video') && posts.length < 18) {
       const videoBoards = (rating === 's')
         ? ['sakugabooru', 'danbooru']
         : ['paheal', 'danbooru', 'sakugabooru'];
@@ -1162,8 +1162,40 @@ app.get('/api/posts', async (req, res) => {
         { tags, rating: rating === 's' ? 's' : 'all', sort: 'video', page, limit: 24 },
         2400
       );
-      const extraVideos = applyClientFilters(interleaveLists(gatheredVid.lists.map(l => l || [])));
+      const extraVideos = applyClientFilters(interleaveLists(gatheredVid.lists.map(l => l || [])))
+        .filter(p => p.mediaType === 'video' || ['mp4', 'webm'].includes(String(p.fileExt || '').toLowerCase()));
       posts = deduplicatePostsList([...posts, ...extraVideos]);
+    } else if (mediaFilter === 'all' && effectiveSort !== 'video') {
+      // Ensure default feeds (/grid/... and /posts/...) ALWAYS include at least 5 real .mp4/.webm video posts on initial load!
+      const currentVideos = posts.filter(p => p.mediaType === 'video' || ['mp4', 'webm'].includes(String(p.fileExt || '').toLowerCase()));
+      if (currentVideos.length < 5) {
+        const videoBoards = (rating === 's')
+          ? ['sakugabooru', 'danbooru']
+          : ['paheal', 'sakugabooru', 'danbooru'];
+        const gatheredMix = await gatherSources(
+          videoBoards,
+          { tags, rating: rating === 's' ? 's' : 'all', sort: 'video', page, limit: 12 },
+          1900
+        );
+        const mixVideos = interleaveLists(gatheredMix.lists.map(l => l || []))
+          .filter(p => p.mediaType === 'video' || ['mp4', 'webm'].includes(String(p.fileExt || '').toLowerCase()))
+          .slice(0, 6);
+        if (mixVideos.length > 0) {
+          // Interleave a video post every ~3 static posts so the top rows of Grid immediately contain playable <video> tiles
+          const nonVideos = posts.filter(p => !(p.mediaType === 'video' || ['mp4', 'webm'].includes(String(p.fileExt || '').toLowerCase())));
+          const allVids = [...currentVideos, ...mixVideos];
+          const blended = [];
+          let vIdx = 0;
+          let iIdx = 0;
+          while ((iIdx < nonVideos.length || vIdx < allVids.length) && blended.length < limit * 2) {
+            if (iIdx < nonVideos.length) blended.push(nonVideos[iIdx++]);
+            if (iIdx < nonVideos.length) blended.push(nonVideos[iIdx++]);
+            if (vIdx < allVids.length) blended.push(allVids[vIdx++]);
+            if (iIdx < nonVideos.length) blended.push(nonVideos[iIdx++]);
+          }
+          posts = deduplicatePostsList(blended);
+        }
+      }
     }
     posts = posts.slice(0, limit);
 
