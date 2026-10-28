@@ -91,7 +91,7 @@ function formatScore(value) {
 }
 
 function sourceLabel() {
-  if (state.source === 'multiboard') return '⚡ Multi-Board';
+  if (state.source === 'multiboard') return 'Multi-Board';
   if (state.source === 'all' || state.source === 'rule34xxx' || state.source === 'rule34.xxx') return 'Rule34.xxx';
   const found = state.sources.find(s => s.id === state.source);
   return found ? found.name : state.source;
@@ -274,12 +274,18 @@ function renderActiveTagPills() {
   }).join('');
 }
 
+window.dismissTopAdBanner = function() {
+  sessionStorage.setItem('bp_top_ad_dismissed', '1');
+  syncChrome();
+};
+
 function syncChrome() {
   const topAd = document.getElementById('top-ad-banner');
   const posts = document.getElementById('posts-chrome');
   if (posts) posts.classList.toggle('hidden', !browsingPosts());
   if (!topAd) return;
-  const show = !state.isPro && state.showAdsPreview && browsingPosts();
+  const dismissed = sessionStorage.getItem('bp_top_ad_dismissed') === '1';
+  const show = !state.isPro && state.showAdsPreview && browsingPosts() && !dismissed;
   topAd.classList.toggle('hidden', !show);
 }
 
@@ -391,7 +397,7 @@ function faviconUrl(domain) {
 
 function sourceItems() {
   const defaultR34 = { id: 'rule34xxx', name: 'Rule34.xxx', domain: 'rule34.xxx', isPremiumSource: false };
-  const multiItem = { id: 'multiboard', name: '⚡ Multi-Board (Top 4)', domain: '', isPremiumSource: false };
+  const multiItem = { id: 'multiboard', name: 'Multi-Board (Top 4)', domain: '', isPremiumSource: false };
   if (!state.sources || !state.sources.length) return [defaultR34, multiItem];
   const r34 = state.sources.find(s => s.id === 'rule34xxx') || defaultR34;
   return [r34, multiItem, ...state.sources.filter(s => s.id !== 'rule34xxx')];
@@ -924,22 +930,29 @@ function renderSearchHistoryBar() {
   state.pinnedSearches.forEach(item => {
     parts.push(`
       <span class="token" style="border-color:rgba(245,158,11,0.5);background:rgba(245,158,11,0.1);">
-        <button type="button" style="border:0;color:#fbbf24;font-weight:650;" onclick="applySavedSearchChip('${esc(item.q)}','${esc(item.source)}','${esc(item.rating)}')">★ ${esc(item.q)}</button>
+        <button type="button" style="border:0;color:#fbbf24;font-weight:650;display:inline-flex;align-items:center;gap:4px;" onclick="applySavedSearchChip('${esc(item.q)}','${esc(item.source)}','${esc(item.rating)}')">${icon('star')} ${esc(item.q)}</button>
+        <button type="button" onclick="togglePinSearchByQuery('${esc(item.q)}','${esc(item.source)}')" title="Unpin">${icon('close')}</button>
       </span>`);
   });
   state.searchHistory.slice(0, 8).forEach(q => {
     parts.push(`
       <span class="token">
-        <button type="button" style="border:0;color:var(--text);" onclick="applySavedSearchChip('${esc(q)}')">🕒 ${esc(q)}</button>
-        <button type="button" onclick="removeSearchHistoryItem('${esc(q)}')" title="Remove">×</button>
+        <button type="button" style="border:0;color:var(--text);display:inline-flex;align-items:center;gap:4px;" onclick="applySavedSearchChip('${esc(q)}')">${icon('clock')} ${esc(q)}</button>
+        <button type="button" onclick="removeSearchHistoryItem('${esc(q)}')" title="Remove">${icon('close')}</button>
       </span>`);
   });
   if (state.searchHistory.length > 0) {
     parts.push(`<button type="button" class="linkish" style="font-size:11px;padding:2px 6px;" onclick="clearSearchHistory()">Clear history</button>`);
   }
   bar.innerHTML = parts.join('');
+  updateBackupSummaryStats();
 }
 
+window.togglePinSearchByQuery = function(q, src) {
+  state.pinnedSearches = state.pinnedSearches.filter(item => !(item.q === q && item.source === src));
+  localStorage.setItem('bp_pinned_searches', JSON.stringify(state.pinnedSearches));
+  renderSearchHistoryBar();
+};
 async function loadPosts(append = false, silent = false) {
   if (state.isLoading && (append || silent)) return;
   if (silent && state.page !== 1) return;
@@ -1222,8 +1235,8 @@ function tagChip(tag, post) {
   const kind = post ? tagDot(post, tag) : '';
   return `<span class="tag ${kind}">
     <button type="button" data-include="${esc(tag)}" title="Search / Include ${esc(tag)}"><i class="${kind}"></i>${esc(tag)}</button>
-    <button type="button" class="tag-block" data-exclude="${esc(tag)}" title="Exclude (-${esc(tag)}) from search" aria-label="Exclude ${esc(tag)}">−</button>
-    <button type="button" class="tag-block" onclick="event.stopPropagation();blockTagPermanent('${esc(tag)}')" title="Block ${esc(tag)} permanently" aria-label="Block ${esc(tag)}">🚫</button>
+    <button type="button" class="tag-block" data-exclude="${esc(tag)}" title="Exclude (-${esc(tag)}) from search" aria-label="Exclude ${esc(tag)}">${icon('minus')}</button>
+    <button type="button" class="tag-block" onclick="event.stopPropagation();blockTagPermanent('${esc(tag)}')" title="Block ${esc(tag)} permanently" aria-label="Block ${esc(tag)}">${icon('ban')}</button>
   </span>`;
 }
 
@@ -1255,34 +1268,33 @@ function playerSource(root) {
 }
 
 let videoPlayCount = 0;
+let lastPrerollAt = 0;
 
 function maybeShowVideoPreroll(containerEl, onComplete) {
   if (state.isPro || !state.showAdsPreview || !containerEl) {
     onComplete();
     return;
   }
-  videoPlayCount += 1;
-  if (videoPlayCount !== 1 && videoPlayCount % 3 !== 1) {
+  const now = Date.now();
+  // Show pre-roll at most once every 5 minutes so video browsing stays smooth
+  if (lastPrerollAt > 0 && now - lastPrerollAt < 300000) {
     onComplete();
     return;
   }
+  videoPlayCount += 1;
+  lastPrerollAt = now;
   if (containerEl.querySelector('.preroll-overlay')) return;
   trackAdImpression('video_preroll');
-  const aadsId = String((state.adsConfig && state.adsConfig.aads && state.adsConfig.aads.unitId) || '2460259');
-  const exoZoneId = String((state.adsConfig && state.adsConfig.exoclick && state.adsConfig.exoclick.zoneId) || '6068261');
-  const art = pickAdultAdArtwork(videoPlayCount);
-  const activeTag = parseTagTokens()[0] || art.tag || 'hentai';
+  const activeTag = parseTagTokens()[0] || 'hentai';
   const overlay = document.createElement('div');
   overlay.className = 'preroll-overlay';
   overlay.style.cssText = 'position:absolute;inset:0;z-index:6;background:rgba(9,9,11,0.94);backdrop-filter:blur(10px);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;text-align:center;gap:10px;';
   overlay.innerHTML = `
-    <span class="meta-badge" style="margin:0;background:rgba(225,29,72,0.22);border-color:rgba(225,29,72,0.55);color:#fda4af;font-weight:700;">🔞 18+ NSFW AD · Video starts in <b data-preroll-sec>3</b>s</span>
-    <div style="font-size:16px;font-weight:700;color:#fff;">Uncensored 18+ AI Undress &amp; Hentai Video Chat</div>
-    <div style="font-size:12px;color:#d4d4d8;max-width:320px;">Turn any character into an explicit 18+ interactive animation or roleplay chat.</div>
-    ${buildAnimated300x250BannerHtml(videoPlayCount, { id: 'nud3_video', partner: 'NUD3.ME 18+ AI', title: '18+ AI Undress & Hentai Video Animator', cta: '🔞 Animate 18+ Video Now →' }, activeTag)}
+    <span class="meta-badge" style="margin:0;background:rgba(225,29,72,0.22);border-color:rgba(225,29,72,0.55);color:#fda4af;font-weight:700;">18+ Sponsored · Video starts in <b data-preroll-sec>2</b>s</span>
+    ${buildAnimated300x250BannerHtml(videoPlayCount, { id: 'nud3_video', partner: 'NUD3.ME 18+ AI', title: '18+ AI Undress & Hentai Video Animator', cta: 'Open 18+ AI Studio →' }, activeTag)}
     <div style="display:flex;gap:8px;margin-top:4px;">
-      <button type="button" class="btn btn-primary btn-tiny" style="background:#e11d48;color:#fff;font-weight:700;" data-preroll-cta>🔞 Open 18+ AI Studio →</button>
-      <button type="button" class="btn btn-ghost btn-tiny" data-preroll-skip disabled>Skip (3)</button>
+      <button type="button" class="btn btn-primary btn-tiny" style="background:#e11d48;color:#fff;font-weight:700;" data-preroll-cta>${icon('spark')} Open 18+ AI Studio</button>
+      <button type="button" class="btn btn-ghost btn-tiny" data-preroll-skip>Skip (2)</button>
     </div>
   `;
   overlay.addEventListener('click', e => e.stopPropagation());
@@ -1291,7 +1303,7 @@ function maybeShowVideoPreroll(containerEl, onComplete) {
   const secEl = overlay.querySelector('[data-preroll-sec]');
   const skipBtn = overlay.querySelector('[data-preroll-skip]');
   const ctaBtn = overlay.querySelector('[data-preroll-cta]');
-  let left = 3;
+  let left = 2;
   const finish = () => {
     clearInterval(timer);
     overlay.remove();
@@ -1306,10 +1318,6 @@ function maybeShowVideoPreroll(containerEl, onComplete) {
     left -= 1;
     if (secEl) secEl.textContent = String(Math.max(0, left));
     if (left <= 0) {
-      if (skipBtn) {
-        skipBtn.disabled = false;
-        skipBtn.textContent = 'Play video ▶';
-      }
       finish();
     } else if (skipBtn) {
       skipBtn.textContent = `Skip (${left})`;
@@ -1559,7 +1567,7 @@ function buildAnimated300x250BannerHtml(idx, offer, activeTag) {
   const anim = pickAnimated18PlusGif(idx);
   const badgeText = (offer && (offer.partner || offer.name)) || 'NUD3.ME 18+ AI';
   const titleText = (offer && offer.title) || '18+ AI Undress & Hentai Video Animator';
-  const ctaText = (offer && offer.cta) || '🔞 Watch / Play 18+ Now →';
+  const ctaText = (offer && offer.cta) || 'Open 18+ Partner →';
   const offerId = (offer && offer.id) || 'nud3_video';
   return `
     <div onclick="triggerAdClick('infeed_native','${esc(offerId)}','anim-300x250-${idx}','${esc(activeTag || 'hentai')}')" style="position:relative;width:300px;height:250px;overflow:hidden;border-radius:10px;border:1px solid rgba(225,29,72,0.5);background:#09090b;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,0.45);">
@@ -1572,7 +1580,7 @@ function buildAnimated300x250BannerHtml(idx, offer, activeTag) {
         style="width:100%;height:100%;object-fit:cover;display:block;"
       />
       <div style="position:absolute;top:8px;left:8px;right:8px;display:flex;align-items:center;justify-content:space-between;gap:6px;pointer-events:none;">
-        <span style="background:rgba(225,29,72,0.94);color:#fff;font-weight:900;font-size:10px;padding:2px 8px;border-radius:4px;letter-spacing:0.04em;">🔞 18+ ANIMATED AD</span>
+        <span style="background:rgba(225,29,72,0.94);color:#fff;font-weight:900;font-size:10px;padding:2px 8px;border-radius:4px;letter-spacing:0.04em;">18+ ANIMATED AD</span>
         <span style="background:rgba(9,9,11,0.85);color:#f4f4f5;font-weight:700;font-size:10px;padding:2px 7px;border-radius:4px;">${esc(badgeText)}</span>
       </div>
       <div style="position:absolute;left:0;right:0;bottom:0;padding:28px 10px 10px;background:linear-gradient(180deg,transparent 0%,rgba(9,9,11,0.92) 55%,#09090b 100%);display:flex;flex-direction:column;gap:6px;pointer-events:none;">
@@ -1592,7 +1600,7 @@ function buildSponsoredCardHTML(idx = 12) {
     { id: 'nud3_video', name: 'Nud3.me 18+', title: 'AI Undress & 18+ Hentai Video Animator', cta: 'Undress / Animate 18+' },
     { id: 'spicychat_ai', name: 'SpicyChat 18+', title: 'No-Filter 18+ Adult Roleplay & Voice AI', cta: 'Start 18+ Roleplay' }
   ];
-  const offer = offers[Math.floor(idx / 12) % offers.length];
+  const offer = offers[Math.floor(idx / AD_INTERVAL) % offers.length];
   return `
     <article class="masonry-item card is-in is-ad-card" style="--d:${idx % 8}">
       <div class="card-media" onclick="triggerAdClick('infeed_native','${esc(offer.id)}','grid-ad-${idx}','${esc(art.tag)}')">
@@ -1697,7 +1705,7 @@ function buildPostCardHTML(post, idx) {
   `;
 }
 
-const AD_INTERVAL = 12;
+const AD_INTERVAL = 14;
 function trackAdImpression(placement = 'infeed_native') {
   if (state.isPro) return;
   fetch('/api/ads/impression', {
@@ -1728,8 +1736,8 @@ function renderGallery(options = {}) {
       <h2>0 posts matched on ${esc(sourceLabel())}</h2>
       <p>Current filter: Rating <strong>${esc(RATING_LABEL[state.rating] || state.rating)}</strong>${state.tags ? ` · Tags: <strong>${esc(state.tags)}</strong>` : ''}</p>
       <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:14px;">
-        ${state.rating !== 'all' ? '<button class="btn btn-primary" type="button" onclick="setRating(\'all\', true)">🔞 Switch Rating to All (18+)</button>' : ''}
-        ${state.source !== 'multiboard' ? '<button class="btn btn-ghost" type="button" onclick="selectSourceInPlace(\'multiboard\', false)">⚡ Search Across All Boards</button>' : ''}
+        ${state.rating !== 'all' ? '<button class="btn btn-primary" type="button" onclick="setRating(\'all\', true)">Switch Rating to All (18+)</button>' : ''}
+        ${state.source !== 'multiboard' ? `<button class="btn btn-ghost" type="button" onclick="selectSourceInPlace('multiboard', false)">${icon('layers')} Search Across All Boards</button>` : ''}
         <button class="btn btn-ghost" type="button" onclick="resetAllFilters()">Reset Filters</button>
       </div>
     </div>`;
@@ -1889,17 +1897,15 @@ function bindReelsLoader() {
 }
 
 function buildNativeReelAdHtml(idx) {
-  const aadsId = String((state.adsConfig && state.adsConfig.aads && state.adsConfig.aads.unitId) || '2460259');
-  const exoZoneId = String((state.adsConfig && state.adsConfig.exoclick && state.adsConfig.exoclick.zoneId) || '6068261');
-  const art = pickAdultAdArtwork(idx);
-  const activeTag = parseTagTokens()[0] || art.tag || 'hentai';
+  const anim = pickAnimated18PlusGif(idx);
+  const activeTag = parseTagTokens()[0] || 'hentai';
   const offers = [
     {
       id: 'candy_ai',
       partner: 'Candy.ai 18+ NSFW',
       title: `Uncensored 18+ AI Sex Chat & Voice with ${activeTag.replace(/_/g, ' ')}`,
       sub: 'Send explicit prompts, custom kinks, and receive live 18+ NSFW photos & voice messages.',
-      cta: 'Start 18+ Uncensored Chat →',
+      cta: 'Start 18+ Uncensored Chat',
       tags: ['18+_nsfw', 'uncensored_ai', 'sex_chat', 'custom_waifu']
     },
     {
@@ -1907,7 +1913,7 @@ function buildNativeReelAdHtml(idx) {
       partner: 'Nud3.me 18+ AI Studio',
       title: '18+ AI Undress & Hentai Video Generator',
       sub: 'Turn any Rule34 or anime image into an explicit 60fps 18+ animated video in one click.',
-      cta: 'Animate / Undress 18+ Now →',
+      cta: 'Animate / Undress 18+ Now',
       tags: ['18+_video', 'ai_undress', 'animated_nsfw', 'rule34_ai']
     },
     {
@@ -1915,7 +1921,7 @@ function buildNativeReelAdHtml(idx) {
       partner: 'CrushOn.ai 18+ Unfiltered',
       title: 'Zero-Filter 18+ Hentai & Erotic Roleplay AI',
       sub: 'No censorship, no NSFW blocks. Roleplay any scenario with 200,000+ adult anime characters.',
-      cta: 'Play 18+ Roleplay Free →',
+      cta: 'Play 18+ Roleplay Free',
       tags: ['18+_roleplay', 'no_filter', 'hentai_chat', 'explicit']
     }
   ];
@@ -1923,42 +1929,33 @@ function buildNativeReelAdHtml(idx) {
   return `
     <article class="reel post-card is-ad" data-kind="ad" data-ad-slot="${idx}">
       <div class="reel-stage is-still" style="position:relative;background:#09090b;overflow:hidden;">
-        <div style="position:relative;aspect-ratio:4 / 5;max-height:520px;width:100%;overflow:hidden;cursor:pointer;" onclick="triggerAdClick('infeed_native','${esc(offer.id)}','reel-ad-${idx}','${esc(activeTag)}')">
+        <div style="position:relative;aspect-ratio:4 / 5;max-height:480px;width:100%;overflow:hidden;cursor:pointer;" onclick="triggerAdClick('infeed_native','${esc(offer.id)}','reel-ad-${idx}','${esc(activeTag)}')">
           <img
             class="reel-still"
-            style="width:100%;height:100%;object-fit:cover;display:block;filter: contrast(1.05);"
-            src="${esc(art.src)}"
-            data-proxy="${esc(art.proxy)}"
-            data-fallback="${esc(art.fallback)}"
+            style="width:100%;height:100%;object-fit:cover;display:block;"
+            src="${esc(anim.src)}"
+            data-proxy="${esc(anim.proxy)}"
             alt=""
             referrerpolicy="no-referrer"
-            onerror="useAdFallback(this)"
+            onerror="useProxy(this)"
           />
           <div style="position:absolute;top:12px;left:12px;right:12px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
-            <span class="pill" style="background:rgba(225,29,72,0.92);color:#fff;font-weight:700;padding:4px 10px;border-radius:999px;font-size:11px;letter-spacing:0.04em;">🔞 18+ NSFW SPONSORED POST</span>
+            <span class="pill" style="background:rgba(225,29,72,0.92);color:#fff;font-weight:700;padding:4px 10px;border-radius:999px;font-size:11px;letter-spacing:0.04em;">18+ SPONSORED</span>
             <span class="pill" style="background:rgba(9,9,11,0.8);color:#e4e4e7;padding:4px 10px;border-radius:999px;font-size:11px;">${esc(offer.partner)}</span>
           </div>
-          <div style="position:absolute;left:0;right:0;bottom:0;padding:48px 16px 16px;background:linear-gradient(180deg,transparent 0%,rgba(9,9,11,0.88) 45%,#09090b 100%);">
-            <h3 style="margin:0 0 6px;font-size:18px;color:#fff;font-weight:700;line-height:1.25;">${esc(offer.title)}</h3>
-            <p style="margin:0 0 12px;font-size:13px;color:#d4d4d8;line-height:1.45;">${esc(offer.sub)}</p>
-            <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">
-              ${offer.tags.map(t => `<span class="meta-badge" style="margin:0;background:rgba(225,29,72,0.18);border-color:rgba(225,29,72,0.4);color:#fda4af;font-size:11px;">#${esc(t)}</span>`).join('')}
-            </div>
+          <div style="position:absolute;left:0;right:0;bottom:0;padding:44px 16px 14px;background:linear-gradient(180deg,transparent 0%,rgba(9,9,11,0.88) 45%,#09090b 100%);">
+            <h3 style="margin:0 0 4px;font-size:17px;color:#fff;font-weight:700;line-height:1.25;">${esc(offer.title)}</h3>
+            <p style="margin:0 0 10px;font-size:12.5px;color:#d4d4d8;line-height:1.4;">${esc(offer.sub)}</p>
             <div style="display:flex;gap:8px;">
-              <button type="button" class="btn btn-primary" style="flex:1;background:#e11d48;color:#fff;font-weight:700;" onclick="event.stopPropagation();triggerAdClick('infeed_native','${esc(offer.id)}','reel-ad-${idx}','${esc(activeTag)}')">${esc(offer.cta)}</button>
-              <button type="button" class="btn btn-ghost" onclick="event.stopPropagation();openProModal()">Hide 18+ Ads</button>
+              <button type="button" class="btn btn-primary" style="flex:1;background:#e11d48;color:#fff;font-weight:700;" onclick="event.stopPropagation();triggerAdClick('infeed_native','${esc(offer.id)}','reel-ad-${idx}','${esc(activeTag)}')">${icon('spark')} ${esc(offer.cta)}</button>
+              <button type="button" class="btn btn-ghost" onclick="event.stopPropagation();openProModal()">No Ads</button>
             </div>
           </div>
-        </div>
-        <div style="width:100%;padding:12px 0;background:#09090b;border-top:1px solid var(--line);display:flex;flex-direction:column;align-items:center;gap:10px;">
-          ${buildAnimated300x250BannerHtml(idx, offer, activeTag)}
-          <iframe data-aa="${esc(aadsId)}" src="//acceptable.a-ads.com/${esc(aadsId)}" style="border:0px;padding:0;width:100%;max-width:468px;height:60px;overflow:hidden;background-color:transparent;color-scheme:normal;" loading="lazy" title="A-ADS 18+"></iframe>
         </div>
       </div>
       <div class="reel-bar">
         <button type="button" class="icon-btn accent" aria-label="18+ AI chat" onclick="triggerAdClick('reels_cta','${esc(offer.id)}','reel-ad-${idx}','${esc(activeTag)}')">${icon('spark')}</button>
-        <button type="button" class="icon-btn" aria-label="Animate 18+" onclick="triggerAdClick('post_video_ai','nud3_video','reel-ad-${idx}','${esc(activeTag)}')">${icon('wand')}</button>
-        <span class="reel-meta">18+ Adult Partner · ${esc(offer.partner)}</span>
+        <span class="reel-meta">Sponsored · ${esc(offer.partner)}</span>
         <button type="button" class="tags-toggle" onclick="openProModal()">Pro · No Ads ${icon('chevron')}</button>
       </div>
     </article>`;
@@ -2076,6 +2073,12 @@ function deactivateReel(slide) {
   video.load();
 }
 
+function updateBackupSummaryStats() {
+  const el = document.getElementById('backup-summary-stats');
+  if (!el) return;
+  el.textContent = `${state.savedPosts.length} Saved Posts · ${state.collections.length} Collections · ${state.blacklist.length} Blocked Tags · ${state.pinnedSearches.length} Pinned Searches`;
+}
+
 function renderCollectionsBar() {
   const bar = document.getElementById('collections-bar');
   const modalSel = document.getElementById('modal-collection-select');
@@ -2085,14 +2088,31 @@ function renderCollectionsBar() {
       const count = folder === 'All'
         ? state.savedPosts.length
         : state.savedPosts.filter(p => (state.postCollections[p.id] || 'Favorites') === folder || (folder === 'Videos' && p.mediaType === 'video')).length;
-      return `<button type="button" class="filter-pill${state.activeCollection === folder ? ' is-on' : ''}" onclick="selectSavedCollection('${esc(folder)}')">${esc(folder)} <span class="count">${count}</span></button>`;
+      const isCustom = !['All', 'Favorites', 'Characters', 'Videos'].includes(folder);
+      return `
+        <span class="filter-pill${state.activeCollection === folder ? ' is-on' : ''}" style="padding-right:${isCustom ? '6px' : '11px'};">
+          <button type="button" style="border:0;background:transparent;color:inherit;padding:0;display:inline-flex;align-items:center;gap:5px;font:inherit;" onclick="selectSavedCollection('${esc(folder)}')">
+            ${icon('folder')} <span>${esc(folder)}</span> <span class="count">${count}</span>
+          </button>
+          ${isCustom ? `<button type="button" style="border:0;background:transparent;color:var(--muted);padding:0 2px;margin-left:2px;" onclick="deleteCustomCollection('${esc(folder)}')" title="Delete folder">${icon('close')}</button>` : ''}
+        </span>`;
     }).join('');
   }
   if (modalSel) {
     const curFolder = (state.activePost && state.postCollections[state.activePost.id]) || 'Favorites';
-    modalSel.innerHTML = state.collections.map(f => `<option value="${esc(f)}"${f === curFolder ? ' selected' : ''}>📁 ${esc(f)}</option>`).join('') + '<option value="__new__">+ New Folder…</option>';
+    modalSel.innerHTML = state.collections.map(f => `<option value="${esc(f)}"${f === curFolder ? ' selected' : ''}>${esc(f)}</option>`).join('') + '<option value="__new__">+ New Folder…</option>';
   }
+  updateBackupSummaryStats();
 }
+
+window.deleteCustomCollection = function(folder) {
+  state.collections = state.collections.filter(f => f !== folder);
+  localStorage.setItem('bp_collections_v1', JSON.stringify(state.collections));
+  if (state.activeCollection === folder) state.activeCollection = 'All';
+  renderCollectionsBar();
+  renderSavedPosts();
+  showToast(`Removed folder: ${folder}`);
+};
 
 window.selectSavedCollection = function(folder) {
   state.activeCollection = folder || 'All';
@@ -2165,10 +2185,11 @@ function renderBlacklistChips() {
   if (!box) return;
   box.innerHTML = state.blacklist.map(tag => `
     <span class="token is-excluded">
-      <span>🚫 ${esc(tag)}</span>
-      <button type="button" onclick="unblockTagPermanent('${esc(tag)}')" title="Unblock">×</button>
+      <span style="display:inline-flex;align-items:center;gap:4px;">${icon('ban')} ${esc(tag)}</span>
+      <button type="button" onclick="unblockTagPermanent('${esc(tag)}')" title="Unblock">${icon('close')}</button>
     </span>
   `).join('');
+  updateBackupSummaryStats();
 }
 
 window.unblockTagPermanent = function(tag) {
@@ -2219,48 +2240,78 @@ window.exportUserDataJson = function() {
   showToast('Exported R34Hub backup (.json)');
 };
 
-window.importUserDataJson = function(inputEl) {
+let pendingImportData = null;
+
+window.previewImportUserDataJson = function(inputEl) {
   const file = inputEl && inputEl.files && inputEl.files[0];
   if (!file) return;
   const reader = new FileReader();
   reader.onload = () => {
     try {
       const data = JSON.parse(String(reader.result || '{}'));
-      if (Array.isArray(data.savedPosts)) {
-        state.savedPosts = data.savedPosts;
-        localStorage.setItem('bp_saved', JSON.stringify(state.savedPosts));
-      }
-      if (Array.isArray(data.collections)) {
-        state.collections = data.collections;
-        localStorage.setItem('bp_collections_v1', JSON.stringify(state.collections));
-      }
-      if (data.postCollections && typeof data.postCollections === 'object') {
-        state.postCollections = data.postCollections;
-        localStorage.setItem('bp_post_collections_v1', JSON.stringify(state.postCollections));
-      }
-      if (Array.isArray(data.blacklist)) {
-        state.blacklist = data.blacklist;
-        localStorage.setItem('bp_blacklist', JSON.stringify(state.blacklist));
-        const area = document.getElementById('blacklist-textarea');
-        if (area) area.value = state.blacklist.join('\n');
-      }
-      if (Array.isArray(data.searchHistory)) {
-        state.searchHistory = data.searchHistory;
-        localStorage.setItem('bp_search_history', JSON.stringify(state.searchHistory));
-      }
-      if (Array.isArray(data.pinnedSearches)) {
-        state.pinnedSearches = data.pinnedSearches;
-        localStorage.setItem('bp_pinned_searches', JSON.stringify(state.pinnedSearches));
-      }
-      renderBlacklistChips();
-      renderSearchHistoryBar();
-      renderSavedPosts();
-      showToast('Restored backup successfully!');
+      pendingImportData = data;
+      const sCount = Array.isArray(data.savedPosts) ? data.savedPosts.length : 0;
+      const cCount = Array.isArray(data.collections) ? data.collections.length : 0;
+      const bCount = Array.isArray(data.blacklist) ? data.blacklist.length : 0;
+      const dateStr = data.exportedAt ? String(data.exportedAt).slice(0, 10) : 'backup file';
+      const previewEl = document.getElementById('backup-import-preview');
+      const infoEl = document.getElementById('backup-import-info');
+      if (infoEl) infoEl.textContent = `Found ${sCount} saved posts, ${cCount} folders, ${bCount} blocked tags (${dateStr}). Choose how to import:`;
+      if (previewEl) previewEl.classList.remove('hidden');
     } catch (_) {
       showToast('Invalid backup JSON file');
     }
   };
   reader.readAsText(file);
+};
+
+window.applyPendingImport = function(mode = 'merge') {
+  if (!pendingImportData) return;
+  const data = pendingImportData;
+  if (Array.isArray(data.savedPosts)) {
+    if (mode === 'replace') {
+      state.savedPosts = data.savedPosts;
+    } else {
+      const existingIds = new Set(state.savedPosts.map(p => p.id));
+      state.savedPosts = [...state.savedPosts, ...data.savedPosts.filter(p => p && !existingIds.has(p.id))];
+    }
+    localStorage.setItem('bp_saved', JSON.stringify(state.savedPosts));
+  }
+  if (Array.isArray(data.collections)) {
+    state.collections = mode === 'replace' ? data.collections : [...new Set([...state.collections, ...data.collections])];
+    localStorage.setItem('bp_collections_v1', JSON.stringify(state.collections));
+  }
+  if (data.postCollections && typeof data.postCollections === 'object') {
+    state.postCollections = mode === 'replace' ? data.postCollections : Object.assign({}, data.postCollections, state.postCollections);
+    localStorage.setItem('bp_post_collections_v1', JSON.stringify(state.postCollections));
+  }
+  if (Array.isArray(data.blacklist)) {
+    state.blacklist = mode === 'replace' ? data.blacklist : [...new Set([...state.blacklist, ...data.blacklist])];
+    localStorage.setItem('bp_blacklist', JSON.stringify(state.blacklist));
+    const area = document.getElementById('blacklist-textarea');
+    if (area) area.value = state.blacklist.join('\n');
+  }
+  if (Array.isArray(data.searchHistory)) {
+    state.searchHistory = mode === 'replace' ? data.searchHistory : [...new Set([...state.searchHistory, ...data.searchHistory])].slice(0, 12);
+    localStorage.setItem('bp_search_history', JSON.stringify(state.searchHistory));
+  }
+  if (Array.isArray(data.pinnedSearches)) {
+    state.pinnedSearches = mode === 'replace' ? data.pinnedSearches : [...state.pinnedSearches, ...data.pinnedSearches].slice(0, 10);
+    localStorage.setItem('bp_pinned_searches', JSON.stringify(state.pinnedSearches));
+  }
+  cancelPendingImport();
+  renderBlacklistChips();
+  renderSearchHistoryBar();
+  renderSavedPosts();
+  showToast(`Backup ${mode === 'replace' ? 'replaced' : 'merged'} successfully!`);
+};
+
+window.cancelPendingImport = function() {
+  pendingImportData = null;
+  const previewEl = document.getElementById('backup-import-preview');
+  if (previewEl) previewEl.classList.add('hidden');
+  const fileIn = document.getElementById('backup-file-input');
+  if (fileIn) fileIn.value = '';
 };
 
 function paintSaveButtons(postId, on) {
@@ -2423,7 +2474,7 @@ window.openBoardsCompareModal = async function() {
     body.innerHTML = [
       `<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-radius:12px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.35);">
         <div>
-          <strong style="color:#34d399;font-size:14px;">⚡ Multi-Board Parallel Aggregator (Top 4)</strong>
+          <strong style="color:#34d399;font-size:14px;">Multi-Board Parallel Aggregator (Top 4)</strong>
           <div style="font-size:12px;color:var(--muted);">Queries Rule34, Danbooru, Yande.re &amp; Safebooru/XBooru simultaneously with automatic MD5 deduplication.</div>
         </div>
         <button type="button" class="btn btn-tiny btn-primary" onclick="closeBoardsCompareModal();selectSourceInPlace('multiboard', false)">Switch →</button>
@@ -2844,24 +2895,155 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  const INSTANT_TAG_DICTIONARY = [
+    { name: 'genshin_impact', count: 322135, category: 'copyright' },
+    { name: 'blue_archive', count: 248900, category: 'copyright' },
+    { name: 'hololive', count: 294500, category: 'copyright' },
+    { name: 'zenless_zone_zero', count: 89400, category: 'copyright' },
+    { name: 'honkai:_star_rail', count: 158200, category: 'copyright' },
+    { name: 'frieren', count: 64200, category: 'character' },
+    { name: 'fern_(sousou_no_frieren)', count: 41200, category: 'character' },
+    { name: 'raiden_shogun', count: 84500, category: 'character' },
+    { name: 'yae_miko', count: 62100, category: 'character' },
+    { name: 'furina_(genshin_impact)', count: 54900, category: 'character' },
+    { name: 'hu_tao_(genshin_impact)', count: 78300, category: 'character' },
+    { name: 'ganyu_(genshin_impact)', count: 74100, category: 'character' },
+    { name: 'nahida_(genshin_impact)', count: 51200, category: 'character' },
+    { name: 'kafka_(honkai:_star_rail)', count: 44800, category: 'character' },
+    { name: 'firefly_(honkai:_star_rail)', count: 39200, category: 'character' },
+    { name: 'acheron_(honkai:_star_rail)', count: 31500, category: 'character' },
+    { name: 'ellen_joe', count: 28400, category: 'character' },
+    { name: 'zhu_yuan', count: 24100, category: 'character' },
+    { name: 'jane_doe_(zenless_zone_zero)', count: 22900, category: 'character' },
+    { name: 'asuna_(blue_archive)', count: 68400, category: 'character' },
+    { name: 'kisaki_(blue_archive)', count: 34900, category: 'character' },
+    { name: 'shiroko_(blue_archive)', count: 45200, category: 'character' },
+    { name: 'yuuka_(blue_archive)', count: 43100, category: 'character' },
+    { name: '2b_(nier:automata)', count: 94200, category: 'character' },
+    { name: 'tifa_lockhart', count: 88700, category: 'character' },
+    { name: 'makima_(chainsaw_man)', count: 56400, category: 'character' },
+    { name: 'power_(chainsaw_man)', count: 48900, category: 'character' },
+    { name: 'yor_forger', count: 59200, category: 'character' },
+    { name: 'hinata_hyuga', count: 67500, category: 'character' },
+    { name: 'nami_(one_piece)', count: 53800, category: 'character' },
+    { name: 'nico_robin', count: 44100, category: 'character' },
+    { name: 'marika_(elden_ring)', count: 29400, category: 'character' },
+    { name: 'ranni_the_witch', count: 38700, category: 'character' },
+    { name: 'd.va_(overwatch)', count: 72400, category: 'character' },
+    { name: 'mercy_(overwatch)', count: 68900, category: 'character' },
+    { name: 'widowmaker', count: 54200, category: 'character' },
+    { name: 'tracer_(overwatch)', count: 51800, category: 'character' },
+    { name: 'ahri_(league_of_legends)', count: 63400, category: 'character' },
+    { name: 'jinx_(league_of_legends)', count: 47200, category: 'character' },
+    { name: 'overwatch', count: 142000, category: 'copyright' },
+    { name: 'naruto', count: 164000, category: 'copyright' },
+    { name: 'one_piece', count: 148000, category: 'copyright' },
+    { name: 'pokemon', count: 310000, category: 'copyright' },
+    { name: 'fate/grand_order', count: 412000, category: 'copyright' },
+    { name: 'azur_lane', count: 268000, category: 'copyright' },
+    { name: 'nikke:_goddess_of_victory', count: 92400, category: 'copyright' },
+    { name: 'wuthering_waves', count: 46800, category: 'copyright' },
+    { name: 'cyberpunk', count: 48900, category: 'general' },
+    { name: 'animated', count: 412000, category: 'meta' },
+    { name: 'video', count: 195000, category: 'meta' },
+    { name: 'highres', count: 3250000, category: 'meta' },
+    { name: 'ai_generated', count: 580000, category: 'meta' },
+    { name: '1girl', count: 4850000, category: 'general' },
+    { name: 'solo', count: 3920000, category: 'general' },
+    { name: 'long_hair', count: 3100000, category: 'general' },
+    { name: 'breasts', count: 2850000, category: 'general' },
+    { name: 'thighhighs', count: 1420000, category: 'general' },
+    { name: 'swimsuit', count: 980000, category: 'general' },
+    { name: 'bikini', count: 860000, category: 'general' },
+    { name: 'bunny_girl', count: 420000, category: 'general' },
+    { name: 'maid', count: 510000, category: 'general' }
+  ];
+
   const searchInput = document.getElementById('tag-search-input');
   const autoBox = document.getElementById('tag-autocomplete');
   let debounceTimer;
-  searchInput.addEventListener('input', () => {
-    const val = searchInput.value.trim();
-    document.getElementById('clear-search-btn').classList.toggle('hidden', !val);
+  let activeSuggestIndex = -1;
+  let currentSuggestions = [];
+
+  function paintAutocompleteRows(tags, isNegated, matchQuery) {
+    currentSuggestions = tags;
+    activeSuggestIndex = -1;
+    if (!tags.length) {
+      autoBox.classList.add('hidden');
+      return;
+    }
+    autoBox.innerHTML = tags.map((t, idx) => {
+      const count = Number(t.count) || 0;
+      const countLabel = count.toLocaleString();
+      const cat = t.category || 'general';
+      return `
+      <div class="suggest-row" data-suggest-idx="${idx}" onclick="if(!event.target.closest('button')) toggleTagInPlace('${esc(t.name)}', '${isNegated ? 'exclude' : 'include'}')">
+        <div class="suggest-copy" style="display:flex;align-items:center;gap:6px;">
+          <span class="cat-dot ${esc(cat)}"></span>
+          <div>
+            <strong>${isNegated ? '-' : ''}${esc(t.name)}</strong>
+            <div class="hint">${esc(cat)}</div>
+          </div>
+        </div>
+        <div class="tag-actions">
+          <span class="suggest-count" title="${esc(countLabel)} posts">${esc(formatScore(count))}</span>
+          <button type="button" class="btn btn-tiny btn-ghost" data-include="${esc(t.name)}" title="Include tag">${icon('plus')} Add</button>
+          <button type="button" class="btn btn-tiny btn-ghost" data-exclude="${esc(t.name)}" title="Exclude (-tag)">${icon('minus')} Hide</button>
+        </div>
+      </div>`;
+    }).join('');
+    autoBox.classList.remove('hidden');
+  }
+
+  function updateAutocomplete() {
+    const val = searchInput.value;
+    document.getElementById('clear-search-btn').classList.toggle('hidden', !val.trim());
     clearTimeout(debounceTimer);
-    if (!val) {
-      autoBox.classList.add('hidden');
+    const trimmed = val.trim();
+    if (!trimmed) {
+      // On focus with empty input, show top 8 trending / instant tags immediately
+      paintAutocompleteRows((state.trendingTags.length ? state.trendingTags : INSTANT_TAG_DICTIONARY).slice(0, 8), false, '');
       return;
     }
-    const rawLastToken = val.split(/\s+/).pop() || '';
+    const rawLastToken = trimmed.split(/\s+/).pop() || '';
     const isNegated = rawLastToken.startsWith('-');
-    const lastWord = rawLastToken.replace(/^[+-]/, '');
-    if (lastWord.length < 2) {
+    const lastWord = rawLastToken.replace(/^[+-]/, '').toLowerCase();
+    if (!lastWord) {
       autoBox.classList.add('hidden');
       return;
     }
+
+    // 1. Instant 0ms local dictionary + loaded feed tags match
+    const localPool = new Map();
+    INSTANT_TAG_DICTIONARY.forEach(t => {
+      if (t.name.toLowerCase().includes(lastWord)) localPool.set(t.name, t);
+    });
+    (state.trendingTags || []).forEach(t => {
+      if (t.name.toLowerCase().includes(lastWord) && !localPool.has(t.name)) localPool.set(t.name, t);
+    });
+    (state.posts || []).forEach(p => {
+      (p.tags || []).forEach(tagName => {
+        if (tagName.toLowerCase().includes(lastWord) && !localPool.has(tagName)) {
+          localPool.set(tagName, { name: tagName, count: p.score || 100, category: tagDot(p, tagName) || 'general' });
+        }
+      });
+    });
+    const instantMatches = Array.from(localPool.values())
+      .sort((a, b) => {
+        const aStarts = a.name.toLowerCase().startsWith(lastWord) ? 1 : 0;
+        const bStarts = b.name.toLowerCase().startsWith(lastWord) ? 1 : 0;
+        if (aStarts !== bStarts) return bStarts - aStarts;
+        return (b.count || 0) - (a.count || 0);
+      })
+      .slice(0, 10);
+
+    if (instantMatches.length) {
+      paintAutocompleteRows(instantMatches, isNegated, lastWord);
+    }
+
+    if (lastWord.length < 2) return;
+
+    // 2. Remote /api/tags enrichment with AbortController
     debounceTimer = setTimeout(async () => {
       try {
         if (activeAutocompleteController) {
@@ -2870,32 +3052,23 @@ document.addEventListener('DOMContentLoaded', () => {
         activeAutocompleteController = new AbortController();
         const res = await fetch(`/api/tags?q=${encodeURIComponent(lastWord)}`, { signal: activeAutocompleteController.signal });
         const data = await res.json();
-        const tags = data.tags || [];
-        if (!tags.length) {
-          autoBox.classList.add('hidden');
-          return;
-        }
-        autoBox.innerHTML = tags.map(t => {
-          const count = Number(t.count) || 0;
-          const countLabel = count.toLocaleString();
-          return `
-          <div class="suggest-row">
-            <div class="suggest-copy">
-              <strong>${isNegated ? '-' : ''}${esc(t.name)}</strong>
-              ${t.category ? `<div class="hint">${esc(t.category)}</div>` : ''}
-            </div>
-            <div class="tag-actions">
-              <span class="suggest-count" title="${esc(countLabel)} posts">${esc(formatScore(count))}</span>
-              <button type="button" class="btn btn-tiny btn-ghost" data-include="${esc(t.name)}">+ Include</button>
-              <button type="button" class="btn btn-tiny btn-ghost" data-exclude="${esc(t.name)}">− Exclude</button>
-            </div>
-          </div>`;
-        }).join('');
-        autoBox.classList.remove('hidden');
+        const remoteTags = (data && data.tags) || [];
+        remoteTags.forEach(t => localPool.set(t.name, t));
+        const merged = Array.from(localPool.values())
+          .sort((a, b) => (b.count || 0) - (a.count || 0))
+          .slice(0, 10);
+        paintAutocompleteRows(merged, isNegated, lastWord);
       } catch (err) {
-        if (!err || err.name !== 'AbortError') autoBox.classList.add('hidden');
+        if (!err || err.name !== 'AbortError') {
+          if (!instantMatches.length) autoBox.classList.add('hidden');
+        }
       }
-    }, 180);
+    }, 150);
+  }
+
+  searchInput.addEventListener('input', updateAutocomplete);
+  searchInput.addEventListener('focus', () => {
+    if (searchInput.value.trim()) updateAutocomplete();
   });
 
   function runSearch() {
@@ -2907,6 +3080,29 @@ document.addEventListener('DOMContentLoaded', () => {
     showBrowseAndReload();
   }
   searchInput.addEventListener('keydown', e => {
+    const rows = autoBox.querySelectorAll('.suggest-row');
+    if (!autoBox.classList.contains('hidden') && rows.length) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        activeSuggestIndex = (activeSuggestIndex + 1) % rows.length;
+        rows.forEach((r, i) => r.classList.toggle('is-active', i === activeSuggestIndex));
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        activeSuggestIndex = (activeSuggestIndex - 1 + rows.length) % rows.length;
+        rows.forEach((r, i) => r.classList.toggle('is-active', i === activeSuggestIndex));
+        return;
+      }
+      if ((e.key === 'Enter' || e.key === 'Tab') && activeSuggestIndex >= 0 && currentSuggestions[activeSuggestIndex]) {
+        e.preventDefault();
+        const rawLast = (searchInput.value.trim().split(/\s+/).pop() || '');
+        const neg = rawLast.startsWith('-');
+        toggleTagInPlace(currentSuggestions[activeSuggestIndex].name, neg ? 'exclude' : 'include');
+        autoBox.classList.add('hidden');
+        return;
+      }
+    }
     if (e.key === 'Enter') runSearch();
   });
   document.getElementById('run-search-btn').addEventListener('click', runSearch);
@@ -2957,6 +3153,27 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   document.getElementById('close-post-modal').addEventListener('click', closePostModal);
+
+  let touchStartX = 0;
+  let touchStartY = 0;
+  const modalStageEl = document.querySelector('#post-modal .modal-stage');
+  if (modalStageEl) {
+    modalStageEl.addEventListener('touchstart', e => {
+      if (!e.touches || e.touches.length !== 1) return;
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+    }, { passive: true });
+    modalStageEl.addEventListener('touchend', e => {
+      if (!e.changedTouches || e.changedTouches.length !== 1) return;
+      const dx = e.changedTouches[0].clientX - touchStartX;
+      const dy = e.changedTouches[0].clientY - touchStartY;
+      if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.4) {
+        if (dx < 0) stepModalPost(1);
+        else stepModalPost(-1);
+      }
+    }, { passive: true });
+  }
+
   document.getElementById('close-pro-modal').addEventListener('click', closeProModal);
 
   document.querySelectorAll('.plan').forEach(card => {
