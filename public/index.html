@@ -137,6 +137,7 @@
               <button class="sort-btn" type="button" data-sort="latest">New</button>
               <button class="sort-btn" type="button" data-sort="video">Video</button>
               <button class="sort-btn" type="button" data-sort="no_ai">No AI</button>
+              <button class="sort-btn" type="button" data-sort="random">Random</button>
             </div>
           </div>
         </div>
@@ -190,9 +191,31 @@
           <h1 id="feed-heading">Posts</h1>
           <p id="feed-summary-text" class="fine">Loading posts…</p>
         </div>
-        <button id="share-feed-btn" class="icon-btn bare" type="button" aria-label="Share this feed">
-          <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-share"/></svg>
-        </button>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <div id="grid-density-bar" class="seg" style="padding:2px;" title="Grid Thumbnail Size">
+            <button type="button" class="density-btn" data-density="s" onclick="setGridDensity('s')" style="padding:4px 7px;font-size:11px;">S</button>
+            <button type="button" class="density-btn is-on" data-density="m" onclick="setGridDensity('m')" style="padding:4px 7px;font-size:11px;">M</button>
+            <button type="button" class="density-btn" data-density="l" onclick="setGridDensity('l')" style="padding:4px 7px;font-size:11px;">L</button>
+          </div>
+          <button id="share-feed-btn" class="icon-btn bare" type="button" aria-label="Share this feed">
+            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-share"/></svg>
+          </button>
+        </div>
+      </div>
+      <div id="advanced-filter-strip" class="filter-strip">
+        <button type="button" class="filter-pill rating-btn is-on" data-rating="s">Safe</button>
+        <button type="button" class="filter-pill rating-btn" data-rating="q">Questionable</button>
+        <button type="button" class="filter-pill rating-btn" data-rating="e">Explicit 18+</button>
+        <button type="button" class="filter-pill rating-btn" data-rating="all">All Ratings</button>
+        <span style="width:1px;height:16px;background:var(--line);margin:0 2px;"></span>
+        <button type="button" class="filter-pill media-btn is-on" data-media="all" onclick="setMediaFilter('all')">All Media</button>
+        <button type="button" class="filter-pill media-btn" data-media="image" onclick="setMediaFilter('image')">Images</button>
+        <button type="button" class="filter-pill media-btn" data-media="gif" onclick="setMediaFilter('gif')">GIFs</button>
+        <button type="button" class="filter-pill media-btn" data-media="video" onclick="setMediaFilter('video')">Video</button>
+        <span style="width:1px;height:16px;background:var(--line);margin:0 2px;"></span>
+        <button type="button" class="filter-pill sort-btn" data-sort="no_ai">🚫 No AI</button>
+        <button type="button" class="filter-pill sort-btn" data-sort="random">🎲 Random</button>
+        <button type="button" id="multiboard-pill-btn" class="filter-pill" onclick="selectSourceInPlace('multiboard', false)">⚡ Multi-Board</button>
       </div>
       <span id="reels-counter" class="sr">0 posts</span>
     </div>
@@ -216,10 +239,12 @@
             <form class="search" role="search" onsubmit="return false">
               <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-search"/></svg>
               <input id="tag-search-input" type="search" enterkeyhint="search" autocomplete="off" placeholder="Search tags" aria-label="Search tags" />
+              <button id="pin-search-btn" class="btn btn-tiny btn-ghost" type="button" title="Pin current search" onclick="togglePinCurrentSearch()">★</button>
               <button id="clear-search-btn" class="btn btn-tiny btn-ghost hidden" type="button">Clear</button>
               <button id="run-search-btn" class="btn btn-tiny btn-primary" type="button">Search</button>
               <div id="tag-autocomplete" class="suggest hidden"></div>
             </form>
+            <div id="search-history-bar" class="tag-row" style="margin-top:8px;"></div>
           </div>
         </div>
         <button id="home-go-btn" class="go-btn" type="button" aria-label="Search">
@@ -258,22 +283,78 @@
     </section>
 
     <section id="tab-saved" class="hidden">
-      <div class="panel panel-head">
-        <div>
-          <h2>Saved</h2>
-          <p>Kept in this browser. A Pro key does not upload them.</p>
+      <div class="panel" style="margin-bottom:12px;display:grid;gap:10px;">
+        <div class="panel-head">
+          <div>
+            <h2>Saved &amp; Collections</h2>
+            <p style="margin:0;">Organize saved posts into folders or filter by tag. Stored locally in your browser.</p>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button type="button" class="btn btn-tiny btn-ghost" onclick="promptNewCollection()">+ New Folder</button>
+            <button type="button" class="btn btn-tiny btn-ghost" onclick="exportUserDataJson()">Export JSON</button>
+            <button id="clear-saved-btn" class="linkish" type="button">Clear all</button>
+          </div>
         </div>
-        <button id="clear-saved-btn" class="linkish" type="button">Clear saved</button>
+        <div id="collections-bar" class="filter-strip" style="padding:0;"></div>
+        <input id="saved-search-input" class="field" type="search" placeholder="Filter saved posts by tag or board…" oninput="renderSavedPosts()" style="padding:8px 12px;font-size:13px;background:#0d0d12;border:1px solid var(--line);border-radius:10px;" />
       </div>
       <div id="saved-grid" class="masonry-grid"></div>
     </section>
 
     <section id="tab-settings" class="hidden">
-      <div class="panel">
-        <h2>Blocked tags</h2>
-        <p>Posts with these tags stay out of the feed. One tag per line.</p>
-        <textarea id="blacklist-textarea" aria-label="Blocked tags"></textarea>
-        <button id="save-blacklist-btn" class="btn btn-primary btn-block" type="button">Save blocklist</button>
+      <div style="display:grid;gap:14px;">
+        <div class="panel">
+          <h2>Blocked tags</h2>
+          <p>Posts with these tags stay out of the feed. One tag per line or click × on a chip below.</p>
+          <div id="blacklist-chips" class="tag-row" style="margin-bottom:10px;"></div>
+          <textarea id="blacklist-textarea" aria-label="Blocked tags"></textarea>
+          <button id="save-blacklist-btn" class="btn btn-primary btn-block" type="button">Save blocklist</button>
+        </div>
+        <div class="panel" style="display:grid;gap:12px;">
+          <div>
+            <h2>Feed &amp; Display Preferences</h2>
+            <p style="margin:0;">Saved automatically in your browser.</p>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;">
+            <div>
+              <label class="row-label" style="display:block;margin-bottom:6px;">Default Rating</label>
+              <select id="pref-default-rating" class="field" onchange="saveUserPref('defaultRating', this.value)" style="width:100%;padding:8px 10px;border-radius:10px;background:#0d0d12;border:1px solid var(--line);">
+                <option value="s">Safe (Default)</option>
+                <option value="q">Questionable</option>
+                <option value="e">Explicit 18+</option>
+                <option value="all">All Ratings</option>
+              </select>
+            </div>
+            <div>
+              <label class="row-label" style="display:block;margin-bottom:6px;">Grid Thumbnail Size</label>
+              <select id="pref-grid-density" class="field" onchange="setGridDensity(this.value)" style="width:100%;padding:8px 10px;border-radius:10px;background:#0d0d12;border:1px solid var(--line);">
+                <option value="s">Compact (Small)</option>
+                <option value="m" selected>Comfort (Medium)</option>
+                <option value="l">Large (HD Cards)</option>
+              </select>
+            </div>
+            <div>
+              <label class="row-label" style="display:block;margin-bottom:6px;">Reels Video Autoplay</label>
+              <select id="pref-autoplay" class="field" onchange="saveUserPref('autoplayReels', this.value === '1')" style="width:100%;padding:8px 10px;border-radius:10px;background:#0d0d12;border:1px solid var(--line);">
+                <option value="1" selected>Autoplay On</option>
+                <option value="0">Click to Play</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="panel" style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;">
+          <div>
+            <h2>Backup &amp; Restore Data (.json)</h2>
+            <p style="margin:0;">Export or import your Saved Posts, Collections, Blocklist, Search History, and Settings.</p>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button type="button" class="btn btn-primary" onclick="exportUserDataJson()">Export Backup (.json)</button>
+            <label class="btn btn-ghost" style="cursor:pointer;margin:0;">
+              Import Backup (.json)
+              <input type="file" accept=".json,application/json" style="display:none;" onchange="importUserDataJson(this)" />
+            </label>
+          </div>
+        </div>
       </div>
     </section>
   </main>
@@ -302,6 +383,7 @@
           <button class="choice sort-btn" type="button" data-sort="latest" onclick="setSortInPlace('latest')">New</button>
           <button class="choice sort-btn" type="button" data-sort="video" onclick="setSortInPlace('video')">Video</button>
           <button class="choice sort-btn" type="button" data-sort="no_ai" onclick="setSortInPlace('no_ai')">No AI</button>
+          <button class="choice sort-btn" type="button" data-sort="random" onclick="setSortInPlace('random')">Random</button>
         </div>
       </div>
       <label class="check">
@@ -317,7 +399,11 @@
 
   <div id="post-modal" class="modal-back hidden" onclick="if (event.target === this) closePostModal()">
     <div class="modal" role="dialog" aria-label="Post">
-      <div id="modal-media-container" class="modal-stage"></div>
+      <div class="modal-stage" style="position:relative;">
+        <button type="button" class="modal-nav-btn modal-nav-prev" onclick="stepModalPost(-1)" aria-label="Previous post" title="Previous (← / A)">‹</button>
+        <div id="modal-media-container" style="position:absolute;inset:0;"></div>
+        <button type="button" class="modal-nav-btn modal-nav-next" onclick="stepModalPost(1)" aria-label="Next post" title="Next (→ / D)">›</button>
+      </div>
       <div class="modal-side">
         <header>
           <div style="display:flex;gap:6px;flex-wrap:wrap">
@@ -328,7 +414,12 @@
         </header>
         <div class="pair">
           <button id="modal-save-btn" class="btn btn-ghost" type="button"><span class="ico-slot"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-heart"/></svg></span><span class="btn-label">Save</span></button>
+          <select id="modal-collection-select" class="btn btn-ghost" style="max-width:125px;padding:6px 8px;font-size:12px;" onchange="assignPostCollection(this.value)" title="Save to Collection Folder"></select>
           <a id="modal-download-btn" class="btn btn-primary" href="#" download><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-download"/></svg><span>Download</span></a>
+        </div>
+        <div class="pair" style="gap:6px;">
+          <button id="modal-hd-btn" class="btn btn-tiny btn-ghost" type="button" onclick="toggleModalHdQuality()">✨ Original HD</button>
+          <button id="modal-zoom-btn" class="btn btn-tiny btn-ghost" type="button" onclick="toggleModalZoom()">🔍 Zoom 2×</button>
         </div>
         <div class="panel" style="padding:12px">
           <div class="kicker">AI tools</div>
@@ -353,6 +444,12 @@
         <div class="panel-head fine">
           <span id="modal-dimensions"></span>
           <a id="modal-original-url" href="#" target="_blank" rel="noopener"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-external"/></svg>Original</a>
+        </div>
+        <div class="kbd-hint">
+          <span><kbd>←</kbd><kbd>→</kbd> Prev/Next</span>
+          <span><kbd>S</kbd> Save</span>
+          <span><kbd>F</kbd> Zoom</span>
+          <span><kbd>Esc</kbd> Close</span>
         </div>
       </div>
     </div>

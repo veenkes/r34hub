@@ -1024,25 +1024,53 @@ async function gatherSources(targetSources, params, budgetMs) {
   return { lists, allDone };
 }
 
-// API: Unified Posts Aggregator
+// API: Unified Posts Aggregator (with smart tag normalization, multi-board fallback & media filtering)
 app.get('/api/posts', async (req, res) => {
   if (String(req.query.page || "1") === "1") trackVisitorHit(req, "feed");
-  const source = String(req.query.source || req.query.board || 'all');
-  const tags = String(req.query.tags || '');
+  const source = String(req.query.source || req.query.board || 'rule34xxx');
+  const rawTags = String(req.query.tags || '').trim();
   const rating = String(req.query.rating || 's'); // 's', 'q', 'e', 'all'
-  const sort = String(req.query.sort || 'latest'); // 'latest', 'score', 'trending', 'video', 'no_ai'
+  const sort = String(req.query.sort || 'score'); // 'latest', 'score', 'trending', 'video', 'no_ai', 'random'
+  const mediaFilter = String(req.query.media || 'all'); // 'all', 'image', 'gif', 'video'
   const page = Math.max(1, parseInt(req.query.page || '1', 10));
   const limit = Math.min(48, Math.max(8, parseInt(req.query.limit || '24', 10)));
 
-  const cacheKey = `posts:${source}:${tags}:${rating}:${sort}:${page}:${limit}`;
-  const cached = postCache.get(cacheKey);
-  if (cached) {
-    res.setHeader('Cache-Control', cached.partial ? 'no-store' : 'public, max-age=60, stale-while-revalidate=120');
-    return res.json({
-      ...cached,
-      cached: true,
-      cacheStats: postCache.stats()
-    });
+  // Split positive vs excluded (-tag) tokens so boards that only accept 1-2 tags don't choke on exclusions
+  const allTokens = rawTags.split(/\s+/).filter(Boolean);
+  const excludedTokens = allTokens.filter(t => t.startsWith('-')).map(t => t.slice(1).toLowerCase()).filter(Boolean);
+  const positiveTokens = allTokens.filter(t => !t.startsWith('-')).map(t => t.replace(/^\+/, ''));
+  const tags = positiveTokens.join(' ');
+
+  const cacheKey = `posts:${source}:${rawTags}:${rating}:${sort}:${mediaFilter}:${page}:${limit}`;
+  if (sort !== 'random') {
+    const cached = postCache.get(cacheKey);
+    if (cached) {
+      res.setHeader('Cache-Control', cached.partial ? 'no-store' : 'public, max-age=60, stale-while-revalidate=120');
+      return res.json({
+        ...cached,
+        cached: true,
+        cacheStats: postCache.stats()
+      });
+    }
+  }
+
+  function applyClientFilters(list) {
+    let out = list;
+    if (excludedTokens.length) {
+      const exSet = new Set(excludedTokens);
+      out = out.filter(p => !(p.tags || []).some(t => exSet.has(String(t).toLowerCase())));
+    }
+    if (mediaFilter === 'image') {
+      out = out.filter(p => p.mediaType === 'image' && String(p.fileExt || '').toLowerCase() !== 'gif');
+    } else if (mediaFilter === 'gif') {
+      out = out.filter(p => p.mediaType === 'gif' || String(p.fileExt || '').toLowerCase() === 'gif');
+    } else if (mediaFilter === 'video') {
+      out = out.filter(p => p.mediaType === 'video' || ['mp4', 'webm'].includes(String(p.fileExt || '').toLowerCase()));
+    }
+    if (sort === 'random') {
+      out = out.slice().sort(() => Math.random() - 0.5);
+    }
+    return out;
   }
 
   const startTime = Date.now();
@@ -1050,20 +1078,21 @@ app.get('/api/posts', async (req, res) => {
     let posts = [];
     const sourceBreakdown = {};
     let partial = false;
+    const effectiveSort = sort === 'random' ? 'score' : (mediaFilter === 'video' ? 'video' : sort);
 
-    if (source === 'all') {
+    if (source === 'all' || source === 'multiboard') {
       let targetSources = ['safebooru', 'danbooru', 'konachan', 'yandere'];
-      if (sort === 'video') {
-        targetSources = ['sakugabooru', 'danbooru', 'paheal'];
+      if (effectiveSort === 'video' || mediaFilter === 'video') {
+        targetSources = ['sakugabooru', 'danbooru', 'paheal', 'xbooru'];
       } else if (rating === 'e' || rating === 'all') {
         targetSources = ['paheal', 'xbooru', 'yandere', 'danbooru', 'tbib'];
       }
 
-      const perSourceLimit = Math.min(20, Math.max(8, Math.ceil(limit / 2)));
+      const perSourceLimit = Math.min(24, Math.max(10, Math.ceil(limit / 2)));
       const gathered = await gatherSources(
         targetSources,
-        { tags, rating, sort, page, limit: perSourceLimit },
-        2200
+        { tags, rating, sort: effectiveSort, page, limit: perSourceLimit },
+        2400
       );
       const settled = gathered.lists.map(list => list || []);
       settled.forEach((list, idx) => {
@@ -1071,41 +1100,40 @@ app.get('/api/posts', async (req, res) => {
       });
       posts = interleaveLists(settled);
       partial = gathered.lists.some(list => list === null);
-      if (partial) {
-        gathered.allDone.then(() => {
-          const fullLists = gathered.lists.map(list => list || []);
-          const fullPosts = finalizePosts(interleaveLists(fullLists), sort, limit, rating);
-          if (!fullPosts.length) return;
-          const breakdown = {};
-          targetSources.forEach((id, idx) => {
-            breakdown[id] = fullLists[idx].length;
-          });
-          postCache.set(cacheKey, {
-            source,
-            tags,
-            rating,
-            sort,
-            page,
-            count: fullPosts.length,
-            tookMs: Date.now() - startTime,
-            sourceBreakdown: breakdown,
-            partial: false,
-            posts: fullPosts
-          });
-        }).catch(() => {});
-      }
     } else {
-      posts = await fetchFromSource(source, { tags, rating, sort, page, limit });
+      posts = await fetchFromSource(source, { tags, rating, sort: effectiveSort, page, limit: Math.max(limit, 32) });
       sourceBreakdown[source] = posts.length;
+
+      // Smart Tag Normalization & Multi-Board Rescue when a specific tag search returns < 4 posts
+      if (posts.length < 4 && positiveTokens.length >= 2) {
+        const joinedTag = positiveTokens.join('_');
+        const retryJoined = await fetchFromSource(source, { tags: joinedTag, rating, sort: effectiveSort, page, limit: 32 }).catch(() => []);
+        if (retryJoined.length > posts.length) {
+          posts = retryJoined;
+          sourceBreakdown[source] = posts.length;
+        }
+      }
+      if (posts.length < 4 && positiveTokens.length > 0) {
+        const rescueBoards = ['paheal', 'xbooru', 'danbooru', 'yandere', 'safebooru'].filter(b => b !== source);
+        const gathered = await gatherSources(
+          rescueBoards.slice(0, 4),
+          { tags, rating, sort: effectiveSort, page, limit: 16 },
+          2200
+        );
+        const rescuePosts = interleaveLists(gathered.lists.map(l => l || []));
+        posts = deduplicatePostsList([...posts, ...rescuePosts]);
+      }
     }
 
-    posts = finalizePosts(posts, sort, limit, rating);
+    posts = finalizePosts(posts, effectiveSort, limit * 2, rating);
+    posts = applyClientFilters(posts).slice(0, limit);
 
     const payload = {
       source,
-      tags,
+      tags: rawTags,
       rating,
       sort,
+      media: mediaFilter,
       page,
       count: posts.length,
       tookMs: Date.now() - startTime,
@@ -1114,11 +1142,11 @@ app.get('/api/posts', async (req, res) => {
       posts
     };
 
-    if (posts.length > 0) {
+    if (posts.length > 0 && sort !== 'random') {
       postCache.set(cacheKey, payload, partial ? 12000 : undefined);
     }
 
-    res.setHeader('Cache-Control', partial ? 'no-store' : 'public, max-age=60, stale-while-revalidate=120');
+    res.setHeader('Cache-Control', partial || sort === 'random' ? 'no-store' : 'public, max-age=60, stale-while-revalidate=120');
     res.json({
       ...payload,
       cached: false,
@@ -1128,9 +1156,10 @@ app.get('/api/posts', async (req, res) => {
     res.status(200).json({
       ok: true,
       source,
-      tags,
+      tags: rawTags,
       rating,
       sort,
+      media: mediaFilter,
       page,
       count: 0,
       partial: false,
@@ -1252,6 +1281,10 @@ app.get('/api/media', async (req, res) => {
     const hit = takeMediaCache(targetUrl);
     if (hit) {
       res.setHeader('Content-Type', hit.contentType);
+      if (req.query.download === '1') {
+        const rawName = String(req.query.filename || parsedUrl.pathname.split('/').pop() || 'r34hub-media.jpg').replace(/[^a-zA-Z0-9._-]/g, '_');
+        res.setHeader('Content-Disposition', `attachment; filename="${rawName}"`);
+      }
       res.setHeader('Content-Length', String(hit.buf.length));
       res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
       res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -1287,6 +1320,10 @@ app.get('/api/media', async (req, res) => {
 
     res.status(upstream.status);
     res.setHeader('Content-Type', contentType);
+    if (req.query.download === '1') {
+      const rawName = String(req.query.filename || parsedUrl.pathname.split('/').pop() || 'r34hub-media.jpg').replace(/[^a-zA-Z0-9._-]/g, '_');
+      res.setHeader('Content-Disposition', `attachment; filename="${rawName}"`);
+    }
     res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Access-Control-Allow-Origin', '*');

@@ -21,8 +21,17 @@ const state = {
   activeTab: 'home',
   source: 'rule34xxx',
   tags: '',
-  rating: 's',
+  rating: localStorage.getItem('bp_pref_defaultRating') || 's',
   sort: 'score',
+  media: 'all',
+  gridDensity: localStorage.getItem('bp_grid_density') || 'm',
+  autoplayReels: localStorage.getItem('bp_pref_autoplayReels') !== '0',
+  searchHistory: JSON.parse(localStorage.getItem('bp_search_history') || '[]'),
+  pinnedSearches: JSON.parse(localStorage.getItem('bp_pinned_searches') || '[]'),
+  collections: JSON.parse(localStorage.getItem('bp_collections_v1') || '["Favorites","Characters","Videos"]'),
+  postCollections: JSON.parse(localStorage.getItem('bp_post_collections_v1') || '{}'),
+  activeCollection: 'All',
+  modalUseHd: false,
   page: 1,
   isLoading: false,
   hasMore: true,
@@ -48,7 +57,7 @@ const state = {
   featureObserver: null
 };
 
-const SORT_LABEL = { score: 'Popular', latest: 'New', video: 'Video', no_ai: 'No AI', trending: 'Popular' };
+const SORT_LABEL = { score: 'Popular', latest: 'New', video: 'Video', no_ai: 'No AI', random: 'Random', trending: 'Popular' };
 const RATING_LABEL = { s: 'Safe', q: 'Questionable', e: 'Explicit', all: 'All ratings' };
 
 function esc(value) {
@@ -82,6 +91,7 @@ function formatScore(value) {
 }
 
 function sourceLabel() {
+  if (state.source === 'multiboard') return '⚡ Multi-Board';
   if (state.source === 'all' || state.source === 'rule34xxx' || state.source === 'rule34.xxx') return 'Rule34.xxx';
   const found = state.sources.find(s => s.id === state.source);
   return found ? found.name : state.source;
@@ -111,6 +121,7 @@ function feedQuery() {
   if (state.sort && state.sort !== 'score') params.set('filter[sort]', state.sort);
   if (state.tags.trim()) params.set('tags', state.tags.trim());
   if (state.rating && state.rating !== 's') params.set('rating', state.rating);
+  if (state.media && state.media !== 'all') params.set('media', state.media);
   return params.toString();
 }
 
@@ -191,7 +202,10 @@ function readUrlState() {
   if (sort) state.sort = sort;
   const rating = urlParams.get('rating');
   if (rating) state.rating = rating;
+  const media = urlParams.get('media');
+  if (media) state.media = media;
   if (urlParams.get('tags')) state.tags = urlParams.get('tags');
+  paintChoice('.media-btn', 'media', state.media);
   const input = document.getElementById('tag-search-input');
   if (input) input.value = state.tags;
   paintChoice('.rating-btn', 'rating', state.rating);
@@ -377,9 +391,10 @@ function faviconUrl(domain) {
 
 function sourceItems() {
   const defaultR34 = { id: 'rule34xxx', name: 'Rule34.xxx', domain: 'rule34.xxx', isPremiumSource: false };
-  if (!state.sources || !state.sources.length) return [defaultR34];
+  const multiItem = { id: 'multiboard', name: '⚡ Multi-Board (Top 4)', domain: '', isPremiumSource: false };
+  if (!state.sources || !state.sources.length) return [defaultR34, multiItem];
   const r34 = state.sources.find(s => s.id === 'rule34xxx') || defaultR34;
-  return [r34, ...state.sources.filter(s => s.id !== 'rule34xxx')];
+  return [r34, multiItem, ...state.sources.filter(s => s.id !== 'rule34xxx')];
 }
 
 function domainOptionHtml(source) {
@@ -822,6 +837,107 @@ function useProxy(img) {
 }
 window.useProxy = useProxy;
 
+
+const clientFeedCache = new Map();
+let activeFeedController = null;
+let activeAutocompleteController = null;
+
+window.setMediaFilter = function(media) {
+  state.media = media || 'all';
+  state.page = 1;
+  scrollFeedToTop();
+  paintChoice('.media-btn', 'media', state.media);
+  if (browsingPosts()) showBrowseAndReload();
+};
+
+window.setGridDensity = function(density) {
+  if (!['s', 'm', 'l'].includes(density)) density = 'm';
+  state.gridDensity = density;
+  localStorage.setItem('bp_grid_density', density);
+  document.body.classList.remove('grid-density-s', 'grid-density-m', 'grid-density-l');
+  document.body.classList.add(`grid-density-${density}`);
+  document.querySelectorAll('.density-btn').forEach(btn => btn.classList.toggle('is-on', btn.dataset.density === density));
+  const sel = document.getElementById('pref-grid-density');
+  if (sel) sel.value = density;
+};
+
+function recordSearchHistory(query) {
+  const clean = String(query || '').trim();
+  if (!clean) return;
+  state.searchHistory = [clean, ...state.searchHistory.filter(q => q !== clean)].slice(0, 12);
+  localStorage.setItem('bp_search_history', JSON.stringify(state.searchHistory));
+  renderSearchHistoryBar();
+}
+
+window.removeSearchHistoryItem = function(query) {
+  state.searchHistory = state.searchHistory.filter(q => q !== query);
+  localStorage.setItem('bp_search_history', JSON.stringify(state.searchHistory));
+  renderSearchHistoryBar();
+};
+
+window.clearSearchHistory = function() {
+  state.searchHistory = [];
+  localStorage.setItem('bp_search_history', '[]');
+  renderSearchHistoryBar();
+};
+
+window.togglePinCurrentSearch = function() {
+  const input = document.getElementById('tag-search-input');
+  const q = ((input && input.value) || state.tags || '').trim();
+  if (!q) {
+    showToast('Type a tag query first to pin it');
+    return;
+  }
+  const idx = state.pinnedSearches.findIndex(item => item.q === q && item.source === state.source);
+  if (idx >= 0) {
+    state.pinnedSearches.splice(idx, 1);
+    showToast('Removed pinned search');
+  } else {
+    state.pinnedSearches.unshift({ q, source: state.source, rating: state.rating });
+    state.pinnedSearches = state.pinnedSearches.slice(0, 10);
+    showToast(`Pinned search: ${q}`);
+  }
+  localStorage.setItem('bp_pinned_searches', JSON.stringify(state.pinnedSearches));
+  renderSearchHistoryBar();
+};
+
+window.applySavedSearchChip = function(q, src, rating) {
+  state.tags = q || '';
+  if (src) state.source = src;
+  if (rating) {
+    state.rating = rating;
+    paintChoice('.rating-btn', 'rating', rating);
+  }
+  const input = document.getElementById('tag-search-input');
+  if (input) input.value = state.tags;
+  const clearBtn = document.getElementById('clear-search-btn');
+  if (clearBtn) clearBtn.classList.toggle('hidden', !state.tags);
+  showBrowseAndReload();
+};
+
+function renderSearchHistoryBar() {
+  const bar = document.getElementById('search-history-bar');
+  if (!bar) return;
+  const parts = [];
+  state.pinnedSearches.forEach(item => {
+    parts.push(`
+      <span class="token" style="border-color:rgba(245,158,11,0.5);background:rgba(245,158,11,0.1);">
+        <button type="button" style="border:0;color:#fbbf24;font-weight:650;" onclick="applySavedSearchChip('${esc(item.q)}','${esc(item.source)}','${esc(item.rating)}')">★ ${esc(item.q)}</button>
+      </span>`);
+  });
+  state.searchHistory.slice(0, 8).forEach(q => {
+    parts.push(`
+      <span class="token">
+        <button type="button" style="border:0;color:var(--text);" onclick="applySavedSearchChip('${esc(q)}')">🕒 ${esc(q)}</button>
+        <button type="button" onclick="removeSearchHistoryItem('${esc(q)}')" title="Remove">×</button>
+      </span>`);
+  });
+  if (state.searchHistory.length > 0) {
+    parts.push(`<button type="button" class="linkish" style="font-size:11px;padding:2px 6px;" onclick="clearSearchHistory()">Clear history</button>`);
+  }
+  bar.innerHTML = parts.join('');
+}
+
 async function loadPosts(append = false, silent = false) {
   if (state.isLoading && (append || silent)) return;
   if (silent && state.page !== 1) return;
@@ -864,17 +980,36 @@ async function loadPosts(append = false, silent = false) {
       tags: state.tags,
       rating: state.rating,
       sort: state.sort,
+      media: state.media || 'all',
       page: String(state.page),
       limit: '24'
     });
-    const res = await fetch(`/api/posts?${q.toString()}`);
-    const rawText = await res.text();
-    try {
-      data = JSON.parse(rawText);
-    } catch (_) {
-      throw new Error('The boards are busy — please try again');
+    const cacheKey = q.toString();
+    if (!append && !silent && state.sort !== 'random' && clientFeedCache.has(cacheKey)) {
+      data = clientFeedCache.get(cacheKey);
+    } else {
+      if (!append && !silent && activeFeedController) {
+        try { activeFeedController.abort(); } catch (_) {}
+      }
+      const controller = new AbortController();
+      if (!append && !silent) activeFeedController = controller;
+      const res = await fetch(`/api/posts?${cacheKey}`, { signal: controller.signal });
+      const rawText = await res.text();
+      try {
+        data = JSON.parse(rawText);
+      } catch (_) {
+        throw new Error('The boards are busy — please try again');
+      }
+      if (!res.ok) throw new Error((data && data.error) || 'The boards did not answer');
+      if (data && Array.isArray(data.posts) && data.posts.length > 0 && state.sort !== 'random') {
+        clientFeedCache.set(cacheKey, data);
+        if (clientFeedCache.size > 40) {
+          const oldest = clientFeedCache.keys().next().value;
+          clientFeedCache.delete(oldest);
+        }
+      }
     }
-    if (!res.ok) throw new Error((data && data.error) || 'The boards did not answer');
+    if (token !== state.queryToken) return;
     const blocked = new Set(state.blacklist.map(t => t.toLowerCase()));
     const rawFiltered = (data.posts || []).filter(p => !(p.tags || []).some(t => blocked.has(String(t).toLowerCase())));
     const rawPosts = [];
@@ -941,6 +1076,7 @@ async function loadPosts(append = false, silent = false) {
     if (spinner) spinner.classList.toggle('is-done', !state.hasMore);
     paintReelsStatus();
   } catch (err) {
+    if (err && err.name === 'AbortError') return;
     if (!append && !silent && feedEl) {
       feedEl.innerHTML = `<div class="empty"><h2>The boards did not answer</h2><p>${esc(err.message)}</p><button class="btn btn-primary" type="button" onclick="loadPosts(false)">Try again</button></div>`;
     }
@@ -1066,11 +1202,26 @@ function prefersReducedMotion() {
 
 let mediaMuted = true;
 
+window.blockTagPermanent = function(tag) {
+  const clean = String(tag || '').trim().toLowerCase();
+  if (!clean) return;
+  if (!state.blacklist.includes(clean)) {
+    state.blacklist.push(clean);
+    localStorage.setItem('bp_blacklist', JSON.stringify(state.blacklist));
+    renderBlacklistChips();
+    const area = document.getElementById('blacklist-textarea');
+    if (area) area.value = state.blacklist.join('\n');
+  }
+  showToast(`Blocked tag: ${clean}`);
+  if (browsingPosts()) loadPosts(false);
+};
+
 function tagChip(tag, post) {
   const kind = post ? tagDot(post, tag) : '';
   return `<span class="tag ${kind}">
-    <button type="button" data-include="${esc(tag)}"><i class="${kind}"></i>${esc(tag)}</button>
-    <button type="button" class="tag-block" data-exclude="${esc(tag)}" title="Hide this tag" aria-label="Hide ${esc(tag)}">${icon('block')}</button>
+    <button type="button" data-include="${esc(tag)}" title="Search / Include ${esc(tag)}"><i class="${kind}"></i>${esc(tag)}</button>
+    <button type="button" class="tag-block" data-exclude="${esc(tag)}" title="Exclude (-${esc(tag)}) from search" aria-label="Exclude ${esc(tag)}">−</button>
+    <button type="button" class="tag-block" onclick="event.stopPropagation();blockTagPermanent('${esc(tag)}')" title="Block ${esc(tag)} permanently" aria-label="Block ${esc(tag)}">🚫</button>
   </span>`;
 }
 
@@ -1126,9 +1277,7 @@ function maybeShowVideoPreroll(containerEl, onComplete) {
     <span class="meta-badge" style="margin:0;background:rgba(225,29,72,0.22);border-color:rgba(225,29,72,0.55);color:#fda4af;font-weight:700;">🔞 18+ NSFW AD · Video starts in <b data-preroll-sec>3</b>s</span>
     <div style="font-size:16px;font-weight:700;color:#fff;">Uncensored 18+ AI Undress &amp; Hentai Video Chat</div>
     <div style="font-size:12px;color:#d4d4d8;max-width:320px;">Turn any character into an explicit 18+ interactive animation or roleplay chat.</div>
-    <div style="width:300px;height:250px;overflow:hidden;border-radius:10px;border:1px solid var(--line);background:#000;display:flex;align-items:center;justify-content:center;">
-      <iframe src="https://syndication.exdynsrv.com/ads-iframe-display.php?idzone=${esc(exoZoneId)}&output=noscript&type=300x250" width="300" height="250" scrolling="no" marginwidth="0" marginheight="0" frameborder="0" style="background:transparent;color-scheme:normal;" title="ExoClick 18+ Pre-Roll"></iframe>
-    </div>
+    ${buildAnimated300x250BannerHtml(videoPlayCount, { id: 'nud3_video', partner: 'NUD3.ME 18+ AI', title: '18+ AI Undress & Hentai Video Animator', cta: '🔞 Animate 18+ Video Now →' }, activeTag)}
     <div style="display:flex;gap:8px;margin-top:4px;">
       <button type="button" class="btn btn-primary btn-tiny" style="background:#e11d48;color:#fff;font-weight:700;" data-preroll-cta>🔞 Open 18+ AI Studio →</button>
       <button type="button" class="btn btn-ghost btn-tiny" data-preroll-skip disabled>Skip (3)</button>
@@ -1380,10 +1529,62 @@ function pickAdultAdArtwork(idx = 0) {
   };
 }
 
+
+const ADULT_ANIMATED_GIFS = [
+  'https://img.xbooru.com/images/614/4cafc8978d09a231f587490fd6e704a0.gif',
+  'https://img.xbooru.com/images/643/18d4f0c2765ec4da5f31aed92a8b691c.gif',
+  'https://img.xbooru.com/images/634/cfe2ba342ff9f37834b4ff831a148c9d.gif',
+  'https://img.xbooru.com/images/161/47cbdfdc948fdb36eaa94fc76816a545.gif',
+  'https://img.xbooru.com/images/23/68905846ed0393f8ae89bb4fbb390fe3.gif',
+  'https://img.xbooru.com/images/307/8b0670db3dfd97069177a13b5780a865.gif',
+  'https://img.xbooru.com/images/514/5801ffe974b24cbb229c65c08d9b768f.gif'
+];
+
+function pickAnimated18PlusGif(idx = 0) {
+  // Also check if current feed has any explicit .gif posts
+  const feedGifs = (state.posts || []).filter(p => p && p.rating === 'e' && String(p.fileExt || '').toLowerCase() === 'gif' && p.fileUrl);
+  if (feedGifs.length) {
+    const chosen = feedGifs[idx % feedGifs.length];
+    const proxy = chosen.proxiedFileUrl || `/api/media?url=${encodeURIComponent(chosen.fileUrl)}&referer=${encodeURIComponent('https://xbooru.com/')}`;
+    return { src: chosen.fileUrl, proxy };
+  }
+  const rawGif = ADULT_ANIMATED_GIFS[idx % ADULT_ANIMATED_GIFS.length];
+  const proxyGif = `/api/media?url=${encodeURIComponent(rawGif)}&referer=${encodeURIComponent('https://xbooru.com/')}`;
+  return { src: rawGif, proxy: proxyGif };
+}
+
+function buildAnimated300x250BannerHtml(idx, offer, activeTag) {
+  const anim = pickAnimated18PlusGif(idx);
+  const badgeText = (offer && (offer.partner || offer.name)) || 'NUD3.ME 18+ AI';
+  const titleText = (offer && offer.title) || '18+ AI Undress & Hentai Video Animator';
+  const ctaText = (offer && offer.cta) || '🔞 Watch / Play 18+ Now →';
+  const offerId = (offer && offer.id) || 'nud3_video';
+  return `
+    <div onclick="triggerAdClick('infeed_native','${esc(offerId)}','anim-300x250-${idx}','${esc(activeTag || 'hentai')}')" style="position:relative;width:300px;height:250px;overflow:hidden;border-radius:10px;border:1px solid rgba(225,29,72,0.5);background:#09090b;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,0.45);">
+      <img
+        src="${esc(anim.src)}"
+        data-proxy="${esc(anim.proxy)}"
+        alt="18+ Animated Ad"
+        referrerpolicy="no-referrer"
+        onerror="useProxy(this)"
+        style="width:100%;height:100%;object-fit:cover;display:block;"
+      />
+      <div style="position:absolute;top:8px;left:8px;right:8px;display:flex;align-items:center;justify-content:space-between;gap:6px;pointer-events:none;">
+        <span style="background:rgba(225,29,72,0.94);color:#fff;font-weight:900;font-size:10px;padding:2px 8px;border-radius:4px;letter-spacing:0.04em;">🔞 18+ ANIMATED AD</span>
+        <span style="background:rgba(9,9,11,0.85);color:#f4f4f5;font-weight:700;font-size:10px;padding:2px 7px;border-radius:4px;">${esc(badgeText)}</span>
+      </div>
+      <div style="position:absolute;left:0;right:0;bottom:0;padding:28px 10px 10px;background:linear-gradient(180deg,transparent 0%,rgba(9,9,11,0.92) 55%,#09090b 100%);display:flex;flex-direction:column;gap:6px;pointer-events:none;">
+        <div style="color:#fff;font-weight:800;font-size:12px;line-height:1.25;text-align:left;">${esc(titleText)}</div>
+        <span style="display:block;background:#e11d48;color:#fff;font-weight:800;font-size:11px;padding:6px 10px;border-radius:6px;text-align:center;">${esc(ctaText)}</span>
+      </div>
+    </div>`;
+}
+
 function buildSponsoredCardHTML(idx = 12) {
   const aadsId = String((state.adsConfig && state.adsConfig.aads && state.adsConfig.aads.unitId) || '2460259');
   const exoZoneId = String((state.adsConfig && state.adsConfig.exoclick && state.adsConfig.exoclick.zoneId) || '6068261');
-  const art = pickAdultAdArtwork(idx);
+  const anim = pickAnimated18PlusGif(idx);
+  const art = { src: anim.src, proxy: anim.proxy, fallback: anim.proxy, tag: 'animated_18plus' };
   const offers = [
     { id: 'candy_ai', name: 'Candy.ai 18+', title: 'Uncensored 18+ NSFW AI Waifu Sex Chat', cta: 'Chat 18+ Uncensored' },
     { id: 'nud3_video', name: 'Nud3.me 18+', title: 'AI Undress & 18+ Hentai Video Animator', cta: 'Undress / Animate 18+' },
@@ -1521,7 +1722,15 @@ function renderGallery(options = {}) {
   if (!state.posts.length) {
     feedEl.innerHTML = state.lastPartial
       ? '<div class="empty"><h2>Still asking the boards</h2><p>The faster ones will show up in a moment.</p></div>'
-      : '<div class="empty"><h2>Nothing matched</h2><p>Try All ratings, another board, or clear the tags.</p><button class="btn btn-primary" type="button" onclick="resetAllFilters()">Clear filters</button></div>';
+      : `<div class="empty">
+      <h2>0 posts matched on ${esc(sourceLabel())}</h2>
+      <p>Current filter: Rating <strong>${esc(RATING_LABEL[state.rating] || state.rating)}</strong>${state.tags ? ` · Tags: <strong>${esc(state.tags)}</strong>` : ''}</p>
+      <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:14px;">
+        ${state.rating !== 'all' ? '<button class="btn btn-primary" type="button" onclick="setRating(\'all\', true)">🔞 Switch Rating to All (18+)</button>' : ''}
+        ${state.source !== 'multiboard' ? '<button class="btn btn-ghost" type="button" onclick="selectSourceInPlace(\'multiboard\', false)">⚡ Search Across All Boards</button>' : ''}
+        <button class="btn btn-ghost" type="button" onclick="resetAllFilters()">Reset Filters</button>
+      </div>
+    </div>`;
     return;
   }
   if (Number.isInteger(options.appendFrom)) {
@@ -1587,6 +1796,7 @@ function reelSlideHtml(post, index) {
       </div>
       <div class="reel-bar">
         <button type="button" class="icon-btn${saved ? ' is-on' : ''}" data-save="${esc(post.id)}" aria-label="${saved ? 'Saved' : 'Save'}">${icon(saved ? 'heart-fill' : 'heart')}</button>
+        <span class="reel-meta"><span class="meta-badge" style="margin:0;font-size:11px;">${esc(post.sourceName || post.source || 'Board')}</span></span>
         <a class="icon-btn" href="${esc(post.proxiedFileUrl || post.fileUrl || '#')}" download aria-label="Download">${icon('download')}</a>
         <a class="icon-btn" href="${esc(post.originalPostUrl || '#')}" target="_blank" rel="noopener" aria-label="Source">${icon('external')}</a>
         <button type="button" class="icon-btn" data-share="${esc(post.id)}" aria-label="Share">${icon('share')}</button>
@@ -1738,8 +1948,8 @@ function buildNativeReelAdHtml(idx) {
             </div>
           </div>
         </div>
-        <div style="width:100%;padding:10px 0;background:#09090b;border-top:1px solid var(--line);display:flex;flex-direction:column;align-items:center;gap:8px;">
-          <iframe src="https://syndication.exdynsrv.com/ads-iframe-display.php?idzone=${esc(exoZoneId)}&output=noscript&type=300x250" width="300" height="250" scrolling="no" marginwidth="0" marginheight="0" frameborder="0" style="background:transparent;color-scheme:normal;" loading="lazy" title="ExoClick 18+ Ad"></iframe>
+        <div style="width:100%;padding:12px 0;background:#09090b;border-top:1px solid var(--line);display:flex;flex-direction:column;align-items:center;gap:10px;">
+          ${buildAnimated300x250BannerHtml(idx, offer, activeTag)}
           <iframe data-aa="${esc(aadsId)}" src="//acceptable.a-ads.com/${esc(aadsId)}" style="border:0px;padding:0;width:100%;max-width:468px;height:60px;overflow:hidden;background-color:transparent;color-scheme:normal;" loading="lazy" title="A-ADS 18+"></iframe>
         </div>
       </div>
@@ -1779,7 +1989,15 @@ function renderReels() {
   const container = document.getElementById('reels-feed');
   if (!container) return;
   if (!state.posts.length) {
-    container.innerHTML = '<div class="empty"><h2>No posts yet</h2></div>';
+    container.innerHTML = `<div class="empty">
+      <h2>0 posts matched on ${esc(sourceLabel())}</h2>
+      <p>Current filter: Rating <strong>${esc(RATING_LABEL[state.rating] || state.rating)}</strong>${state.tags ? ` · Tags: <strong>${esc(state.tags)}</strong>` : ''}</p>
+      <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:14px;">
+        ${state.rating !== 'all' ? '<button class="btn btn-primary" type="button" onclick="setRating(\'all\', true)">🔞 Switch Rating to All (18+)</button>' : ''}
+        ${state.source !== 'multiboard' ? '<button class="btn btn-ghost" type="button" onclick="selectSourceInPlace(\'multiboard\', false)">⚡ Search Across All Boards</button>' : ''}
+        <button class="btn btn-ghost" type="button" onclick="resetAllFilters()">Reset Filters</button>
+      </div>
+    </div>`;
     paintReelsStatus();
     bindReelsLoader();
     return;
@@ -1856,18 +2074,192 @@ function deactivateReel(slide) {
   video.load();
 }
 
+function renderCollectionsBar() {
+  const bar = document.getElementById('collections-bar');
+  const modalSel = document.getElementById('modal-collection-select');
+  const allFolders = ['All', ...state.collections];
+  if (bar) {
+    bar.innerHTML = allFolders.map(folder => {
+      const count = folder === 'All'
+        ? state.savedPosts.length
+        : state.savedPosts.filter(p => (state.postCollections[p.id] || 'Favorites') === folder || (folder === 'Videos' && p.mediaType === 'video')).length;
+      return `<button type="button" class="filter-pill${state.activeCollection === folder ? ' is-on' : ''}" onclick="selectSavedCollection('${esc(folder)}')">${esc(folder)} <span class="count">${count}</span></button>`;
+    }).join('');
+  }
+  if (modalSel) {
+    const curFolder = (state.activePost && state.postCollections[state.activePost.id]) || 'Favorites';
+    modalSel.innerHTML = state.collections.map(f => `<option value="${esc(f)}"${f === curFolder ? ' selected' : ''}>📁 ${esc(f)}</option>`).join('') + '<option value="__new__">+ New Folder…</option>';
+  }
+}
+
+window.selectSavedCollection = function(folder) {
+  state.activeCollection = folder || 'All';
+  renderSavedPosts();
+};
+
+window.promptNewCollection = function() {
+  const name = (window.prompt('New collection folder name:') || '').trim();
+  if (!name) return;
+  if (!state.collections.includes(name)) {
+    state.collections.push(name);
+    localStorage.setItem('bp_collections_v1', JSON.stringify(state.collections));
+  }
+  state.activeCollection = name;
+  renderCollectionsBar();
+  renderSavedPosts();
+  showToast(`Created folder: ${name}`);
+};
+
+window.assignPostCollection = function(folder) {
+  if (!state.activePost) return;
+  if (folder === '__new__') {
+    const custom = (window.prompt('New collection folder name:') || '').trim();
+    if (!custom) {
+      renderCollectionsBar();
+      return;
+    }
+    if (!state.collections.includes(custom)) {
+      state.collections.push(custom);
+      localStorage.setItem('bp_collections_v1', JSON.stringify(state.collections));
+    }
+    folder = custom;
+  }
+  state.postCollections[state.activePost.id] = folder;
+  localStorage.setItem('bp_post_collections_v1', JSON.stringify(state.postCollections));
+  if (!state.savedPosts.some(p => p.id === state.activePost.id)) {
+    state.savedPosts.unshift(state.activePost);
+    localStorage.setItem('bp_saved', JSON.stringify(state.savedPosts));
+    paintSaveButtons(state.activePost.id, true);
+  }
+  renderCollectionsBar();
+  showToast(`Saved to ${folder}`);
+};
+
 function renderSavedPosts() {
   const grid = document.getElementById('saved-grid');
   const badge = document.getElementById('saved-count-badge');
   if (badge) badge.textContent = String(state.savedPosts.length);
+  renderCollectionsBar();
   if (!grid) return;
-  if (!state.savedPosts.length) {
-    grid.innerHTML = '<div class="empty"><h2>Nothing saved</h2><p>Use Save on a post. It stays in this browser.</p></div>';
+  const qInput = document.getElementById('saved-search-input');
+  const q = ((qInput && qInput.value) || '').trim().toLowerCase();
+  let list = state.savedPosts.slice();
+  if (state.activeCollection && state.activeCollection !== 'All') {
+    list = list.filter(p => (state.postCollections[p.id] || 'Favorites') === state.activeCollection || (state.activeCollection === 'Videos' && p.mediaType === 'video'));
+  }
+  if (q) {
+    list = list.filter(p => (p.tags || []).some(t => String(t).toLowerCase().includes(q)) || String(p.sourceName || p.source || '').toLowerCase().includes(q));
+  }
+  if (!list.length) {
+    grid.innerHTML = '<div class="empty"><h2>No saved posts in this view</h2><p>Use Save on any post or pick another collection folder above.</p></div>';
     return;
   }
-  grid.innerHTML = state.savedPosts.map((post, i) => buildPostCardHTML(post, i + 4)).join('');
+  grid.innerHTML = list.map((post, i) => buildPostCardHTML(post, i + 4)).join('');
   rescueSlowImages();
 }
+
+function renderBlacklistChips() {
+  const box = document.getElementById('blacklist-chips');
+  if (!box) return;
+  box.innerHTML = state.blacklist.map(tag => `
+    <span class="token is-excluded">
+      <span>🚫 ${esc(tag)}</span>
+      <button type="button" onclick="unblockTagPermanent('${esc(tag)}')" title="Unblock">×</button>
+    </span>
+  `).join('');
+}
+
+window.unblockTagPermanent = function(tag) {
+  state.blacklist = state.blacklist.filter(t => t !== tag);
+  localStorage.setItem('bp_blacklist', JSON.stringify(state.blacklist));
+  const area = document.getElementById('blacklist-textarea');
+  if (area) area.value = state.blacklist.join('\n');
+  renderBlacklistChips();
+  showToast(`Unblocked: ${tag}`);
+  if (browsingPosts()) loadPosts(false);
+};
+
+window.saveUserPref = function(key, val) {
+  if (key === 'defaultRating') {
+    localStorage.setItem('bp_pref_defaultRating', String(val));
+    setRating(String(val), true);
+    showToast(`Default rating set to ${RATING_LABEL[val] || val}`);
+  } else if (key === 'autoplayReels') {
+    state.autoplayReels = Boolean(val);
+    localStorage.setItem('bp_pref_autoplayReels', val ? '1' : '0');
+    showToast(val ? 'Reels video autoplay enabled' : 'Reels video set to click-to-play');
+  }
+};
+
+window.exportUserDataJson = function() {
+  const backup = {
+    app: 'R34Hub',
+    exportedAt: new Date().toISOString(),
+    savedPosts: state.savedPosts,
+    collections: state.collections,
+    postCollections: state.postCollections,
+    blacklist: state.blacklist,
+    searchHistory: state.searchHistory,
+    pinnedSearches: state.pinnedSearches,
+    prefs: {
+      defaultRating: localStorage.getItem('bp_pref_defaultRating') || 's',
+      gridDensity: state.gridDensity,
+      autoplayReels: state.autoplayReels
+    }
+  };
+  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `r34hub-backup-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => a.remove(), 200);
+  showToast('Exported R34Hub backup (.json)');
+};
+
+window.importUserDataJson = function(inputEl) {
+  const file = inputEl && inputEl.files && inputEl.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(String(reader.result || '{}'));
+      if (Array.isArray(data.savedPosts)) {
+        state.savedPosts = data.savedPosts;
+        localStorage.setItem('bp_saved', JSON.stringify(state.savedPosts));
+      }
+      if (Array.isArray(data.collections)) {
+        state.collections = data.collections;
+        localStorage.setItem('bp_collections_v1', JSON.stringify(state.collections));
+      }
+      if (data.postCollections && typeof data.postCollections === 'object') {
+        state.postCollections = data.postCollections;
+        localStorage.setItem('bp_post_collections_v1', JSON.stringify(state.postCollections));
+      }
+      if (Array.isArray(data.blacklist)) {
+        state.blacklist = data.blacklist;
+        localStorage.setItem('bp_blacklist', JSON.stringify(state.blacklist));
+        const area = document.getElementById('blacklist-textarea');
+        if (area) area.value = state.blacklist.join('\n');
+      }
+      if (Array.isArray(data.searchHistory)) {
+        state.searchHistory = data.searchHistory;
+        localStorage.setItem('bp_search_history', JSON.stringify(state.searchHistory));
+      }
+      if (Array.isArray(data.pinnedSearches)) {
+        state.pinnedSearches = data.pinnedSearches;
+        localStorage.setItem('bp_pinned_searches', JSON.stringify(state.pinnedSearches));
+      }
+      renderBlacklistChips();
+      renderSearchHistoryBar();
+      renderSavedPosts();
+      showToast('Restored backup successfully!');
+    } catch (_) {
+      showToast('Invalid backup JSON file');
+    }
+  };
+  reader.readAsText(file);
+};
 
 function paintSaveButtons(postId, on) {
   document.querySelectorAll('[data-save]').forEach(btn => {
@@ -1946,10 +2338,46 @@ function showModalMedia(post) {
     frame.appendChild(blur);
     img.addEventListener('load', () => blur.remove(), { once: true });
   }
-  img.src = sharp || still;
+  const hdUrl = state.modalUseHd ? (post.fileUrl || sharp || still) : (sharp || still);
+  const hdProxy = state.modalUseHd ? (post.proxiedFileUrl || sharpProxy(post)) : (sharpProxy(post) || post.proxiedPreviewUrl || '');
+  img.setAttribute('data-proxy', hdProxy);
+  img.src = hdUrl;
+  img.onclick = () => window.toggleModalZoom();
   frame.appendChild(img);
   box.appendChild(frame);
 }
+
+window.toggleModalZoom = function() {
+  const img = document.querySelector('#modal-media-container img.modal-media');
+  if (!img) return;
+  const zoomed = img.classList.toggle('is-zoomed');
+  const btn = document.getElementById('modal-zoom-btn');
+  if (btn) btn.classList.toggle('is-on', zoomed);
+};
+
+window.toggleModalHdQuality = function() {
+  state.modalUseHd = !state.modalUseHd;
+  const btn = document.getElementById('modal-hd-btn');
+  if (btn) btn.classList.toggle('is-on', state.modalUseHd);
+  if (state.activePost) showModalMedia(state.activePost);
+  showToast(state.modalUseHd ? 'Switched to Original HD resolution' : 'Switched to fast Sample resolution');
+};
+
+window.stepModalPost = function(delta) {
+  if (!state.activePost) return;
+  const pool = state.activeTab === 'saved' ? state.savedPosts : state.posts;
+  if (!pool || !pool.length) return;
+  const idx = pool.findIndex(p => p.id === state.activePost.id);
+  if (idx < 0) return;
+  const nextIdx = idx + delta;
+  if (nextIdx >= 0 && nextIdx < pool.length) {
+    openPostModal(pool[nextIdx].id);
+    if (nextIdx >= pool.length - 3 && state.activeTab !== 'saved' && state.hasMore && !state.isLoading) {
+      state.page += 1;
+      loadPosts(true);
+    }
+  }
+};
 
 window.openPostModal = function(postId) {
   const post = state.posts.find(p => p.id === postId) || state.savedPosts.find(p => p.id === postId);
@@ -1960,7 +2388,12 @@ window.openPostModal = function(postId) {
   document.getElementById('modal-score-badge').innerHTML = `${icon('star')} ${esc(post.score || 0)}`;
   document.getElementById('modal-dimensions').textContent = `${post.width || '?'} × ${post.height || '?'} · ${String(post.fileExt || '').toUpperCase()}`;
   document.getElementById('modal-original-url').href = post.originalPostUrl || '#';
-  document.getElementById('modal-download-btn').href = post.proxiedFileUrl || post.fileUrl || '#';
+  const cleanExt = String(post.fileExt || 'jpg').toLowerCase();
+  const dlFilename = `r34hub_${post.source || 'board'}_${post.rawId || post.id}.${cleanExt}`;
+  const dlBase = post.proxiedFileUrl || (post.fileUrl ? `/api/media?url=${encodeURIComponent(post.fileUrl)}` : '#');
+  document.getElementById('modal-download-btn').href = dlBase.includes('/api/media?') ? `${dlBase}&download=1&filename=${encodeURIComponent(dlFilename)}` : dlBase;
+  document.getElementById('modal-download-btn').setAttribute('download', dlFilename);
+  renderCollectionsBar();
   const saved = state.savedPosts.some(s => s.id === post.id);
   const saveBtn = document.getElementById('modal-save-btn');
   saveBtn.classList.toggle('btn-primary', saved);
@@ -2183,6 +2616,10 @@ async function initApp() {
     renderTrendingTags();
     const blacklist = document.getElementById('blacklist-textarea');
     if (blacklist) blacklist.value = state.blacklist.join('\n');
+    setGridDensity(state.gridDensity);
+    renderSearchHistoryBar();
+    renderBlacklistChips();
+    renderCollectionsBar();
     const urlParams = new URLSearchParams(window.location.search);
     const magicKey = urlParams.get('activate_key');
     if (magicKey) {
@@ -2339,14 +2776,20 @@ document.addEventListener('DOMContentLoaded', () => {
       autoBox.classList.add('hidden');
       return;
     }
-    const lastWord = val.split(/\s+/).pop().replace(/^[+-]/, '');
+    const rawLastToken = val.split(/\s+/).pop() || '';
+    const isNegated = rawLastToken.startsWith('-');
+    const lastWord = rawLastToken.replace(/^[+-]/, '');
     if (lastWord.length < 2) {
       autoBox.classList.add('hidden');
       return;
     }
     debounceTimer = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/tags?q=${encodeURIComponent(lastWord)}`);
+        if (activeAutocompleteController) {
+          try { activeAutocompleteController.abort(); } catch (_) {}
+        }
+        activeAutocompleteController = new AbortController();
+        const res = await fetch(`/api/tags?q=${encodeURIComponent(lastWord)}`, { signal: activeAutocompleteController.signal });
         const data = await res.json();
         const tags = data.tags || [];
         if (!tags.length) {
@@ -2359,26 +2802,27 @@ document.addEventListener('DOMContentLoaded', () => {
           return `
           <div class="suggest-row">
             <div class="suggest-copy">
-              <strong>${esc(t.name)}</strong>
+              <strong>${isNegated ? '-' : ''}${esc(t.name)}</strong>
               ${t.category ? `<div class="hint">${esc(t.category)}</div>` : ''}
             </div>
             <div class="tag-actions">
               <span class="suggest-count" title="${esc(countLabel)} posts">${esc(formatScore(count))}</span>
-              <button type="button" class="btn btn-tiny btn-ghost" data-include="${esc(t.name)}">Add</button>
-              <button type="button" class="btn btn-tiny btn-ghost" data-exclude="${esc(t.name)}">${icon('block')} Hide</button>
+              <button type="button" class="btn btn-tiny btn-ghost" data-include="${esc(t.name)}">+ Include</button>
+              <button type="button" class="btn btn-tiny btn-ghost" data-exclude="${esc(t.name)}">− Exclude</button>
             </div>
           </div>`;
         }).join('');
         autoBox.classList.remove('hidden');
-      } catch (_) {
-        autoBox.classList.add('hidden');
+      } catch (err) {
+        if (!err || err.name !== 'AbortError') autoBox.classList.add('hidden');
       }
-    }, 160);
+    }, 180);
   });
 
   function runSearch() {
     autoBox.classList.add('hidden');
     state.tags = searchInput.value.trim();
+    if (state.tags) recordSearchHistory(state.tags);
     state.page = 1;
     closeSearchMenu();
     showBrowseAndReload();
@@ -2508,6 +2952,8 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   document.addEventListener('keydown', e => {
+    const postModal = document.getElementById('post-modal');
+    const modalOpen = Boolean(postModal && !postModal.classList.contains('hidden'));
     if (e.key === 'Escape') {
       const side = document.getElementById('side-menu');
       const search = document.getElementById('search-sheet');
@@ -2520,7 +2966,34 @@ document.addEventListener('DOMContentLoaded', () => {
       closeFilterDrawer();
       return;
     }
-    if (state.activeTab !== 'reels' || eventTargetIsField(e.target)) return;
+    if (!eventTargetIsField(e.target) && e.key === '/') {
+      e.preventDefault();
+      openSearchMenu();
+      return;
+    }
+    if (modalOpen && !eventTargetIsField(e.target)) {
+      if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+        e.preventDefault();
+        stepModalPost(-1);
+        return;
+      }
+      if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+        e.preventDefault();
+        stepModalPost(1);
+        return;
+      }
+      if (e.key === 's' || e.key === 'S' || e.key === 'b' || e.key === 'B') {
+        e.preventDefault();
+        if (state.activePost) toggleSavePost(state.activePost.id);
+        return;
+      }
+      if (e.key === 'f' || e.key === 'F') {
+        e.preventDefault();
+        toggleModalZoom();
+        return;
+      }
+    }
+    if (state.activeTab !== 'reels' || modalOpen || eventTargetIsField(e.target)) return;
     if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
     const slides = [...document.querySelectorAll('#reels-feed .reel')];
     if (!slides.length) return;

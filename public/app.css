@@ -1290,3 +1290,85 @@ textarea {
   white-space: nowrap;
   text-overflow: ellipsis;
 }
+
+/* Senior Frontend Upgrades: Grid Density, Lightbox Nav, Tag Chips & Filter Strip */
+body.grid-density-s .masonry-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)) !important; gap: 8px; }
+body.grid-density-m .masonry-grid { grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)) !important; gap: 10px; }
+body.grid-density-l .masonry-grid { grid-template-columns: repeat(auto-fill, minmax(285px, 1fr)) !important; gap: 12px; }
+@media (max-width: 520px) {
+  body.grid-density-s .masonry-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+  body.grid-density-m .masonry-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  body.grid-density-l .masonry-grid { grid-template-columns: repeat(1, minmax(0, 1fr)) !important; }
+}
+.filter-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 0 10px;
+}
+.filter-pill {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.filter-pill:hover { color: var(--text); border-color: rgba(255,255,255,0.28); }
+.filter-pill.is-on {
+  background: rgba(2, 132, 199, 0.22);
+  color: #fff;
+  border-color: rgba(125, 211, 252, 0.6);
+}
+.modal-nav-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 8;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(9, 9, 11, 0.72);
+  color: #fff;
+  backdrop-filter: blur(8px);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 700;
+}
+.modal-nav-btn:hover { background: rgba(255,255,255,0.18); }
+.modal-nav-prev { left: 12px; }
+.modal-nav-next { right: 12px; }
+.modal-stage img.is-zoomed {
+  transform: scale(1.9);
+  cursor: zoom-out !important;
+  transition: transform 0.2s ease;
+}
+.modal-stage img.modal-media {
+  cursor: zoom-in;
+  transition: transform 0.2s ease;
+}
+.kbd-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--faint);
+  flex-wrap: wrap;
+}
+.kbd-hint kbd {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: #18181f;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-family: monospace;
+  font-size: 10px;
+}
