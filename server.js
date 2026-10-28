@@ -2966,6 +2966,8 @@ app.get("/robots.txt", (req, res) => {
     "Allow: /tag/",
     "Allow: /t/",
     "Allow: /feed.xml",
+    "Allow: /studio",
+    "Allow: /support",
     "Allow: /premium",
     "Allow: /hubcloud",
     "Disallow: /api/admin/",
@@ -2982,6 +2984,7 @@ app.get("/sitemap.xml", (req, res) => {
 
   const coreRoutes = [
     { path: "/", priority: "1.0", changefreq: "hourly" },
+    { path: "/studio", priority: "0.95", changefreq: "daily" },
     { path: "/premium", priority: "0.95", changefreq: "daily" },
     { path: "/grid/rule34.xxx", priority: "0.95", changefreq: "hourly" },
     { path: "/grid/danbooru", priority: "0.9", changefreq: "hourly" },
@@ -3055,6 +3058,11 @@ app.get(["/ru/premium", "/en/premium"], (req, res) => {
 app.get(["/premium", "/hubcloud"], (req, res) => {
   trackVisitorHit(req, "premium");
   res.sendFile(path.join(__dirname, "public", "hubcloud.html"));
+});
+
+app.get(["/studio", "/support", "/boosty", "/patreon"], (req, res) => {
+  trackVisitorHit(req, "studio");
+  res.sendFile(path.join(__dirname, "public", "studio.html"));
 });
 
 app.get(["/legal", "/terms", "/privacy", "/dmca", "/2257"], (req, res) => {

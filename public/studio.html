@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b0b0e" />
+  <title>NovaPulse Studio — Indie Web &amp; AI Media Lab | Support &amp; Devlog</title>
+  <meta name="description" content="NovaPulse Studio is an independent solo-dev lab building fast dark-mode web apps, AI media tools, and multi-board explorers. Support our growth and unlock Pro perks." />
+  <meta property="og:title" content="NovaPulse Studio — Indie Web &amp; AI Media Lab" />
+  <meta property="og:description" content="Independent developer just starting out — building fast dark-mode web apps, AI media tools, and next-gen content explorers." />
+  <meta property="og:image" content="/assets/studio/novapulse-banner.jpg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=2" />
+  <link rel="alternate icon" href="/favicon.ico?v=2" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2" />
+  <style>
+    :root {
+      --bg: #0b0b0e;
+      --surface: #13141c;
+      --surface-2: #1b1d28;
+      --line: rgba(255, 255, 255, 0.08);
+      --line-strong: rgba(255, 255, 255, 0.16);
+      --text: #f3f4f8;
+      --muted: #a0a3b5;
+      --faint: #6c6f82;
+      --accent: #10b981;
+      --accent-ink: #04130d;
+      --purple: #8b5cf6;
+      --cyan: #38bdf8;
+    }
+    * { box-sizing: border-box; }
+    html, body { overflow-x: hidden; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      line-height: 1.55;
+    }
+    a { color: inherit; text-decoration: none; }
+    button, input, select { font: inherit; color: inherit; }
+    button { cursor: pointer; }
+    .hidden { display: none !important; }
+
+    /* Unified 1160px Container & Top Navigation */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      background: rgba(11, 11, 14, 0.92);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--line);
+    }
+    .topbar-inner,
+    .page {
+      width: min(1160px, calc(100% - 32px));
+      max-width: 1160px;
+      margin-inline: auto;
+      box-sizing: border-box;
+    }
+    @media (max-width: 768px) {
+      .topbar-inner,
+      .page {
+        width: calc(100% - 20px);
+      }
+      body {
+        padding-bottom: calc(68px + env(safe-area-inset-bottom));
+      }
+    }
+    .topbar-inner {
+      min-height: 58px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      font-weight: 800;
+      font-size: 16px;
+      letter-spacing: -0.02em;
+      min-height: 44px;
+    }
+    .brand-mark {
+      display: inline-grid;
+      place-items: center;
+      padding: 4px 8px;
+      border-radius: 7px;
+      background: var(--accent);
+      color: var(--accent-ink);
+      font-weight: 800;
+      font-size: 13px;
+    }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .nav-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 40px;
+      padding: 0 13px;
+      border-radius: 999px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .nav-link:hover {
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.06);
+    }
+    .nav-link.is-on {
+      color: #fff;
+      background: linear-gradient(135deg, #8b5cf6, #0ea5e9);
+      font-weight: 750;
+    }
+    @media (max-width: 768px) {
+      .nav-links { display: none; }
+    }
+    .pill-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      padding: 0 14px;
+      border-radius: 999px;
+      border: 1px solid var(--line-strong);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 12.5px;
+      font-weight: 650;
+      white-space: nowrap;
+    }
+    .pill-btn:hover { background: var(--surface-2); }
+
+    .page {
+      padding: 20px 0 64px;
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+    }
+
+    /* Creator Hero Banner Card (Patreon / Boosty Style) */
+    .studio-hero {
+      border-radius: 20px;
+      overflow: hidden;
+      background: var(--surface);
+      border: 1px solid var(--line-strong);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+    }
+    .studio-cover {
+      width: 100%;
+      height: clamp(160px, 24vw, 250px);
+      position: relative;
+      background: #090a10;
+      overflow: hidden;
+    }
+    .studio-cover img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .studio-cover::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(11,11,14,0.1) 0%, rgba(19,20,28,0.92) 100%);
+    }
+    .studio-profile-bar {
+      position: relative;
+      padding: 0 clamp(18px, 3vw, 30px) 24px;
+      margin-top: -46px;
+      z-index: 2;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .studio-id {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      gap: 16px;
+    }
+    .studio-avatar {
+      width: 92px;
+      height: 92px;
+      border-radius: 22px;
+      border: 3px solid #13141c;
+      box-shadow: 0 10px 28px rgba(0,0,0,0.6);
+      object-fit: cover;
+      background: #090a10;
+    }
+    .studio-title-block h1 {
+      margin: 0;
+      font-size: clamp(22px, 3vw, 28px);
+      font-weight: 850;
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .indie-badge {
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 3px 9px;
+      border-radius: 999px;
+      background: rgba(139, 92, 246, 0.2);
+      border: 1px solid rgba(139, 92, 246, 0.5);
+      color: #c4b5fd;
+    }
+    .studio-handle {
+      color: var(--muted);
+      font-size: 13px;
+      margin: 2px 0 0;
+    }
+    .studio-cta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .btn-support-main {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      min-height: 44px;
+      padding: 0 18px;
+      border-radius: 12px;
+      border: 0;
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: #04130d;
+      font-weight: 800;
+      font-size: 13.5px;
+    }
+
+    .studio-bio-box {
+      padding: 0 clamp(18px, 3vw, 30px) 24px;
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+      gap: 20px;
+      align-items: center;
+    }
+    @media (max-width: 860px) {
+      .studio-bio-box { grid-template-columns: 1fr; }
+    }
+    .studio-bio-text {
+      font-size: 14px;
+      color: #d4d6e2;
+      margin: 0;
+    }
+    .goal-card {
+      padding: 14px 16px;
+      border-radius: 14px;
+      background: rgba(11, 11, 14, 0.7);
+      border: 1px solid var(--line-strong);
+    }
+    .goal-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12.5px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .goal-bar {
+      height: 9px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.08);
+      overflow: hidden;
+      margin-bottom: 6px;
+    }
+    .goal-fill {
+      width: 24%;
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #10b981, #38bdf8);
+    }
+    .goal-sub {
+      font-size: 11.5px;
+      color: var(--muted);
+    }
+
+    /* 3 Supporter Tiers (Boosty / Patreon Style) */
+    .section-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .section-head h2 {
+      margin: 0;
+      font-size: 19px;
+      font-weight: 800;
+    }
+    .section-head p {
+      margin: 0;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .tiers-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+    @media (max-width: 900px) {
+      .tiers-grid { grid-template-columns: 1fr; }
+    }
+    .tier-card {
+      padding: 20px;
+      border-radius: 18px;
+      background: var(--surface);
+      border: 1.5px solid var(--line);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 14px;
+      position: relative;
+    }
+    .tier-card.is-featured {
+      border-color: var(--accent);
+      background: linear-gradient(180deg, rgba(16, 185, 129, 0.1), var(--surface));
+    }
+    .tier-tag {
+      position: absolute;
+      top: -11px;
+      right: 16px;
+      padding: 3px 10px;
+      border-radius: 999px;
+      background: var(--accent);
+      color: var(--accent-ink);
+      font-size: 10.5px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+    .tier-name { font-size: 17px; font-weight: 800; margin: 0 0 4px; }
+    .tier-price { font-size: 28px; font-weight: 850; color: #fff; margin: 0 0 10px; }
+    .tier-price span { font-size: 13px; font-weight: 500; color: var(--muted); }
+    .tier-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: grid;
+      gap: 7px;
+      font-size: 13px;
+      color: #d1d5db;
+    }
+    .tier-list li::before {
+      content: "✦ ";
+      color: var(--accent);
+      font-weight: 800;
+    }
+    .tier-btn {
+      width: 100%;
+      min-height: 44px;
+      border-radius: 11px;
+      border: 0;
+      background: var(--accent);
+      color: var(--accent-ink);
+      font-weight: 800;
+      font-size: 13.5px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* 2-Column Devlog Feed + Multi-Project Lab Roadmap */
+    .studio-columns {
+      display: grid;
+      grid-template-columns: 1.45fr 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+    @media (max-width: 920px) {
+      .studio-columns { grid-template-columns: 1fr; }
+    }
+    .post-card, .side-box {
+      padding: 20px;
+      border-radius: 18px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+    }
+    .post-card + .post-card { margin-top: 16px; }
+    .post-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .post-pill {
+      padding: 2px 8px;
+      border-radius: 6px;
+      background: rgba(56, 189, 248, 0.14);
+      color: #7dd3fc;
+      font-weight: 700;
+      font-size: 11px;
+    }
+    .post-card h3 {
+      margin: 0 0 8px;
+      font-size: 18px;
+      font-weight: 800;
+    }
+    .post-img {
+      width: 100%;
+      border-radius: 12px;
+      margin: 10px 0 12px;
+      border: 1px solid var(--line);
+      display: block;
+    }
+    .post-card p {
+      margin: 0 0 10px;
+      font-size: 13.5px;
+      color: #d4d6e2;
+    }
+
+    .project-item {
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: var(--bg);
+      border: 1px solid var(--line);
+      margin-top: 10px;
+    }
+    .project-item strong {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 13.5px;
+      color: #fff;
+    }
+    .project-item span.status {
+      font-size: 10.5px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+    }
+    .project-item p {
+      margin: 4px 0 0;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .copy-area {
+      width: 100%;
+      min-height: 110px;
+      padding: 10px;
+      border-radius: 10px;
+      background: var(--bg);
+      border: 1px solid var(--line-strong);
+      color: #d4d6e2;
+      font-size: 12px;
+      font-family: inherit;
+      resize: vertical;
+      margin-top: 8px;
+    }
+
+    .mobile-tabbar { display: none; }
+    @media (max-width: 768px) {
+      .mobile-tabbar {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 45;
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        height: calc(58px + env(safe-area-inset-bottom));
+        padding-bottom: env(safe-area-inset-bottom);
+        background: rgba(11, 11, 14, 0.96);
+        backdrop-filter: blur(16px);
+        border-top: 1px solid var(--line);
+      }
+      .mob-nav-btn {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 44px;
+        color: var(--muted);
+        font-size: 10.5px;
+        font-weight: 650;
+      }
+      .mob-nav-btn.is-on { color: var(--accent); }
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 20px;
+      z-index: 60;
+      padding: 12px 16px;
+      border-radius: 12px;
+      background: var(--surface-2);
+      border: 1px solid var(--line-strong);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 650;
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div style="display:flex;align-items:center;gap:14px;">
+        <a href="/" class="brand">
+          <span class="brand-mark">NP</span>
+          <span>NovaPulse Studio</span>
+        </a>
+        <nav class="nav-links" aria-label="Primary Navigation">
+          <a href="/" class="nav-link">R34Hub Home</a>
+          <a href="/grid/rule34.xxx" class="nav-link">Grid Explorer</a>
+          <a href="/posts/rule34.xxx" class="nav-link">Posts</a>
+          <a href="/premium" class="nav-link">Pro Pass</a>
+          <a href="/studio" class="nav-link is-on">Studio &amp; Boosty/Patreon ♥</a>
+        </nav>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <a href="/premium?plan=starter7d" class="pill-btn" style="border-color:rgba(16,185,129,0.5);color:#34d399;">⚡ €2.49 Starter Pass</a>
+        <a href="/grid/rule34.xxx" class="pill-btn">← Back to App</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="page">
+    <!-- 1. CREATOR STUDIO BANNER & BIO -->
+    <section class="studio-hero">
+      <div class="studio-cover">
+        <img src="/assets/studio/novapulse-banner.jpg" alt="NovaPulse Studio Cover Banner" />
+      </div>
+      <div class="studio-profile-bar">
+        <div class="studio-id">
+          <img class="studio-avatar" src="/assets/studio/novapulse-avatar.jpg" alt="NovaPulse Studio Logo" />
+          <div class="studio-title-block">
+            <h1>
+              <span>NovaPulse Studio</span>
+              <span class="indie-badge">Indie Web &amp; AI Lab</span>
+            </h1>
+            <p class="studio-handle">@novapulsestudio • Solo Indie Developer • Building Open Web &amp; Media Tools</p>
+          </div>
+        </div>
+        <div class="studio-cta-row">
+          <a href="/premium?plan=starter7d" class="btn-support-main">♥ Become a Supporter (€2.49)</a>
+          <button type="button" class="pill-btn" onclick="copyWalletDirect()">⚡ Tip USDT (TRC-20)</button>
+        </div>
+      </div>
+
+      <div class="studio-bio-box">
+        <p class="studio-bio-text">
+          <strong>Hey! Welcome to NovaPulse Studio.</strong> I'm an independent developer just starting out on this journey — building fast, modern dark-mode web applications, AI media utilities, and next-generation visual explorers without corporate bloat. Every membership or tip directly covers high-speed media proxy servers and funds upcoming NovaPulse projects, while immediately unlocking your <strong>ad-free Pro License Key</strong>!
+        </p>
+        <div class="goal-card">
+          <div class="goal-top">
+            <span>Monthly Server &amp; Proxy Bandwidth Goal</span>
+            <span style="color:#34d399;">€48 / €200</span>
+          </div>
+          <div class="goal-bar"><div class="goal-fill"></div></div>
+          <div class="goal-sub">Every supporter gets an instant <code style="color:#fff;">R34PRO-XXXX</code> key + access to all upcoming NovaPulse Studio releases.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. SUPPORTER TIERS (PATREON / BOOSTY STYLE) -->
+    <section>
+      <div class="section-head">
+        <h2>Support Indie Development &amp; Unlock Instant Perks</h2>
+        <p>Instant automated key delivery on screen &amp; by email • Works across 5 devices</p>
+      </div>
+      <div class="tiers-grid">
+        <div class="tier-card">
+          <div>
+            <h3 class="tier-name">Coffee &amp; 7-Day Starter</h3>
+            <p class="tier-price">€2.49 <span>/ 7 days</span></p>
+            <ul class="tier-list">
+              <li>Directly supports solo indie development &amp; server proxy bandwidth</li>
+              <li>Instant <strong>7-Day R34Hub Pro Key</strong> (100% Zero Ads)</li>
+              <li>All 11 boards + Multi-Board parallel search unlocked</li>
+              <li>Original 4K/HD video streaming &amp; batch ZIP downloads</li>
+            </ul>
+          </div>
+          <a href="/premium?plan=starter7d" class="tier-btn">Support with €2.49 →</a>
+        </div>
+
+        <div class="tier-card is-featured">
+          <span class="tier-tag">Most Popular Club</span>
+          <div>
+            <h3 class="tier-name">Early Builder Club (30 Days)</h3>
+            <p class="tier-price">€5.60 <span>/ 30 days</span></p>
+            <ul class="tier-list">
+              <li>Full <strong>30-Day R34Hub Pro Key</strong> across up to 5 devices</li>
+              <li>Zero ads, unlimited Saved Collections &amp; Pinned Searches</li>
+              <li>Early beta access to upcoming <strong>NovaPulse Studio</strong> tools</li>
+              <li>Priority feature &amp; board requests on our roadmap</li>
+            </ul>
+          </div>
+          <a href="/premium?plan=monthly" class="tier-btn">Join Builder Club (€5.60) →</a>
+        </div>
+
+        <div class="tier-card">
+          <div>
+            <h3 class="tier-name">Studio Founder Pass (Annual / VIP)</h3>
+            <p class="tier-price">€3.99 <span>/ mo (€47.99/yr)</span></p>
+            <ul class="tier-list">
+              <li>Full <strong>365-Day R34Hub Pro Key</strong> (Save 29%)</li>
+              <li>All-Access pass to every current &amp; future NovaPulse Studio app</li>
+              <li>Dedicated high-speed proxy priority &amp; cloud backup perks</li>
+              <li>Founder badge &amp; direct roadmap voting</li>
+            </ul>
+          </div>
+          <a href="/premium?plan=annual" class="tier-btn">Become a Founder →</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. ILLUSTRATED DEVLOG POSTS + MULTI-PROJECT ROADMAP & READY PROMO KIT -->
+    <div class="studio-columns">
+      <div>
+        <div class="section-head">
+          <h2>Studio Devlog &amp; Updates</h2>
+          <p>Public updates from NovaPulse Studio</p>
+        </div>
+
+        <article class="post-card">
+          <div class="post-meta">
+            <span class="post-pill">PINNED LAUNCH POST</span>
+            <span>October 28, 2026 • Public</span>
+          </div>
+          <h3>Welcome to NovaPulse Studio! Starting our indie journey &amp; what we're building</h3>
+          <img class="post-img" src="/assets/studio/novapulse-post-1.jpg" alt="NovaPulse Studio Indie Dev Workspace" />
+          <p>
+            Hey everyone! I'm launching <strong>NovaPulse Studio</strong> as an independent solo-dev lab. Right now I'm just getting started and pouring all my energy into building fast, clean, dark-mode web tools and media explorers that don't lag or fight the user.
+          </p>
+          <p>
+            Our first live flagship release is <strong>R34Hub v2.1</strong> — a unified 11-board booru &amp; video aggregator with instant <code>0ms</code> tag autocomplete, a custom inline HTML5 video grid player, 1-click AI filtering (<code>-ai_generated</code>), and local-first collections. And because NovaPulse Studio is built as a broad umbrella lab, we're already working on our next utilities!
+          </p>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;">
+            <a href="/grid/rule34.xxx" class="pill-btn" style="border-color:rgba(16,185,129,0.5);color:#34d399;">Launch Flagship Web App →</a>
+            <a href="/premium?plan=starter7d" class="pill-btn">Support for €2.49 ♥</a>
+          </div>
+        </article>
+
+        <article class="post-card">
+          <div class="post-meta">
+            <span class="post-pill">DEVLOG #2</span>
+            <span>October 28, 2026 • Public</span>
+          </div>
+          <h3>Custom Inline Video Grid Player, 11-Board Parallel Engine &amp; Zero-Overlap Lightbox</h3>
+          <img class="post-img" src="/assets/studio/novapulse-banner.jpg" alt="NovaPulse Studio Multi-Project Banner" />
+          <p>
+            We just shipped a massive frontend &amp; media proxy update: every video post in Grid mode now features an inline custom HTML5 player with timeline scrubbing, live duration badges, mute toggle, and fullscreen support — plus our redesigned 2-column Lightbox inspector with 1-click X/Reddit deep-link sharing.
+          </p>
+          <p>
+            If you enjoy fast, well-crafted indie tools and want to help cover our proxy bandwidth while browsing 100% ad-free, grab a <strong>7-Day Starter Pass (€2.49)</strong> or <strong>Builder Club Pass (€5.60)</strong>!
+          </p>
+        </article>
+      </div>
+
+      <!-- RIGHT SIDEBAR: MULTI-PROJECT ECOSYSTEM + READY BOOSTY/PATREON COPY KIT -->
+      <div style="display:flex;flex-direction:column;gap:16px;">
+        <aside class="side-box">
+          <h3 style="margin:0 0 6px;font-size:16px;font-weight:800;">NovaPulse Studio Ecosystem</h3>
+          <p style="margin:0;font-size:12.5px;color:var(--muted);">One studio umbrella — multiple web &amp; AI tools in active development:</p>
+
+          <div class="project-item">
+            <strong><span>1. R34Hub Multi-Board Explorer</span> <span class="status">LIVE v2.1</span></strong>
+            <p>11 booru boards in one fast masonry grid with custom video player, instant autocomplete &amp; HD proxy.</p>
+          </div>
+          <div class="project-item">
+            <strong><span>2. PulseAI Tag &amp; Upscale Studio</span> <span class="status" style="background:rgba(56,189,248,0.15);color:#7dd3fc;">IN DEV</span></strong>
+            <p>1-click anime/art tag extractor, prompt builder, and WebGPU 2× media upscaler.</p>
+          </div>
+          <div class="project-item">
+            <strong><span>3. NovaGrab Browser &amp; Cloud Sync</span> <span class="status" style="background:rgba(139,92,246,0.18);color:#c4b5fd;">PLANNED</span></strong>
+            <p>Cross-device encrypted collection sync and 1-click batch downloader extension.</p>
+          </div>
+        </aside>
+
+        <aside class="side-box">
+          <h3 style="margin:0 0 6px;font-size:16px;font-weight:800;">Creator Media Kit &amp; Ready Posts</h3>
+          <p style="margin:0 0 10px;font-size:12px;color:var(--muted);">Download the studio artworks or copy ready-made posts for Boosty, Patreon, Telegram, X, or Reddit:</p>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;">
+            <a href="/assets/studio/novapulse-avatar.jpg" download="novapulse-avatar.jpg" class="pill-btn" style="min-height:38px;font-size:11.5px;">↓ Avatar (1:1)</a>
+            <a href="/assets/studio/novapulse-banner.jpg" download="novapulse-banner.jpg" class="pill-btn" style="min-height:38px;font-size:11.5px;">↓ Banner (16:9)</a>
+            <a href="/assets/studio/novapulse-post-1.jpg" download="novapulse-post-1.jpg" class="pill-btn" style="min-height:38px;font-size:11.5px;">↓ Post Art (16:9)</a>
+          </div>
+
+          <label style="font-size:11.5px;font-weight:700;color:var(--muted);display:block;">Boosty / Telegram Launch Post (RU):</label>
+          <textarea id="promo-ru" class="copy-area" readonly>🚀 Привет! Я запустил инди-студию NovaPulse Studio — сейчас только начинаю развиваться и в одиночку создаю быстрые, удобные веб-приложения, медиа-агрегаторы и AI-инструменты без лишнего мусора.
+
+Наш первый живой проект уже работает:
+👉 https://r34hub-five.vercel.app
+• 11 подключенных бордов в одной быстрой сетке (Multi-Board поиск)
+• Удобный встроенный видеоплеер прямо в Grid и полноэкранном режиме
+• Мгновенный автокомплит тегов, фильтр No-AI в 1 клик и локальные коллекции
+
+Каждая подписка или донат напрямую помогает оплачивать быстрые прокси-сервера и ускоряет выход новых проектов NovaPulse Studio (плюс сразу выдаёт Pro-ключ без рекламы):
+💎 Поддержать студию / Получить Pro (от €2.49): https://r34hub-five.vercel.app/studio</textarea>
+          <button type="button" class="pill-btn" style="width:100%;margin-top:6px;min-height:40px;" onclick="copyTextById('promo-ru')">Copy RU Post for Boosty / Telegram</button>
+
+          <label style="font-size:11.5px;font-weight:700;color:var(--muted);display:block;margin-top:12px;">Patreon / Reddit / X Launch Post (EN):</label>
+          <textarea id="promo-en" class="copy-area" readonly>🚀 Hey everyone! I just launched NovaPulse Studio — I'm a solo indie developer just starting out, building fast dark-mode web apps, AI media tools, and next-gen visual explorers.
+
+Our first flagship web app is live right now:
+👉 https://r34hub-five.vercel.app
+• 11 connected booru boards + parallel Multi-Board search
+• Custom inline HTML5 video grid player with scrubber & fullscreen
+• Instant 0ms tag autocomplete, 1-click No-AI filter & local collections
+
+Every supporter helps cover our high-speed media proxy bandwidth and fuels upcoming NovaPulse Studio tools (plus unlocks an instant ad-free Pro key!):
+💎 Support & Indie Devlog (from €2.49): https://r34hub-five.vercel.app/studio</textarea>
+          <button type="button" class="pill-btn" style="width:100%;margin-top:6px;min-height:40px;" onclick="copyTextById('promo-en')">Copy EN Post for Patreon / X / Reddit</button>
+        </aside>
+      </div>
+    </div>
+  </main>
+
+  <nav class="mobile-tabbar" aria-label="Mobile Navigation">
+    <a href="/" class="mob-nav-btn"><span>Home</span></a>
+    <a href="/posts/rule34.xxx" class="mob-nav-btn"><span>Posts</span></a>
+    <a href="/grid/rule34.xxx" class="mob-nav-btn"><span>Grid</span></a>
+    <a href="/studio" class="mob-nav-btn is-on"><span>Studio ♥</span></a>
+    <a href="/premium" class="mob-nav-btn"><span>Pro</span></a>
+  </nav>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script>
+    function showToast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.remove('hidden');
+      clearTimeout(window.__stToast);
+      window.__stToast = setTimeout(() => el.classList.add('hidden'), 3200);
+    }
+    function copyWalletDirect() {
+      const wallet = 'TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX';
+      navigator.clipboard.writeText(wallet);
+      showToast('USDT (TRC-20) wallet copied: ' + wallet);
+    }
+    function copyTextById(id) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      navigator.clipboard.writeText(el.value);
+      showToast('Copied post text to clipboard!');
+    }
+  </script>
+</body>
+</html>
