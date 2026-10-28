@@ -281,7 +281,8 @@ window.toggleCardTags = function(postId, button) {
   const hidden = drawer.classList.contains('hidden');
   if (hidden) state.expandedTagCards.delete(postId);
   else state.expandedTagCards.add(postId);
-  button.textContent = hidden ? 'Tags' : 'Hide tags';
+  button.classList.toggle('is-on', !hidden);
+  button.setAttribute('aria-expanded', hidden ? 'false' : 'true');
 };
 
 function cssId(value) {
@@ -394,6 +395,209 @@ async function loadPosts(append = false, silent = false) {
   }
 }
 
+function icon(name) {
+  return `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-${name}"></use></svg>`;
+}
+
+function setSlot(btn, iconName, label) {
+  if (!btn) return;
+  const slot = btn.querySelector('.ico-slot');
+  if (slot) slot.innerHTML = icon(iconName);
+  const text = btn.querySelector('.btn-label');
+  if (text && label != null) text.textContent = label;
+  if (btn.classList.contains('icon-btn')) btn.classList.toggle('is-on', iconName === 'heart-fill');
+}
+
+function stillUrl(post) {
+  return post.previewUrl || post.proxiedPreviewUrl || '';
+}
+
+function looksLikeVideo(url) {
+  return /\.(mp4|webm|mkv|mov|m4v)(?:$|\?)/i.test(String(url || ''));
+}
+
+function sharpUrl(post) {
+  const preview = post.previewUrl || '';
+  const sample = post.sampleUrl || '';
+  const file = post.fileUrl || '';
+  const sampleIsStill = sample && sample !== preview && !looksLikeVideo(sample);
+  if (post.mediaType === 'video') return sampleIsStill ? sample : (preview || post.proxiedPreviewUrl || '');
+  if (sampleIsStill) return sample;
+  if (file && file !== preview && !looksLikeVideo(file)) return file;
+  return sample || file || preview || post.proxiedSampleUrl || '';
+}
+
+function sharpProxy(post) {
+  const sampleIsStill = post.sampleUrl && post.sampleUrl !== post.previewUrl && !looksLikeVideo(post.sampleUrl);
+  if (post.mediaType === 'video') return sampleIsStill ? (post.proxiedSampleUrl || '') : (post.proxiedPreviewUrl || '');
+  if (sampleIsStill) return post.proxiedSampleUrl || '';
+  if (post.fileUrl && post.fileUrl !== post.previewUrl && !looksLikeVideo(post.fileUrl)) return post.proxiedFileUrl || '';
+  return post.proxiedSampleUrl || post.proxiedPreviewUrl || '';
+}
+
+function sameUrl(a, b) {
+  if (!a || !b) return false;
+  try { return new URL(a, location.href).href === new URL(b, location.href).href; }
+  catch (_) { return a === b; }
+}
+
+function loadVideo(video, file, proxy, autoplay) {
+  const start = () => { if (autoplay) video.play().catch(() => {}); };
+  video.onerror = () => {
+    if (!proxy || video.dataset.tried === '1' || sameUrl(video.currentSrc || video.src, proxy)) return;
+    video.dataset.tried = '1';
+    video.src = proxy;
+    start();
+  };
+  video.src = file || proxy;
+  start();
+}
+
+function prefersReducedMotion() {
+  return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+let mediaMuted = true;
+
+function tagChip(tag, post) {
+  const kind = post ? tagDot(post, tag) : '';
+  return `<span class="tag ${kind}">
+    <button type="button" data-include="${esc(tag)}"><i class="${kind}"></i>${esc(tag)}</button>
+    <button type="button" class="tag-block" data-exclude="${esc(tag)}" title="Hide this tag" aria-label="Hide ${esc(tag)}">${icon('block')}</button>
+  </span>`;
+}
+
+function fmtTime(seconds) {
+  if (!Number.isFinite(seconds)) return '0:00';
+  const s = Math.max(0, Math.floor(seconds));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
+function playerInner(poster, proxy) {
+  return `
+    <img class="player-poster" alt="" referrerpolicy="no-referrer" src="${esc(poster || '')}" data-proxy="${esc(proxy || '')}" onerror="useProxy(this)" />
+    <video muted loop playsinline webkit-playsinline preload="metadata"></video>
+    <button type="button" class="player-play" data-player-toggle aria-label="Play">${icon('play')}</button>
+    <div class="player-bar">
+      <button type="button" class="player-btn" data-player-toggle aria-label="Play">${icon('play')}</button>
+      <input class="player-range" type="range" min="0" max="1000" value="0" step="1" aria-label="Progress" />
+      <span class="player-time">0:00</span>
+      <button type="button" class="player-btn" data-player-mute aria-label="Unmute">${icon('mute')}</button>
+    </div>`;
+}
+
+function bindPlayer(root) {
+  if (!root || root.dataset.bound === '1') return;
+  root.dataset.bound = '1';
+  const video = root.querySelector('video');
+  const range = root.querySelector('.player-range');
+  const time = root.querySelector('.player-time');
+  const toggles = root.querySelectorAll('[data-player-toggle]');
+  const muteBtn = root.querySelector('[data-player-mute]');
+  if (!video) return;
+  video.muted = mediaMuted;
+  video.playsInline = true;
+
+  function paintPlay() {
+    const playing = !video.paused && !video.ended;
+    root.classList.toggle('is-playing', playing);
+    toggles.forEach(btn => {
+      btn.innerHTML = icon(playing ? 'pause' : 'play');
+      btn.setAttribute('aria-label', playing ? 'Pause' : 'Play');
+    });
+  }
+  function paintMute() {
+    if (!muteBtn) return;
+    muteBtn.innerHTML = icon(video.muted ? 'mute' : 'volume');
+    muteBtn.setAttribute('aria-label', video.muted ? 'Unmute' : 'Mute');
+  }
+  function paintTime() {
+    if (time) time.textContent = `${fmtTime(video.currentTime)} / ${fmtTime(video.duration)}`;
+    if (range && video.duration && !range.dataset.scrub) {
+      range.value = String(Math.round((video.currentTime / video.duration) * 1000));
+    }
+  }
+  toggles.forEach(btn => btn.addEventListener('click', () => {
+    if (video.paused) video.play().catch(() => {});
+    else video.pause();
+  }));
+  if (muteBtn) muteBtn.addEventListener('click', () => {
+    video.muted = !video.muted;
+    mediaMuted = video.muted;
+    paintMute();
+  });
+  root.addEventListener('click', event => {
+    event.stopPropagation();
+    if (event.target.closest('.player-bar, [data-player-toggle]')) return;
+    if (video.paused) video.play().catch(() => {});
+    else video.pause();
+  });
+  video.addEventListener('play', paintPlay);
+  video.addEventListener('pause', paintPlay);
+  video.addEventListener('timeupdate', paintTime);
+  video.addEventListener('loadedmetadata', paintTime);
+  if (range) {
+    const release = () => { delete range.dataset.scrub; };
+    range.addEventListener('pointerdown', event => {
+      range.dataset.scrub = '1';
+      if (range.setPointerCapture) range.setPointerCapture(event.pointerId);
+    });
+    range.addEventListener('pointerup', release);
+    range.addEventListener('pointercancel', release);
+    range.addEventListener('lostpointercapture', release);
+    range.addEventListener('input', () => {
+      if (!video.duration) return;
+      video.currentTime = (Number(range.value) / 1000) * video.duration;
+      paintTime();
+    });
+  }
+  paintPlay();
+  paintMute();
+}
+
+function stopCardVideo(media) {
+  if (!media) return;
+  media.classList.remove('is-playing');
+  const video = media.querySelector('video.card-video');
+  if (!video) return;
+  video.pause();
+  video.removeAttribute('src');
+  video.load();
+  video.remove();
+}
+
+function stopAllCardVideos(except) {
+  document.querySelectorAll('.card-media.is-playing').forEach(media => {
+    if (media !== except) stopCardVideo(media);
+  });
+}
+
+function playCardVideo(media) {
+  if (!media || media.dataset.kind !== 'video') return;
+  const existing = media.querySelector('video.card-video');
+  if (media.classList.contains('is-playing') && existing) {
+    existing.play().catch(() => {});
+    return;
+  }
+  stopAllCardVideos(media);
+  const video = document.createElement('video');
+  video.className = 'card-video';
+  video.muted = true;
+  video.loop = true;
+  video.playsInline = true;
+  video.setAttribute('playsinline', '');
+  video.preload = 'auto';
+  media.appendChild(video);
+  media.classList.add('is-playing');
+  loadVideo(video, media.dataset.file || '', media.dataset.proxyFile || '', true);
+}
+
+function toggleCardVideo(media) {
+  if (!media) return;
+  if (media.classList.contains('is-playing')) stopCardVideo(media);
+  else playCardVideo(media);
+}
+
 function buildSponsoredCardHTML() {
   return `
     <aside class="masonry-item sponsor">
@@ -419,19 +623,15 @@ function buildPostCardHTML(post, idx) {
   const isSaved = state.savedPosts.some(s => s.id === post.id);
   const isVideo = post.mediaType === 'video';
   const expanded = state.expandedTagCards.has(post.id);
-  const preview = post.previewUrl || post.proxiedPreviewUrl || '';
+  const preview = stillUrl(post);
   const proxy = post.proxiedPreviewUrl || '';
   const eager = idx < 4;
-  const tagsHtml = (post.tags || []).slice(0, 18).map(t => `
-    <span class="tag">
-      <button type="button" data-include="${esc(t)}"><i class="${tagDot(post, t)}"></i>${esc(t)}</button>
-      <button type="button" data-exclude="${esc(t)}" title="Hide posts with this tag">Block</button>
-    </span>
-  `).join('');
+  const tags = post.tags || [];
+  const tagsHtml = tags.map(t => tagChip(t, post)).join('');
 
   return `
     <article class="masonry-item card">
-      <div class="card-media" data-open="${esc(post.id)}">
+      <div class="card-media" data-open="${esc(post.id)}"${isVideo ? ` data-kind="video" data-file="${esc(post.fileUrl || '')}" data-proxy-file="${esc(post.proxiedFileUrl || '')}"` : ''}>
         <img
           src="${esc(preview)}"
           data-proxy="${esc(proxy)}"
@@ -443,16 +643,22 @@ function buildPostCardHTML(post, idx) {
           referrerpolicy="no-referrer"
           onerror="useProxy(this)"
         />
+        ${isVideo ? `<button type="button" class="play-badge" data-preview aria-label="Play preview">${icon('play')}</button>` : ''}
         <div class="card-float">
           <span class="pill">${esc(post.sourceName || 'Board')}</span>
-          <span class="pill">${isVideo ? 'Video · ' : ''}★ ${esc(post.score || 0)}</span>
+          <span class="pill">${isVideo ? icon('play') : ''}${icon('star')} ${esc(post.score || 0)}</span>
         </div>
       </div>
       <div class="card-body">
-        <button type="button" class="btn btn-tiny ${isSaved ? 'btn-primary' : 'btn-ghost'}" data-save="${esc(post.id)}">${isSaved ? 'Saved' : 'Save'}</button>
-        <button type="button" class="btn btn-tiny btn-ghost" data-tags="${esc(post.id)}">${expanded ? 'Hide tags' : 'Tags'}</button>
+        <button type="button" class="btn btn-tiny ${isSaved ? 'btn-primary' : 'btn-ghost'}" data-save="${esc(post.id)}">
+          <span class="ico-slot">${icon(isSaved ? 'heart-fill' : 'heart')}</span>
+          <span class="btn-label">${isSaved ? 'Saved' : 'Save'}</span>
+        </button>
+        <button type="button" class="btn btn-tiny btn-ghost${expanded ? ' is-on' : ''}" data-tags="${esc(post.id)}" aria-expanded="${expanded ? 'true' : 'false'}">
+          ${icon('tag')}<span class="btn-label">Tags ${tags.length}</span>
+        </button>
       </div>
-      <div id="tags-drawer-${cssId(post.id)}" class="tags${expanded ? '' : ' hidden'}">${tagsHtml}</div>
+      <div id="tags-drawer-${cssId(post.id)}" class="tags${expanded ? '' : ' hidden'}"><div class="tag-well">${tagsHtml}</div></div>
     </article>
   `;
 }
@@ -484,41 +690,81 @@ function renderGallery(options = {}) {
   feedEl.innerHTML = cardsHtml(state.posts, 0);
 }
 
+function reelSlideHtml(post, index) {
+  const isVideo = post.mediaType === 'video';
+  const still = stillUrl(post);
+  const sharp = sharpUrl(post);
+  const active = index === 0;
+  const saved = state.savedPosts.some(s => s.id === post.id);
+  const tags = post.tags || [];
+  const shown = tags.slice(0, 4);
+  const charTag = (post.characterTags && post.characterTags[0]) || tags[0] || 'character';
+  const imageProxy = active ? (sharpProxy(post) || post.proxiedPreviewUrl || '') : (post.proxiedPreviewUrl || '');
+  const media = isVideo
+    ? `<div class="player">${playerInner(active ? (sharp || still) : still, active ? (sharpProxy(post) || post.proxiedPreviewUrl || '') : (post.proxiedPreviewUrl || ''))}</div>`
+    : `<img class="reel-still" src="${esc(active ? (sharp || still) : still)}" data-proxy="${esc(imageProxy)}" alt="" referrerpolicy="no-referrer" onerror="useProxy(this)" />`;
+  const extra = tags.length > shown.length
+    ? `<button type="button" class="reel-tag" data-open="${esc(post.id)}">+${tags.length - shown.length}</button>`
+    : '';
+  return `
+    <article class="reel${active ? ' is-active' : ''}" data-kind="${isVideo ? 'video' : 'image'}" data-file="${esc(post.fileUrl || '')}" data-proxy-file="${esc(post.proxiedFileUrl || '')}" data-full="${esc(sharp)}" data-proxy-full="${esc(sharpProxy(post))}" data-still="${esc(still)}" data-proxy-still="${esc(post.proxiedPreviewUrl || '')}">
+      <div class="reel-stage"${isVideo ? '' : ` data-open="${esc(post.id)}"`}>
+        ${media}
+      </div>
+      <div class="reel-meta">
+        <div class="pill">${icon('star')} ${esc(post.score || 0)} · ${esc(post.sourceName || '')}</div>
+        <div class="reel-tags">
+          ${shown.map(t => `<button type="button" class="reel-tag" data-include="${esc(t)}">${esc(t)}</button>`).join('')}
+          ${extra}
+        </div>
+      </div>
+      <div class="reel-actions">
+        <button type="button" class="icon-btn${saved ? ' is-on' : ''}" data-save="${esc(post.id)}" aria-label="${saved ? 'Saved' : 'Save'}">${icon(saved ? 'heart-fill' : 'heart')}</button>
+        <button type="button" class="icon-btn" data-open="${esc(post.id)}" aria-label="Tags ${tags.length}">${icon('tag')}</button>
+        <button type="button" class="icon-btn accent" aria-label="AI chat" onclick="triggerAdClick('reels_cta','candy_ai','${esc(post.id)}','${esc(charTag)}')">${icon('spark')}</button>
+        <a class="icon-btn" href="${esc(post.proxiedFileUrl || post.fileUrl || '#')}" download aria-label="Download">${icon('download')}</a>
+      </div>
+    </article>`;
+}
+
+function mountReelStill(slide, sharp) {
+  const img = slide.querySelector('img.reel-still');
+  if (!img) return;
+  const target = sharp ? (slide.dataset.full || slide.dataset.still || '') : (slide.dataset.still || '');
+  if (!target || sameUrl(img.getAttribute('src'), target)) return;
+  img.dataset.proxied = '';
+  img.setAttribute('data-proxy', (sharp ? slide.dataset.proxyFull : slide.dataset.proxyStill) || slide.dataset.proxyStill || '');
+  img.src = target;
+}
+
+function mountReelPoster(slide, sharp) {
+  const poster = slide.querySelector('.player-poster');
+  if (!poster) return;
+  const target = sharp ? (slide.dataset.full || slide.dataset.still || '') : (slide.dataset.still || '');
+  if (!target || sameUrl(poster.getAttribute('src'), target)) return;
+  poster.dataset.proxied = '';
+  poster.setAttribute('data-proxy', (sharp ? slide.dataset.proxyFull : slide.dataset.proxyStill) || '');
+  poster.src = target;
+}
+
+function warmReelNeighbors(slide) {
+  [slide.previousElementSibling, slide.nextElementSibling].forEach(el => {
+    if (!el || !el.classList.contains('reel') || el.dataset.kind === 'video') return;
+    mountReelStill(el, true);
+  });
+}
+
 function renderReels() {
   const container = document.getElementById('reels-feed');
   if (!container) return;
   if (state.reelObserver) state.reelObserver.disconnect();
   if (!state.posts.length) {
     container.innerHTML = '<div class="empty"><h2>No posts yet</h2></div>';
+    const counter = document.getElementById('reels-counter');
+    if (counter) counter.textContent = '0 / 0';
     return;
   }
-  container.innerHTML = state.posts.map(post => {
-    const isVideo = post.mediaType === 'video';
-    const preview = post.previewUrl || post.proxiedPreviewUrl || '';
-    const full = post.sampleUrl || post.proxiedSampleUrl || preview;
-    const charTag = (post.characterTags && post.characterTags[0]) || (post.tags && post.tags[0]) || 'character';
-    return `
-      <article class="reel" data-kind="${isVideo ? 'video' : 'image'}" data-file="${esc(post.fileUrl || '')}" data-proxy-file="${esc(post.proxiedFileUrl || '')}" data-full="${esc(full)}" data-proxy-full="${esc(post.proxiedSampleUrl || '')}">
-        ${isVideo ? `
-          <video class="reel-media" poster="${esc(preview)}" preload="none" controls muted loop playsinline></video>
-        ` : `
-          <img class="reel-media" src="${esc(preview)}" data-proxy="${esc(post.proxiedPreviewUrl || '')}" alt="" referrerpolicy="no-referrer" onerror="useProxy(this)" />
-        `}
-        <div class="reel-meta">
-          <div class="pill">${esc(post.sourceName || '')} · ★ ${esc(post.score || 0)}</div>
-          <div class="tag-row" style="margin-top:8px">
-            ${(post.tags || []).slice(0, 5).map(t => `<button type="button" class="btn btn-tiny btn-ghost" data-include="${esc(t)}">${esc(t)}</button>`).join('')}
-          </div>
-        </div>
-        <div class="reel-actions">
-          <button type="button" class="icon-btn" data-save="${esc(post.id)}" aria-label="Save">♥</button>
-          <button type="button" class="icon-btn" data-open="${esc(post.id)}" aria-label="Tags">#</button>
-          <button type="button" class="icon-btn accent" onclick="triggerAdClick('reels_cta','candy_ai','${esc(post.id)}','${esc(charTag)}')">AI</button>
-          <a class="icon-btn" href="${esc(post.proxiedFileUrl || post.fileUrl || '#')}" download aria-label="Download">↓</a>
-        </div>
-      </article>
-    `;
-  }).join('');
+  container.innerHTML = state.posts.map((post, index) => reelSlideHtml(post, index)).join('');
 
   const counter = document.getElementById('reels-counter');
   if (counter) counter.textContent = `1 / ${state.posts.length}`;
@@ -536,42 +782,38 @@ function renderReels() {
   }, { root: container, threshold: [0.6] });
   container.querySelectorAll('.reel').forEach(slide => observer.observe(slide));
   state.reelObserver = observer;
+  const first = container.querySelector('.reel');
+  if (first) activateReel(first);
 }
 
 function activateReel(slide) {
+  if (!slide) return;
+  document.querySelectorAll('.reel.is-active').forEach(other => {
+    if (other !== slide) deactivateReel(other);
+  });
+  slide.classList.add('is-active');
   if (slide.dataset.kind === 'video') {
     const video = slide.querySelector('video');
-    if (video && !video.getAttribute('src')) {
-      video.src = slide.dataset.file || slide.dataset.proxyFile;
-      video.onerror = () => {
-        if (slide.dataset.proxyFile && video.src !== new URL(slide.dataset.proxyFile, location.origin).href) {
-          video.onerror = null;
-          video.src = slide.dataset.proxyFile;
-        }
-      };
-      video.play().catch(() => {});
-    }
+    const player = slide.querySelector('.player');
+    if (!video || !player) return;
+    mountReelPoster(slide, true);
+    bindPlayer(player);
+    video.muted = mediaMuted;
+    if (!video.getAttribute('src')) loadVideo(video, slide.dataset.file || '', slide.dataset.proxyFile || '', !prefersReducedMotion());
+    else if (!prefersReducedMotion()) video.play().catch(() => {});
     return;
   }
-  const img = slide.querySelector('img');
-  if (!img || img.dataset.upgraded === '1' || !slide.dataset.full || slide.dataset.full === img.getAttribute('src')) return;
-  const full = new Image();
-  full.referrerPolicy = 'no-referrer';
-  full.onload = () => {
-    img.src = full.src;
-    img.dataset.upgraded = '1';
-  };
-  full.onerror = () => {
-    if (slide.dataset.proxyFull && full.dataset.tried !== '1') {
-      full.dataset.tried = '1';
-      full.src = slide.dataset.proxyFull;
-    }
-  };
-  full.src = slide.dataset.full;
+  mountReelStill(slide, true);
+  warmReelNeighbors(slide);
 }
 
 function deactivateReel(slide) {
+  if (!slide) return;
+  slide.classList.remove('is-active');
+  if (slide.dataset.kind !== 'video') return;
   const video = slide.querySelector('video');
+  const player = slide.querySelector('.player');
+  if (player) player.classList.remove('is-playing');
   if (!video || !video.getAttribute('src')) return;
   video.pause();
   video.removeAttribute('src');
@@ -593,10 +835,15 @@ function renderSavedPosts() {
 function paintSaveButtons(postId, on) {
   document.querySelectorAll('[data-save]').forEach(btn => {
     if (btn.dataset.save !== postId) return;
-    if (btn.classList.contains('icon-btn')) return;
+    if (btn.classList.contains('icon-btn')) {
+      btn.innerHTML = icon(on ? 'heart-fill' : 'heart');
+      btn.classList.toggle('is-on', on);
+      btn.setAttribute('aria-label', on ? 'Saved' : 'Save');
+      return;
+    }
     btn.classList.toggle('btn-primary', on);
     btn.classList.toggle('btn-ghost', !on);
-    btn.textContent = on ? 'Saved' : 'Save';
+    setSlot(btn, on ? 'heart-fill' : 'heart', on ? 'Saved' : 'Save');
   });
 }
 
@@ -618,50 +865,52 @@ window.toggleSavePost = function(postId) {
   if (state.activeTab === 'saved') renderSavedPosts();
   const saveBtn = document.getElementById('modal-save-btn');
   if (saveBtn && state.activePost && state.activePost.id === postId) {
-    saveBtn.textContent = idx < 0 ? 'Saved' : 'Save';
+    const savedNow = idx < 0;
+    saveBtn.classList.toggle('btn-primary', savedNow);
+    saveBtn.classList.toggle('btn-ghost', !savedNow);
+    setSlot(saveBtn, savedNow ? 'heart-fill' : 'heart', savedNow ? 'Saved' : 'Save');
   }
 };
 
 function showModalMedia(post) {
   const box = document.getElementById('modal-media-container');
   box.replaceChildren();
+  stopAllCardVideos();
+  document.querySelectorAll('.reel.is-active video').forEach(video => video.pause());
   if (post.mediaType === 'video') {
-    const video = document.createElement('video');
-    video.className = 'modal-media';
-    video.poster = post.previewUrl || post.proxiedPreviewUrl || '';
-    video.controls = true;
-    video.autoplay = true;
-    video.loop = true;
-    video.playsInline = true;
-    video.src = post.fileUrl || post.proxiedFileUrl;
-    video.onerror = () => {
-      video.onerror = null;
-      if (post.proxiedFileUrl) video.src = post.proxiedFileUrl;
-    };
-    box.appendChild(video);
+    const player = document.createElement('div');
+    player.className = 'player';
+    const poster = sharpUrl(post) || stillUrl(post);
+    player.innerHTML = playerInner(poster, sharpProxy(post) || post.proxiedPreviewUrl || '');
+    box.appendChild(player);
+    const video = player.querySelector('video');
+    bindPlayer(player);
+    video.muted = mediaMuted;
+    loadVideo(video, post.fileUrl || '', post.proxiedFileUrl || '', !prefersReducedMotion());
     return;
   }
+  const sharp = sharpUrl(post);
+  const still = stillUrl(post);
+  const frame = document.createElement('div');
+  frame.className = 'stage-frame';
   const img = document.createElement('img');
   img.className = 'modal-media';
   img.alt = '';
   img.referrerPolicy = 'no-referrer';
-  const preview = post.previewUrl || post.proxiedPreviewUrl || '';
-  const sample = post.sampleUrl || post.proxiedSampleUrl || preview;
-  img.src = preview;
+  img.setAttribute('data-proxy', sharpProxy(post) || post.proxiedPreviewUrl || '');
   img.onerror = () => useProxy(img);
-  img.setAttribute('data-proxy', post.proxiedPreviewUrl || '');
-  box.appendChild(img);
-  if (!sample || sample === preview) return;
-  const full = new Image();
-  full.referrerPolicy = 'no-referrer';
-  full.onload = () => { img.src = full.src; };
-  full.onerror = () => {
-    if (post.proxiedSampleUrl && full.dataset.tried !== '1') {
-      full.dataset.tried = '1';
-      full.src = post.proxiedSampleUrl;
-    }
-  };
-  full.src = sample;
+  if (still && sharp && still !== sharp) {
+    const blur = document.createElement('img');
+    blur.className = 'stage-blur';
+    blur.alt = '';
+    blur.referrerPolicy = 'no-referrer';
+    blur.src = still;
+    frame.appendChild(blur);
+    img.addEventListener('load', () => blur.remove(), { once: true });
+  }
+  img.src = sharp || still;
+  frame.appendChild(img);
+  box.appendChild(frame);
 }
 
 window.openPostModal = function(postId) {
@@ -670,13 +919,16 @@ window.openPostModal = function(postId) {
   state.activePost = post;
   showModalMedia(post);
   document.getElementById('modal-source-badge').textContent = post.sourceName || 'Board';
-  document.getElementById('modal-score-badge').textContent = `Score ${post.score || 0}`;
+  document.getElementById('modal-score-badge').innerHTML = `${icon('star')} ${esc(post.score || 0)}`;
   document.getElementById('modal-dimensions').textContent = `${post.width || '?'} × ${post.height || '?'} · ${String(post.fileExt || '').toUpperCase()}`;
   document.getElementById('modal-original-url').href = post.originalPostUrl || '#';
   document.getElementById('modal-download-btn').href = post.proxiedFileUrl || post.fileUrl || '#';
   const saved = state.savedPosts.some(s => s.id === post.id);
-  document.getElementById('modal-save-btn').textContent = saved ? 'Saved' : 'Save';
-  document.getElementById('modal-save-btn').onclick = () => window.toggleSavePost(post.id);
+  const saveBtn = document.getElementById('modal-save-btn');
+  saveBtn.classList.toggle('btn-primary', saved);
+  saveBtn.classList.toggle('btn-ghost', !saved);
+  setSlot(saveBtn, saved ? 'heart-fill' : 'heart', saved ? 'Saved' : 'Save');
+  saveBtn.onclick = () => window.toggleSavePost(post.id);
 
   const charTag = (post.characterTags && post.characterTags[0]) || (post.tags && post.tags[0]) || 'character';
   document.getElementById('modal-ai-chat-btn').onclick = () => triggerAdClick('post_chat_ai', 'candy_ai', post.id, charTag, post.fileUrl);
@@ -689,12 +941,10 @@ window.openPostModal = function(postId) {
     { name: 'Ascii2d', url: `https://ascii2d.net/search/url/${enc}` }
   ].map(s => `<a class="btn btn-tiny btn-ghost" href="${s.url}" target="_blank" rel="noopener">${s.name}</a>`).join('');
 
-  document.getElementById('modal-tags-list').innerHTML = (post.tags || []).map(t => `
-    <span class="tag">
-      <button type="button" data-include="${esc(t)}">${esc(t)}</button>
-      <button type="button" data-exclude="${esc(t)}">Block</button>
-    </span>
-  `).join('');
+  const tags = post.tags || [];
+  const tagCount = document.getElementById('modal-tag-count');
+  if (tagCount) tagCount.textContent = String(tags.length);
+  document.getElementById('modal-tags-list').innerHTML = tags.map(t => tagChip(t, post)).join('');
   document.getElementById('post-modal').classList.remove('hidden');
 };
 
@@ -703,6 +953,10 @@ window.closePostModal = function() {
   if (modal) modal.classList.add('hidden');
   const box = document.getElementById('modal-media-container');
   if (box) box.replaceChildren();
+  const active = document.querySelector('.reel.is-active video');
+  if (active && active.getAttribute('src') && state.activeTab === 'reels' && !prefersReducedMotion()) {
+    active.play().catch(() => {});
+  }
 };
 
 window.openProModal = function() {
@@ -723,6 +977,8 @@ window.closeFilterDrawer = function() {
 
 window.switchTab = function(tabId) {
   state.activeTab = tabId;
+  document.body.classList.toggle('mode-reels', tabId === 'reels');
+  document.body.classList.toggle('mode-saved', tabId === 'saved');
   ['gallery', 'reels', 'saved'].forEach(t => {
     const sec = document.getElementById(`tab-${t}`);
     if (sec) sec.classList.toggle('hidden', t !== tabId);
@@ -731,6 +987,8 @@ window.switchTab = function(tabId) {
   if (controls) controls.classList.toggle('hidden', tabId === 'saved');
   document.querySelectorAll('.nav-tab').forEach(btn => btn.classList.toggle('is-on', btn.dataset.tab === tabId));
   document.querySelectorAll('.mob-nav-btn').forEach(btn => btn.classList.toggle('is-on', btn.dataset.mob === tabId));
+  if (tabId !== 'reels') document.querySelectorAll('#reels-feed .reel').forEach(deactivateReel);
+  stopAllCardVideos();
   if (tabId === 'saved') renderSavedPosts();
   if (tabId === 'reels') renderReels();
 };
@@ -738,12 +996,7 @@ window.switchTab = function(tabId) {
 function renderTrendingTags() {
   const drawerTags = document.getElementById('drawer-trending-tags');
   if (!drawerTags) return;
-  drawerTags.innerHTML = state.trendingTags.map(t => `
-    <span class="tag">
-      <button type="button" data-include="${esc(t.name)}">${esc(t.name)}</button>
-      <button type="button" data-exclude="${esc(t.name)}">Block</button>
-    </span>
-  `).join('');
+  drawerTags.innerHTML = state.trendingTags.map(t => tagChip(t.name)).join('');
 }
 
 async function initApp() {
@@ -827,6 +1080,12 @@ document.addEventListener('click', event => {
     removeTagToken(remove.dataset.removeTag);
     return;
   }
+  const previewBtn = event.target.closest('[data-preview]');
+  if (previewBtn) {
+    event.preventDefault();
+    toggleCardVideo(previewBtn.closest('.card-media'));
+    return;
+  }
   const open = event.target.closest('[data-open]');
   if (open) openPostModal(open.dataset.open);
 });
@@ -887,7 +1146,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
             <div class="tag-actions">
               <button type="button" class="btn btn-tiny btn-ghost" data-include="${esc(t.name)}">Add</button>
-              <button type="button" class="btn btn-tiny btn-ghost" data-exclude="${esc(t.name)}">Block</button>
+              <button type="button" class="btn btn-tiny btn-ghost" data-exclude="${esc(t.name)}">${icon('block')} Hide</button>
             </div>
           </div>
         `).join('');
@@ -1001,10 +1260,15 @@ document.addEventListener('DOMContentLoaded', () => {
     localStorage.setItem('bp_saved', '[]');
     renderSavedPosts();
     document.querySelectorAll('[data-save]').forEach(btn => {
-      if (btn.classList.contains('icon-btn')) return;
+      if (btn.classList.contains('icon-btn')) {
+        btn.innerHTML = icon('heart');
+        btn.classList.remove('is-on');
+        btn.setAttribute('aria-label', 'Save');
+        return;
+      }
       btn.classList.remove('btn-primary');
       btn.classList.add('btn-ghost');
-      btn.textContent = 'Save';
+      setSlot(btn, 'heart', 'Save');
     });
   });
 
@@ -1031,3 +1295,26 @@ document.addEventListener('DOMContentLoaded', () => {
 function eventTargetIsField(target) {
   return target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA');
 }
+
+document.addEventListener('pointerover', event => {
+  const media = event.target.closest && event.target.closest('.card-media[data-kind="video"]');
+  if (!media || event.pointerType === 'touch' || prefersReducedMotion()) return;
+  const from = event.relatedTarget && event.relatedTarget.closest && event.relatedTarget.closest('.card-media');
+  if (from === media) return;
+  playCardVideo(media);
+}, true);
+
+document.addEventListener('pointerout', event => {
+  const media = event.target.closest && event.target.closest('.card-media[data-kind="video"]');
+  if (!media || event.pointerType === 'touch') return;
+  const to = event.relatedTarget && event.relatedTarget.closest && event.relatedTarget.closest('.card-media');
+  if (to === media) return;
+  stopCardVideo(media);
+}, true);
+
+document.addEventListener('scroll', () => {
+  document.querySelectorAll('.card-media.is-playing').forEach(media => {
+    const rect = media.getBoundingClientRect();
+    if (rect.bottom < 0 || rect.top > window.innerHeight) stopCardVideo(media);
+  });
+}, { passive: true, capture: true });
