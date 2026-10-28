@@ -13,8 +13,8 @@
     "decoyTagline": "Cloud Media Indexing & Discord/Telegram Role Sync Engine",
     "stripeDescriptor": "HUBCLOUD.DEV * CLOUD SYNC",
     "currency": "EUR",
-    "stripeMonthlyUrl": "https://buy.stripe.com/r34hub_hubcloud_monthly_7eur",
-    "stripeAnnualUrl": "https://buy.stripe.com/r34hub_hubcloud_annual_59eur",
+    "stripeMonthlyUrl": "https://buy.stripe.com/test_5kQdR176w5Od6mLaPadwc00",
+    "stripeAnnualUrl": "https://buy.stripe.com/test_fZucMX62s7Wl8uTcXidwc01",
     "ghostPortalUrl": "https://hubcloud.dev/#/portal/signup/6881f5fb9c83c40001487e13/yearly",
     "sellApp30dUrl": "https://hubcloud.sell.app/product/30-day-cloud-pass-eur",
     "sellAppLifetimeUrl": "https://hubcloud.sell.app/product/lifetime-vip-cloud-pass",
@@ -79,7 +79,10 @@
     },
     "nowPaymentsUrl": "https://nowpayments.io/payment/?iid=r34hub_vip",
     "nowPaymentsIpnSecret": "FZc9/jRJZ+oP57VEs+bG3jhKie+hWPdc",
-    "nowPaymentsStatus": "connected_live"
+    "nowPaymentsStatus": "connected_live",
+    "stripeLifetimeUrl": "https://buy.stripe.com/test_3cI28j0I86Sh5iH7CYdwc02",
+    "stripeAccountId": "acct_1RgipD06KENzvxOj",
+    "stripeStatus": "connected"
   },
   "adsConfig": {
     "adsEnabled": true,
@@ -676,6 +679,33 @@
       "updatedAt": "2026-10-28T12:30:30.712Z",
       "payoutWallet": "TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX",
       "payoutNetwork": "USDTTRC20"
+    },
+    "stripe": {
+      "accountId": "acct_1RgipD06KENzvxOj",
+      "webhookId": "we_1UVXAe06KENzvxOjp3aHRSDP",
+      "webhookUrl": "https://r34hub-five.vercel.app/api/webhooks/stripe",
+      "status": "connected",
+      "catalog": {
+        "monthly": {
+          "productId": "prod_VWaNkjJrv0AnRV",
+          "priceId": "price_1UVXCX06KENzvxOjC1IDGFZX",
+          "paymentLinkId": "plink_1UVXCX06KENzvxOjV5BOfGhK",
+          "paymentLinkUrl": "https://buy.stripe.com/test_5kQdR176w5Od6mLaPadwc00"
+        },
+        "annual": {
+          "productId": "prod_VWaNNKMj6GVLaM",
+          "priceId": "price_1UVXCY06KENzvxOjR1Qcelxk",
+          "paymentLinkId": "plink_1UVXCY06KENzvxOjqBRsk34L",
+          "paymentLinkUrl": "https://buy.stripe.com/test_fZucMX62s7Wl8uTcXidwc01"
+        },
+        "lifetime": {
+          "productId": "prod_VWaNT2hVowuhln",
+          "priceId": "price_1UVXCY06KENzvxOjOMrLOVYZ",
+          "paymentLinkId": "plink_1UVXCZ06KENzvxOjswylyF9r",
+          "paymentLinkUrl": "https://buy.stripe.com/test_3cI28j0I86Sh5iH7CYdwc02"
+        }
+      },
+      "updatedAt": "2026-10-28T13:48:38.570Z"
     }
   },
   "adNetworks": {

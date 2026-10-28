@@ -147,11 +147,11 @@
     },
     {
       "source": "/en/premium",
-      "destination": "/hubcloud.html"
+      "destination": "/api/index.js"
     },
     {
       "source": "/ru/premium",
-      "destination": "/hubcloud.html"
+      "destination": "/api/index.js"
     },
     {
       "source": "/premium",

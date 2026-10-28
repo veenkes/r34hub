@@ -2136,12 +2136,12 @@ app.post("/api/stripe/create-checkout-session", async (req, res) => {
   const origin = `${proto}://${host}`;
 
   const planLookup = {
-    monthly: { id: "monthly", name: "HubCloud Monthly Pro (30 Days)", tier: "monthly", amountEur: 7.00, amountUsd: 7.50, days: 30, mode: "subscription" },
-    yearly: { id: "annual", name: "HubCloud Annual Pro (365 Days)", tier: "annual", amountEur: 59.99, amountUsd: 64.99, days: 365, mode: "payment" },
-    annual: { id: "annual", name: "HubCloud Annual Pro (365 Days)", tier: "annual", amountEur: 59.99, amountUsd: 64.99, days: 365, mode: "payment" },
-    "30days": { id: "30d_pass", name: "HubCloud 30-Day Pass", tier: "monthly", amountEur: 12.99, amountUsd: 13.99, days: 30, mode: "payment" },
-    "30d_pass": { id: "30d_pass", name: "HubCloud 30-Day Pass", tier: "monthly", amountEur: 12.99, amountUsd: 13.99, days: 30, mode: "payment" },
-    lifetime: { id: "lifetime", name: "HubCloud Lifetime VIP Master Pass", tier: "lifetime", amountEur: 199.99, amountUsd: 214.99, days: 36500, mode: "payment" }
+    monthly: { id: "monthly", name: "HubCloud Monthly Pro (30 Days)", tier: "monthly", amountEur: 7.00, amountUsd: 7.50, days: 30, mode: "payment", priceId: "price_1UVXCX06KENzvxOjC1IDGFZX", paymentLinkUrl: "https://buy.stripe.com/test_5kQdR176w5Od6mLaPadwc00" },
+    yearly: { id: "annual", name: "HubCloud Annual Pro (365 Days)", tier: "annual", amountEur: 59.99, amountUsd: 64.99, days: 365, mode: "payment", priceId: "price_1UVXCY06KENzvxOjR1Qcelxk", paymentLinkUrl: "https://buy.stripe.com/test_fZucMX62s7Wl8uTcXidwc01" },
+    annual: { id: "annual", name: "HubCloud Annual Pro (365 Days)", tier: "annual", amountEur: 59.99, amountUsd: 64.99, days: 365, mode: "payment", priceId: "price_1UVXCY06KENzvxOjR1Qcelxk", paymentLinkUrl: "https://buy.stripe.com/test_fZucMX62s7Wl8uTcXidwc01" },
+    "30days": { id: "30d_pass", name: "HubCloud 30-Day Pass", tier: "monthly", amountEur: 12.99, amountUsd: 13.99, days: 30, mode: "payment", priceId: "price_1UVXCX06KENzvxOjC1IDGFZX", paymentLinkUrl: "https://buy.stripe.com/test_5kQdR176w5Od6mLaPadwc00" },
+    "30d_pass": { id: "30d_pass", name: "HubCloud 30-Day Pass", tier: "monthly", amountEur: 12.99, amountUsd: 13.99, days: 30, mode: "payment", priceId: "price_1UVXCX06KENzvxOjC1IDGFZX", paymentLinkUrl: "https://buy.stripe.com/test_5kQdR176w5Od6mLaPadwc00" },
+    lifetime: { id: "lifetime", name: "HubCloud Lifetime VIP Master Pass", tier: "lifetime", amountEur: 199.99, amountUsd: 214.99, days: 36500, mode: "payment", priceId: "price_1UVXCY06KENzvxOjOMrLOVYZ", paymentLinkUrl: "https://buy.stripe.com/test_3cI28j0I86Sh5iH7CYdwc02" }
   };
   const selected = planLookup[plan] || planLookup.annual;
   const orderId = `ord_${crypto.randomBytes(5).toString("hex")}`;
@@ -2171,8 +2171,8 @@ app.post("/api/stripe/create-checkout-session", async (req, res) => {
       if (email && email.includes("@") && email !== "buyer@r34hub.app") {
         form.set("customer_email", email);
       }
-      form.set("success_url", `${origin}/ru/premium?order=${encodeURIComponent(orderId)}&status=paid&session_id={CHECKOUT_SESSION_ID}`);
-      form.set("cancel_url", `${origin}/ru/premium?plan=${encodeURIComponent(selected.id)}`);
+      form.set("success_url", `${origin}/premium?order=${encodeURIComponent(orderId)}&status=paid&session_id={CHECKOUT_SESSION_ID}`);
+      form.set("cancel_url", `${origin}/premium?plan=${encodeURIComponent(selected.id)}`);
       form.set("line_items[0][quantity]", "1");
       form.set("line_items[0][price_data][currency]", "eur");
       form.set("line_items[0][price_data][unit_amount]", String(Math.round(selected.amountEur * 100)));
@@ -2206,9 +2206,9 @@ app.post("/api/stripe/create-checkout-session", async (req, res) => {
     }
   }
 
-  // 2. If custom Stripe Payment Link is configured in Admin (and not placeholder), use it
+  // 2. If Stripe Payment Link is configured in Admin or catalog, use it
   if (!stripeSessionUrl) {
-    const customLink = selected.id === "monthly" ? pc.stripeMonthlyUrl : selected.id === "annual" ? pc.stripeAnnualUrl : "";
+    const customLink = (selected.id === "monthly" ? pc.stripeMonthlyUrl : selected.id === "annual" ? pc.stripeAnnualUrl : pc.stripeLifetimeUrl) || selected.paymentLinkUrl || "";
     if (customLink && customLink.startsWith("https://buy.stripe.com/") && !customLink.includes("r34hub_hubcloud_")) {
       const sep = customLink.includes("?") ? "&" : "?";
       stripeSessionUrl = `${customLink}${sep}client_reference_id=${encodeURIComponent(orderId)}&prefilled_email=${encodeURIComponent(email)}`;
@@ -2269,15 +2269,14 @@ app.post("/api/webhooks/stripe", (req, res) => {
   const email = (obj.customer_details && obj.customer_details.email) || obj.customer_email || (obj.metadata && obj.metadata.email) || body.email || "buyer@r34hub.app";
   const amountEur = obj.amount_total ? Number((obj.amount_total / 100).toFixed(2)) : body.amountEur;
 
-  // Verify either webhook secret or Stripe signature if webhookSecret is set
-  const st = getStripeCredentials(monDb);
+  const stripeSig = String(req.get("stripe-signature") || "").trim();
   const sentSecret = String(req.get("x-webhook-secret") || req.query.secret || body.secret || "").trim();
   const expectedAdminSecret = process.env.R34HUB_WEBHOOK_SECRET || (monDb.owner && monDb.owner.webhookSecret) || "";
-  if (!st.webhookSecret && !secretMatches(sentSecret, expectedAdminSecret)) {
-    return res.status(401).json({ ok: false, error: "Webhook secret required" });
+  if (!stripeSig && !secretMatches(sentSecret, expectedAdminSecret)) {
+    return res.status(401).json({ ok: false, error: "Stripe signature or webhook secret required" });
   }
 
-  if (eventType !== "checkout.session.completed" && eventType !== "invoice.paid") {
+  if (!["checkout.session.completed", "payment_intent.succeeded", "invoice.paid"].includes(eventType)) {
     return res.json({ ok: true, ignored: true, type: eventType });
   }
 
@@ -2560,7 +2559,7 @@ app.get("/sitemap.xml", (req, res) => {
     { path: "/posts/sakugabooru", priority: "0.8", changefreq: "daily" },
     { path: "/saved", priority: "0.7", changefreq: "weekly" },
     { path: "/settings", priority: "0.6", changefreq: "monthly" },
-    { path: "/ru/premium", priority: "0.9", changefreq: "weekly" },
+    { path: "/premium", priority: "0.9", changefreq: "weekly" },
     { path: "/premium", priority: "0.9", changefreq: "weekly" },
     { path: "/hubcloud", priority: "0.85", changefreq: "weekly" }
   ];
@@ -2629,7 +2628,12 @@ app.get("/admin", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "admin.html"));
 });
 
-app.get(["/hubcloud", "/premium", "/ru/premium", "/en/premium"], (req, res) => {
+app.get(["/ru/premium", "/en/premium"], (req, res) => {
+  const qs = req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "";
+  res.redirect(301, `/premium${qs}`);
+});
+
+app.get(["/premium", "/hubcloud"], (req, res) => {
   res.sendFile(path.join(__dirname, "public", "hubcloud.html"));
 });
 
