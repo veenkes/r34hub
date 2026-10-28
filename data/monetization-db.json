@@ -138,6 +138,15 @@
       }
     ],
     "adZones": {
+      "zone_aads_adaptive": {
+        "id": "zone_aads_adaptive",
+        "network": "A-ADS (aads.com Live)",
+        "zoneId": "2460259",
+        "iframeUrl": "https://acceptable.a-ads.com/2460259",
+        "format": "Adaptive Banner & Native In-Feed Iframe",
+        "cpmEur": 1.85,
+        "enabled": true
+      },
       "zone_desktop_top": {
         "id": "zone_desktop_top",
         "network": "ExoClick",
@@ -208,6 +217,15 @@
           "timestamp": "2026-10-28T07:28:45.000Z"
         }
       ]
+    },
+    "aads": {
+      "enabled": true,
+      "unitId": "2460259",
+      "iframeUrl": "https://acceptable.a-ads.com/2460259",
+      "adUrl": "https://ad.a-ads.com/2460259",
+      "dashboardUrl": "https://aads.com/ad-units/2460259/code/",
+      "accountEmail": "emildv.work@gmail.com",
+      "status": "live"
     }
   },
   "licenses": [
@@ -543,6 +561,17 @@
       "ipnSecret": "FZc9/jRJZ+oP57VEs+bG3jhKie+hWPdc",
       "ipnCallbackUrl": "https://r34hub-five.vercel.app/api/webhooks/payment",
       "updatedAt": "2026-10-28T12:17:58.828Z"
+    }
+  },
+  "adNetworks": {
+    "aads": {
+      "enabled": true,
+      "unitId": "2460259",
+      "iframeUrl": "https://acceptable.a-ads.com/2460259",
+      "adUrl": "https://ad.a-ads.com/2460259",
+      "dashboardUrl": "https://aads.com/ad-units/2460259/code/",
+      "accountEmail": "emildv.work@gmail.com",
+      "status": "live"
     }
   }
 }

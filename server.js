@@ -1805,9 +1805,16 @@ app.post("/api/monetization/checkout-demo", (req, res) => {
 // 3. Ad Networks & AI CPA Affiliate Rotator (/api/ads/config, /api/ads/click, /api/admin/ads/update, /api/admin/stats)
 app.get("/api/ads/config", (req, res) => {
   monDb = loadMonetizationDb();
+  const aads = (monDb.adNetworks && monDb.adNetworks.aads) || (monDb.adsConfig && monDb.adsConfig.aads) || {
+    enabled: true,
+    unitId: "2460259",
+    iframeUrl: "https://acceptable.a-ads.com/2460259",
+    status: "live"
+  };
   res.json({
     ok: true,
-    adsConfig: monDb.adsConfig
+    adNetworks: { aads },
+    adsConfig: Object.assign({}, monDb.adsConfig, { aads })
   });
 });
 
@@ -1905,6 +1912,7 @@ app.post("/api/admin/ads/update", (req, res) => {
   saveMonetizationDb(monDb);
   res.json({
     ok: true,
+    adNetworks: monDb.adNetworks || { aads: { enabled: true, unitId: "2460259", iframeUrl: "https://acceptable.a-ads.com/2460259", status: "live" } },
     adsConfig: monDb.adsConfig,
     paymentConfig: paymentConfigForAdmin(monDb.paymentConfig)
   });

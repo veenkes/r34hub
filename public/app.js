@@ -1076,11 +1076,13 @@ function toggleCardVideo(media) {
 }
 
 function buildSponsoredCardHTML() {
+  const aadsId = (state.adsConfig && state.adsConfig.aads && state.adsConfig.aads.unitId) || '2460259';
   return `
     <aside class="masonry-item sponsor">
       <div class="kicker">Sponsored</div>
       <h3>AI character chat</h3>
       <p>Open a chat from the kind of character you are browsing.</p>
+      <div style="width:100%;height:90px;overflow:hidden;border-radius:8px;margin:4px 0;"><iframe data-aa="${esc(aadsId)}" src="//acceptable.a-ads.com/${esc(aadsId)}" style="border:0px; padding:0; width:100%; height:100%; overflow:hidden; background-color: transparent;" loading="lazy" title="Sponsored"></iframe></div>
       <div class="sponsor-actions">
         <button type="button" class="btn btn-primary btn-tiny" onclick="triggerAdClick('infeed_native','candy_ai','native','anime')">Open</button>
         <button type="button" class="btn btn-ghost btn-tiny" onclick="openProModal()">Remove ads</button>
