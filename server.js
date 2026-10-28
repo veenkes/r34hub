@@ -2187,7 +2187,7 @@ app.get("/api/ads/config", (req, res) => {
     enabled: true,
     siteId: "1117429",
     zoneId: "6068261",
-    iframeUrl: "https://a.magsrv.com/iframe.php?idzone=6068261&size=300x250",
+    iframeUrl: "https://syndication.exdynsrv.com/ads-iframe-display.php?idzone=6068261&output=noscript&type=300x250",
     status: "verified_live"
   };
   res.json({

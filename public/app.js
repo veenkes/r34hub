@@ -1115,30 +1115,22 @@ function maybeShowVideoPreroll(containerEl, onComplete) {
   }
   if (containerEl.querySelector('.preroll-overlay')) return;
   trackAdImpression('video_preroll');
+  const aadsId = String((state.adsConfig && state.adsConfig.aads && state.adsConfig.aads.unitId) || '2460259');
+  const exoZoneId = String((state.adsConfig && state.adsConfig.exoclick && state.adsConfig.exoclick.zoneId) || '6068261');
   const art = pickAdultAdArtwork(videoPlayCount);
   const activeTag = parseTagTokens()[0] || art.tag || 'hentai';
-  const prerollOffers = [
-    { id: 'nud3_video', badge: 'NUD3.ME 18+ AI', badgeBg: '#9333ea', badgeInk: '#fff', title: 'Uncensored 18+ AI Undress & Hentai Video Animator', sub: 'Turn any character into an explicit 60fps 18+ animation in one click.', cta: '🔞 Open 18+ AI Studio →' },
-    { id: 'candy_ai', badge: 'CANDY.AI 18+', badgeBg: '#e11d48', badgeInk: '#fff', title: 'Uncensored 18+ AI Waifu Sex Chat & Voice', sub: 'Roleplay without filters and receive live 18+ NSFW photos.', cta: '🔞 Start 18+ Chat →' },
-    { id: 'crushon_ai', badge: 'CRUSHON.AI 18+', badgeBg: '#f59e0b', badgeInk: '#000', title: 'Zero-Filter 18+ Hentai & Erotic Roleplay AI', sub: 'No censorship, no NSFW blocks. Chat with 200,000+ adult anime characters.', cta: '🔞 Start 18+ Roleplay →' },
-    { id: 'spicychat_ai', badge: 'SPICYCHAT.AI 18+', badgeBg: '#e11d48', badgeInk: '#fff', title: 'Uncensored 18+ Character AI Chatbot', sub: 'Instant browser NSFW roleplay with your favorite Booru characters.', cta: '🔞 Chat 18+ Now →' }
-  ];
-  const offer = prerollOffers[videoPlayCount % prerollOffers.length];
   const overlay = document.createElement('div');
   overlay.className = 'preroll-overlay';
-  overlay.style.cssText = 'position:absolute;inset:0;z-index:6;background:rgba(9,9,11,0.95);backdrop-filter:blur(10px);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;text-align:center;gap:10px;';
+  overlay.style.cssText = 'position:absolute;inset:0;z-index:6;background:rgba(9,9,11,0.94);backdrop-filter:blur(10px);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;text-align:center;gap:10px;';
   overlay.innerHTML = `
     <span class="meta-badge" style="margin:0;background:rgba(225,29,72,0.22);border-color:rgba(225,29,72,0.55);color:#fda4af;font-weight:700;">🔞 18+ NSFW AD · Video starts in <b data-preroll-sec>3</b>s</span>
-    <div data-preroll-card style="position:relative;width:min(320px,100%);height:190px;border-radius:12px;overflow:hidden;border:1px solid rgba(245,158,11,0.5);background:#121218;cursor:pointer;text-align:left;">
-      <img src="${esc(art.proxy || art.src)}" data-proxy="${esc(art.proxy)}" data-fallback="${esc(art.fallback)}" onerror="useAdFallback(this)" alt="" style="width:100%;height:100%;object-fit:cover;object-position:center 20%;display:block;" />
-      <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(9,9,11,0.1) 0%,rgba(9,9,11,0.88) 65%,#09090b 100%);display:flex;flex-direction:column;justify-content:flex-end;padding:12px;">
-        <span style="position:absolute;top:10px;left:10px;background:${offer.badgeBg};color:${offer.badgeInk};font-weight:900;font-size:10px;padding:2px 8px;border-radius:4px;">${esc(offer.badge)}</span>
-        <div style="color:#fff;font-weight:800;font-size:15px;line-height:1.2;margin-bottom:4px;">${esc(offer.title)}</div>
-        <div style="color:#d4d4d8;font-size:11px;line-height:1.35;">${esc(offer.sub)}</div>
-      </div>
+    <div style="font-size:16px;font-weight:700;color:#fff;">Uncensored 18+ AI Undress &amp; Hentai Video Chat</div>
+    <div style="font-size:12px;color:#d4d4d8;max-width:320px;">Turn any character into an explicit 18+ interactive animation or roleplay chat.</div>
+    <div style="width:300px;height:250px;overflow:hidden;border-radius:10px;border:1px solid var(--line);background:#000;display:flex;align-items:center;justify-content:center;">
+      <iframe src="https://syndication.exdynsrv.com/ads-iframe-display.php?idzone=${esc(exoZoneId)}&output=noscript&type=300x250" width="300" height="250" scrolling="no" marginwidth="0" marginheight="0" frameborder="0" style="background:transparent;color-scheme:normal;" title="ExoClick 18+ Pre-Roll"></iframe>
     </div>
-    <div style="display:flex;gap:8px;margin-top:2px;">
-      <button type="button" class="btn btn-primary btn-tiny" style="background:#e11d48;color:#fff;font-weight:700;" data-preroll-cta>${esc(offer.cta)}</button>
+    <div style="display:flex;gap:8px;margin-top:4px;">
+      <button type="button" class="btn btn-primary btn-tiny" style="background:#e11d48;color:#fff;font-weight:700;" data-preroll-cta>🔞 Open 18+ AI Studio →</button>
       <button type="button" class="btn btn-ghost btn-tiny" data-preroll-skip disabled>Skip (3)</button>
     </div>
   `;
@@ -1148,19 +1140,16 @@ function maybeShowVideoPreroll(containerEl, onComplete) {
   const secEl = overlay.querySelector('[data-preroll-sec]');
   const skipBtn = overlay.querySelector('[data-preroll-skip]');
   const ctaBtn = overlay.querySelector('[data-preroll-cta]');
-  const cardEl = overlay.querySelector('[data-preroll-card]');
   let left = 3;
   const finish = () => {
     clearInterval(timer);
     overlay.remove();
     onComplete();
   };
-  const openOffer = () => {
-    triggerAdClick('post_video_ai', offer.id, 'preroll', activeTag);
+  ctaBtn.addEventListener('click', () => {
+    triggerAdClick('post_video_ai', 'nud3_video', 'preroll', activeTag);
     finish();
-  };
-  ctaBtn.addEventListener('click', openOffer);
-  if (cardEl) cardEl.addEventListener('click', openOffer);
+  });
   skipBtn.addEventListener('click', finish);
   const timer = setInterval(() => {
     left -= 1;
@@ -1392,17 +1381,17 @@ function pickAdultAdArtwork(idx = 0) {
 }
 
 function buildSponsoredCardHTML(idx = 12) {
+  const aadsId = String((state.adsConfig && state.adsConfig.aads && state.adsConfig.aads.unitId) || '2460259');
+  const exoZoneId = String((state.adsConfig && state.adsConfig.exoclick && state.adsConfig.exoclick.zoneId) || '6068261');
   const art = pickAdultAdArtwork(idx);
   const offers = [
-    { id: 'candy_ai', name: 'CANDY.AI 18+', badgeBg: '#e11d48', badgeInk: '#fff', title: 'Uncensored 18+ NSFW AI Waifu Sex Chat & Voice', cta: 'Chat 18+' },
-    { id: 'nud3_video', name: 'NUD3.ME 18+', badgeBg: '#9333ea', badgeInk: '#fff', title: 'AI Undress & 18+ Hentai Video Animator', cta: 'Animate 18+' },
-    { id: 'crushon_ai', name: 'CRUSHON.AI 18+', badgeBg: '#f59e0b', badgeInk: '#000', title: 'Zero-Filter 18+ Hentai & Erotic Roleplay AI', cta: 'Roleplay 18+' },
-    { id: 'spicychat_ai', name: 'SPICYCHAT 18+', badgeBg: '#e11d48', badgeInk: '#fff', title: 'No-Filter 18+ Adult Character AI & Voice Chat', cta: 'Chat 18+' }
+    { id: 'candy_ai', name: 'Candy.ai 18+', title: 'Uncensored 18+ NSFW AI Waifu Sex Chat', cta: 'Chat 18+ Uncensored' },
+    { id: 'nud3_video', name: 'Nud3.me 18+', title: 'AI Undress & 18+ Hentai Video Animator', cta: 'Undress / Animate 18+' },
+    { id: 'spicychat_ai', name: 'SpicyChat 18+', title: 'No-Filter 18+ Adult Roleplay & Voice AI', cta: 'Start 18+ Roleplay' }
   ];
-  const slotNum = idx <= 4 ? 0 : Math.floor((idx - 4) / 10) + 1;
-  const offer = offers[slotNum % offers.length];
+  const offer = offers[Math.floor(idx / 12) % offers.length];
   return `
-    <article class="masonry-item card is-in sponsored-card" style="--d:${idx % 8}">
+    <article class="masonry-item card is-in is-ad-card" style="--d:${idx % 8}">
       <div class="card-media" onclick="triggerAdClick('infeed_native','${esc(offer.id)}','grid-ad-${idx}','${esc(art.tag)}')">
         <img
           src="${esc(art.src)}"
@@ -1415,19 +1404,19 @@ function buildSponsoredCardHTML(idx = 12) {
           onerror="useAdFallback(this)"
         />
         <div class="card-float">
-          <span class="pill" style="background:${offer.badgeBg};color:${offer.badgeInk};font-weight:900;letter-spacing:0.03em;">${esc(offer.name)}</span>
-          <span class="pill" style="background:rgba(225,29,72,0.92);color:#fff;font-weight:700;">🔞 18+ AD</span>
+          <span class="pill" style="background:rgba(225,29,72,0.88);color:#fff;font-weight:700;">18+ NSFW AD</span>
+          <span class="pill">${esc(offer.name)}</span>
         </div>
-        <div style="position:absolute;left:0;right:0;bottom:0;padding:28px 10px 10px;background:linear-gradient(180deg,transparent,rgba(9,9,11,0.94));color:#fff;font-size:12px;font-weight:700;line-height:1.3;pointer-events:none;">
+        <div style="position:absolute;left:0;right:0;bottom:0;padding:24px 10px 10px;background:linear-gradient(180deg,transparent,rgba(0,0,0,0.92));color:#fff;font-size:12px;font-weight:650;line-height:1.3;">
           ${esc(offer.title)}
         </div>
       </div>
       <div class="card-body">
-        <button type="button" class="btn btn-tiny btn-primary" style="background:#e11d48;color:#fff;" onclick="triggerAdClick('infeed_native','${esc(offer.id)}','grid-ad-${idx}','${esc(art.tag)}')">
+        <button type="button" class="btn btn-tiny btn-primary" onclick="triggerAdClick('infeed_native','${esc(offer.id)}','grid-ad-${idx}','${esc(art.tag)}')">
           ${icon('spark')}<span class="btn-label">${esc(offer.cta)}</span>
         </button>
         <button type="button" class="btn btn-tiny btn-ghost" onclick="openProModal()">
-          <span class="btn-label">No ads</span>
+          <span class="btn-label">Hide ads</span>
         </button>
       </div>
     </article>
@@ -1505,11 +1494,7 @@ function buildPostCardHTML(post, idx) {
   `;
 }
 
-const AD_INTERVAL = 10;
-function shouldInsertAdAt(idx) {
-  if (!state.showAdsPreview || state.isPro) return false;
-  return idx === 4 || (idx > 4 && (idx - 4) % AD_INTERVAL === 0);
-}
+const AD_INTERVAL = 12;
 function trackAdImpression(placement = 'infeed_native') {
   if (state.isPro) return;
   fetch('/api/ads/impression', {
@@ -1524,7 +1509,7 @@ function cardsHtml(posts, offset) {
   const parts = [];
   posts.forEach((post, i) => {
     const idx = offset + i;
-    if (shouldInsertAdAt(idx)) { trackAdImpression("grid_native"); parts.push(buildSponsoredCardHTML(idx)); }
+    if (state.showAdsPreview && !state.isPro && idx > 0 && idx % AD_INTERVAL === 0) { trackAdImpression("grid_native"); parts.push(buildSponsoredCardHTML(idx)); }
     parts.push(buildPostCardHTML(post, idx));
   });
   return parts.join('');
@@ -1692,59 +1677,44 @@ function bindReelsLoader() {
 }
 
 function buildNativeReelAdHtml(idx) {
+  const aadsId = String((state.adsConfig && state.adsConfig.aads && state.adsConfig.aads.unitId) || '2460259');
+  const exoZoneId = String((state.adsConfig && state.adsConfig.exoclick && state.adsConfig.exoclick.zoneId) || '6068261');
   const art = pickAdultAdArtwork(idx);
   const activeTag = parseTagTokens()[0] || art.tag || 'hentai';
   const offers = [
     {
       id: 'candy_ai',
-      partner: 'CANDY.AI 18+ NSFW',
-      badgeBg: '#e11d48',
-      badgeInk: '#fff',
+      partner: 'Candy.ai 18+ NSFW',
       title: `Uncensored 18+ AI Sex Chat & Voice with ${activeTag.replace(/_/g, ' ')}`,
       sub: 'Send explicit prompts, custom kinks, and receive live 18+ NSFW photos & voice messages.',
-      cta: '🔞 Start 18+ Uncensored Chat →',
-      tags: ['candy_ai_18+', 'uncensored_ai', 'sex_chat', 'custom_waifu']
+      cta: 'Start 18+ Uncensored Chat →',
+      tags: ['18+_nsfw', 'uncensored_ai', 'sex_chat', 'custom_waifu']
     },
     {
       id: 'nud3_video',
-      partner: 'NUD3.ME 18+ AI STUDIO',
-      badgeBg: '#9333ea',
-      badgeInk: '#fff',
+      partner: 'Nud3.me 18+ AI Studio',
       title: '18+ AI Undress & Hentai Video Generator',
       sub: 'Turn any Rule34 or anime image into an explicit 60fps 18+ animated video in one click.',
-      cta: '🔞 Animate / Undress 18+ Now →',
-      tags: ['nud3_18+', 'ai_undress', 'animated_nsfw', 'rule34_ai']
+      cta: 'Animate / Undress 18+ Now →',
+      tags: ['18+_video', 'ai_undress', 'animated_nsfw', 'rule34_ai']
     },
     {
       id: 'crushon_ai',
-      partner: 'CRUSHON.AI 18+ UNFILTERED',
-      badgeBg: '#f59e0b',
-      badgeInk: '#000',
+      partner: 'CrushOn.ai 18+ Unfiltered',
       title: 'Zero-Filter 18+ Hentai & Erotic Roleplay AI',
       sub: 'No censorship, no NSFW blocks. Roleplay any scenario with 200,000+ adult anime characters.',
-      cta: '🔞 Play 18+ Roleplay Free →',
-      tags: ['crushon_18+', 'no_filter', 'hentai_chat', 'explicit']
-    },
-    {
-      id: 'spicychat_ai',
-      partner: 'SPICYCHAT.AI 18+ NSFW',
-      badgeBg: '#e11d48',
-      badgeInk: '#fff',
-      title: 'Uncensored 18+ Character AI Chatbot & Roleplay',
-      sub: 'Chat freely with 150,000+ community-created 18+ NSFW anime & gaming characters.',
-      cta: '🔞 Open SpicyChat 18+ →',
-      tags: ['spicychat_18+', 'nsfw_ai', 'character_chat', 'uncensored']
+      cta: 'Play 18+ Roleplay Free →',
+      tags: ['18+_roleplay', 'no_filter', 'hentai_chat', 'explicit']
     }
   ];
-  const slotNum = idx <= 4 ? 0 : Math.floor((idx - 4) / AD_INTERVAL) + 1;
-  const offer = offers[slotNum % offers.length];
+  const offer = offers[Math.floor(idx / AD_INTERVAL) % offers.length];
   return `
     <article class="reel post-card is-ad" data-kind="ad" data-ad-slot="${idx}">
       <div class="reel-stage is-still" style="position:relative;background:#09090b;overflow:hidden;">
-        <div style="position:relative;aspect-ratio:4 / 5;max-height:540px;width:100%;overflow:hidden;cursor:pointer;" onclick="triggerAdClick('infeed_native','${esc(offer.id)}','reel-ad-${idx}','${esc(activeTag)}')">
+        <div style="position:relative;aspect-ratio:4 / 5;max-height:520px;width:100%;overflow:hidden;cursor:pointer;" onclick="triggerAdClick('infeed_native','${esc(offer.id)}','reel-ad-${idx}','${esc(activeTag)}')">
           <img
             class="reel-still"
-            style="width:100%;height:100%;object-fit:cover;display:block;filter:contrast(1.05);"
+            style="width:100%;height:100%;object-fit:cover;display:block;filter: contrast(1.05);"
             src="${esc(art.src)}"
             data-proxy="${esc(art.proxy)}"
             data-fallback="${esc(art.fallback)}"
@@ -1753,20 +1723,24 @@ function buildNativeReelAdHtml(idx) {
             onerror="useAdFallback(this)"
           />
           <div style="position:absolute;top:12px;left:12px;right:12px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
-            <span class="pill" style="background:${offer.badgeBg};color:${offer.badgeInk};font-weight:900;padding:4px 10px;border-radius:999px;font-size:11px;letter-spacing:0.04em;">${esc(offer.partner)}</span>
-            <span class="pill" style="background:rgba(225,29,72,0.92);color:#fff;font-weight:700;padding:4px 10px;border-radius:999px;font-size:11px;">🔞 18+ NSFW AD</span>
+            <span class="pill" style="background:rgba(225,29,72,0.92);color:#fff;font-weight:700;padding:4px 10px;border-radius:999px;font-size:11px;letter-spacing:0.04em;">🔞 18+ NSFW SPONSORED POST</span>
+            <span class="pill" style="background:rgba(9,9,11,0.8);color:#e4e4e7;padding:4px 10px;border-radius:999px;font-size:11px;">${esc(offer.partner)}</span>
           </div>
-          <div style="position:absolute;left:0;right:0;bottom:0;padding:54px 16px 16px;background:linear-gradient(180deg,transparent 0%,rgba(9,9,11,0.88) 42%,#09090b 100%);">
-            <h3 style="margin:0 0 6px;font-size:18px;color:#fff;font-weight:800;line-height:1.25;">${esc(offer.title)}</h3>
+          <div style="position:absolute;left:0;right:0;bottom:0;padding:48px 16px 16px;background:linear-gradient(180deg,transparent 0%,rgba(9,9,11,0.88) 45%,#09090b 100%);">
+            <h3 style="margin:0 0 6px;font-size:18px;color:#fff;font-weight:700;line-height:1.25;">${esc(offer.title)}</h3>
             <p style="margin:0 0 12px;font-size:13px;color:#d4d4d8;line-height:1.45;">${esc(offer.sub)}</p>
             <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">
               ${offer.tags.map(t => `<span class="meta-badge" style="margin:0;background:rgba(225,29,72,0.18);border-color:rgba(225,29,72,0.4);color:#fda4af;font-size:11px;">#${esc(t)}</span>`).join('')}
             </div>
             <div style="display:flex;gap:8px;">
-              <button type="button" class="btn btn-primary" style="flex:1;background:#e11d48;color:#fff;font-weight:800;" onclick="event.stopPropagation();triggerAdClick('infeed_native','${esc(offer.id)}','reel-ad-${idx}','${esc(activeTag)}')">${esc(offer.cta)}</button>
+              <button type="button" class="btn btn-primary" style="flex:1;background:#e11d48;color:#fff;font-weight:700;" onclick="event.stopPropagation();triggerAdClick('infeed_native','${esc(offer.id)}','reel-ad-${idx}','${esc(activeTag)}')">${esc(offer.cta)}</button>
               <button type="button" class="btn btn-ghost" onclick="event.stopPropagation();openProModal()">Hide 18+ Ads</button>
             </div>
           </div>
+        </div>
+        <div style="width:100%;padding:10px 0;background:#09090b;border-top:1px solid var(--line);display:flex;flex-direction:column;align-items:center;gap:8px;">
+          <iframe src="https://syndication.exdynsrv.com/ads-iframe-display.php?idzone=${esc(exoZoneId)}&output=noscript&type=300x250" width="300" height="250" scrolling="no" marginwidth="0" marginheight="0" frameborder="0" style="background:transparent;color-scheme:normal;" loading="lazy" title="ExoClick 18+ Ad"></iframe>
+          <iframe data-aa="${esc(aadsId)}" src="//acceptable.a-ads.com/${esc(aadsId)}" style="border:0px;padding:0;width:100%;max-width:468px;height:60px;overflow:hidden;background-color:transparent;color-scheme:normal;" loading="lazy" title="A-ADS 18+"></iframe>
         </div>
       </div>
       <div class="reel-bar">
@@ -1782,7 +1756,7 @@ function reelsHtmlWithAds(posts, startOffset) {
   const parts = [];
   posts.forEach((post, i) => {
     const idx = startOffset + i;
-    if (shouldInsertAdAt(idx)) {
+    if (state.showAdsPreview && !state.isPro && idx > 0 && idx % AD_INTERVAL === 0) {
       trackAdImpression("reels_native");
       parts.push(buildNativeReelAdHtml(idx));
     }
