@@ -1,0 +1,7 @@
+node_modules/
+.vercel/
+*.log
+.DS_Store
+figma-*.png
+preview-gallery.png
+screenshot-*.png
