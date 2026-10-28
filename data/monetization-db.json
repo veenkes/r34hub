@@ -18,7 +18,7 @@
     "ghostPortalUrl": "https://hubcloud.dev/#/portal/signup/6881f5fb9c83c40001487e13/yearly",
     "sellApp30dUrl": "https://hubcloud.sell.app/product/30-day-cloud-pass-eur",
     "sellAppLifetimeUrl": "https://hubcloud.sell.app/product/lifetime-vip-cloud-pass",
-    "nowPaymentsApiKey": "np_live_r34hub_9941a8c3d2e7f001",
+    "nowPaymentsApiKey": "CYE88DJ-V2K4X3Z-QDQRXPF-0T65ZNB",
     "cryptoDiscountPercent": 20,
     "cryptoWallets": {
       "USDT_TRC20": "TNPeeaaFB7K9cmo4uQpcU32zGK8G1NYqeL",
@@ -74,7 +74,9 @@
         "description": "One-time payment for permanent Pro VIP access across up to 5 devices forever."
       }
     },
-    "nowPaymentsUrl": "https://nowpayments.io/payment/?iid=r34hub_vip"
+    "nowPaymentsUrl": "https://nowpayments.io/payment/?iid=r34hub_vip",
+    "nowPaymentsIpnSecret": "FZc9/jRJZ+oP57VEs+bG3jhKie+hWPdc",
+    "nowPaymentsStatus": "connected_live"
   },
   "adsConfig": {
     "adsEnabled": true,
@@ -209,6 +211,20 @@
     }
   },
   "licenses": [
+    {
+      "key": "R34H-8653-FAF9-058A",
+      "prefix": "R34H",
+      "tier": "annual",
+      "planName": "365-Day Annual Pro (€59.99/yr)",
+      "priceEur": 51.99,
+      "email": "emildv.work@gmail.com",
+      "status": "active",
+      "devicesUsed": 1,
+      "maxDevices": 5,
+      "createdAt": "2026-10-28T12:19:50.484Z",
+      "expiresAt": "2027-10-28T12:19:50.484Z",
+      "notes": "Auto-minted via nowpayments_usdttrc20 (payment_status:finished)"
+    },
     {
       "key": "SLX-C115-2CA4-1CEB",
       "prefix": "SLX",
@@ -451,6 +467,30 @@
   ],
   "orders": [
     {
+      "orderId": "ord_62166a1686",
+      "sessionId": "ord_62166a1686",
+      "provider": "nowpayments_usdttrc20",
+      "event": "payment_status:finished",
+      "email": "emildv.work@gmail.com",
+      "plan": "annual",
+      "tier": "annual",
+      "planName": "365-Day Annual Pro (€59.99/yr)",
+      "amountEur": 51.99,
+      "amountUsd": 51.99,
+      "currency": "USD (51.99) / EUR (€47.99)",
+      "cryptoCurrency": "USDT_TRC20",
+      "walletAddress": "TNPeeaaFB7K9cmo4uQpcU32zGK8G1NYqeL",
+      "txHash": null,
+      "licenseKey": "R34H-8653-FAF9-058A",
+      "status": "paid",
+      "invoice_url": "https://nowpayments.io/payment/?iid=5784417821",
+      "nowPaymentsInvoiceId": "5784417821",
+      "nowPaymentsError": null,
+      "externalCheckoutUrl": "https://nowpayments.io/payment/?iid=5784417821",
+      "createdAt": "2026-10-28T12:19:50.217Z",
+      "paidAt": "2026-10-28T12:19:50.484Z"
+    },
+    {
       "orderId": "ord_0121f7de23",
       "sessionId": "ord_0121f7de23",
       "provider": "nowpayments_usdt",
@@ -494,5 +534,15 @@
       "status": "paid",
       "createdAt": "2026-10-28T07:11:04.000Z"
     }
-  ]
+  ],
+  "gateways": {
+    "nowpayments": {
+      "accountEmail": "emildv.work@gmail.com",
+      "status": "connected_live",
+      "apiKey": "CYE88DJ-V2K4X3Z-QDQRXPF-0T65ZNB",
+      "ipnSecret": "FZc9/jRJZ+oP57VEs+bG3jhKie+hWPdc",
+      "ipnCallbackUrl": "https://r34hub-five.vercel.app/api/webhooks/payment",
+      "updatedAt": "2026-10-28T12:17:58.828Z"
+    }
+  }
 }

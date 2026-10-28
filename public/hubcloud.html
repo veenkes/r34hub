@@ -264,7 +264,7 @@
       const qPlan = params.get('plan');
       const qProvider = params.get('provider');
       const qEmail = params.get('email');
-      const qOrder = params.get('orderId') || params.get('session');
+      const qOrder = params.get('orderId') || params.get('order') || params.get('session');
       if (qEmail) document.getElementById('chk-email').value = qEmail;
       if (qPlan && PLAN_PRICES[qPlan]) {
         currentPlan = qPlan;
@@ -346,12 +346,18 @@
       document.getElementById('chk-minted-key').textContent = 'Waiting for payment confirmation (`POST /api/webhooks/payment`)…';
 
       const extBtn = document.getElementById('chk-external-gateway-link');
-      if (data.externalCheckoutUrl) {
-        extBtn.href = data.externalCheckoutUrl;
+      const liveInvoice = data.invoice_url || data.externalCheckoutUrl;
+      if (liveInvoice) {
+        extBtn.href = liveInvoice;
+        extBtn.textContent = data.invoice_url ? 'Pay Now on NOWPayments Live Invoice ↗' : 'Open External Checkout Portal ↗';
         extBtn.classList.remove('hidden');
       }
+      if (data.invoice_url && provider === 'crypto') {
+        document.getElementById('chk-status-label').textContent = `NOWPayments Live Invoice Ready (#${data.nowPaymentsInvoice ? data.nowPaymentsInvoice.id : data.orderId}) — Opening Checkout…`;
+        window.open(data.invoice_url, '_blank', 'noopener');
+      }
 
-      toast(`Created order ${data.orderId}`);
+      toast(`Created live order ${data.orderId}`);
       startOrderPolling();
     }
 

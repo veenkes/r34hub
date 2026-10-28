@@ -85,7 +85,8 @@
 3. Нажми **«Save All Payment Checkout Links & Crypto Wallets»**.
 4. Когда покупатель на `/hubcloud` выбирает крипто-оплату, он видит твой кошелек, переводит сумму со скидкой 20% и вставляет `TXID`. Заказ появляется в таблице `/admin` со статусом `VERIFYING_TX` — ты нажимаешь одну кнопку **«Fulfill & Issue Key»**, и покупателю мгновенно выдается и активируется ключ `SLX-XXXX-XXXX-XXXX`!
 
-### Шаг 2. Автоматический крипто-мерчант NOWPayments (0% чарджбэков, авто-вебхук)
+### Шаг 2. Автоматический крипто-мерчант NOWPayments (✅ УЖЕ ПОДКЛЮЧЕН В ПРОДАКШЕН И РАБОТАЕТ В LIVE-РЕЖИМЕ!)
+- **Статус интеграции:** `CONNECTED / LIVE` (аккаунт `emildv.work@gmail.com`, API Key `CYE88DJ-...` и IPN Secret `FZc9/jRJZ+...` уже прописаны в Vercel Environment Variables и `server.js`, проверка подписи `x-nowpayments-sig` по `HMAC-SHA512` и автовыдача ключей `R34H-XXXX-XXXX-XXXX` работают автоматически).
 - **Прямая ссылка на регистрацию:** https://account.nowpayments.io/create-account
 - **Инструкция по настройке (занимает 5 минут):**
   1. В кабинете NOWPayments перейди в **Store Settings -> Payment Settings**.

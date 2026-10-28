@@ -1303,9 +1303,40 @@ function loadMonetizationDb() {
   };
 }
 
-function paymentConfigForAdmin(config) {
+function getNowPaymentsCredentials(db) {
+  const gw = (db && db.gateways && db.gateways.nowpayments) || {};
+  const pc = (db && db.paymentConfig) || {};
+  const apiKey = process.env.NOWPAYMENTS_API_KEY || gw.apiKey || pc.nowPaymentsApiKey || "";
+  const ipnSecret = process.env.NOWPAYMENTS_IPN_SECRET || gw.ipnSecret || pc.nowPaymentsIpnSecret || "";
+  return {
+    apiKey: String(apiKey).trim(),
+    ipnSecret: String(ipnSecret).trim(),
+    status: apiKey ? "connected_live" : "not_configured",
+    accountEmail: gw.accountEmail || (db && db.owner && db.owner.email) || "emildv.work@gmail.com"
+  };
+}
+
+function sortObjectKeysRecursively(obj) {
+  if (Array.isArray(obj)) return obj.map(sortObjectKeysRecursively);
+  if (obj && typeof obj === "object") {
+    return Object.keys(obj).sort().reduce((acc, key) => {
+      acc[key] = sortObjectKeysRecursively(obj[key]);
+      return acc;
+    }, {});
+  }
+  return obj;
+}
+
+function paymentConfigForAdmin(config, db) {
   const copy = Object.assign({}, config || {});
+  const np = getNowPaymentsCredentials(db || monDb);
   delete copy.nowPaymentsApiKey;
+  delete copy.nowPaymentsIpnSecret;
+  copy.nowPaymentsConnected = Boolean(np.apiKey);
+  copy.nowPaymentsStatus = np.status;
+  copy.nowPaymentsAccountEmail = np.accountEmail;
+  copy.nowPaymentsApiKeyMasked = np.apiKey ? `${np.apiKey.slice(0, 7)}...****************` : "";
+  copy.nowPaymentsIpnSecretMasked = np.ipnSecret ? `${np.ipnSecret.slice(0, 5)}...****************` : "";
   return copy;
 }
 
@@ -1337,20 +1368,34 @@ function requireAdmin(req, res) {
   return true;
 }
 
+function verifyNowPaymentsSignature(req) {
+  const sigHeader = String(req.get("x-nowpayments-sig") || "").trim();
+  if (!sigHeader) return false;
+  const { ipnSecret } = getNowPaymentsCredentials(monDb);
+  if (!ipnSecret) return false;
+  const sorted = sortObjectKeysRecursively(req.body || {});
+  const hmac = crypto.createHmac("sha512", ipnSecret).update(JSON.stringify(sorted)).digest("hex");
+  return secretMatches(sigHeader.toLowerCase(), hmac.toLowerCase());
+}
+
 function requireWebhook(req, res) {
-  const sent = String(req.get('x-webhook-secret') || (req.body && req.body.secret) || '').trim();
+  if (verifyNowPaymentsSignature(req)) {
+    req.isNowPaymentsIpn = true;
+    return true;
+  }
+  const sent = String(req.get('x-webhook-secret') || req.query.secret || (req.body && req.body.secret) || '').trim();
   const expected = process.env.R34HUB_WEBHOOK_SECRET || (monDb.owner && monDb.owner.webhookSecret) || '';
   if (!secretMatches(sent, expected)) {
-    res.status(401).json({ ok: false, error: 'Webhook secret required' });
+    res.status(401).json({ ok: false, error: 'Valid x-nowpayments-sig or x-webhook-secret required' });
     return false;
   }
   return true;
 }
 
 function generateLicenseKeyString(prefix = "SHOP2", tierCode = "PRO") {
-  const cleanPrefix = ["SHOP2", "PATREON", "SLX"].includes(String(prefix).toUpperCase())
+  const cleanPrefix = ["R34H", "SHOP2", "PATREON", "SLX"].includes(String(prefix).toUpperCase())
     ? String(prefix).toUpperCase()
-    : "SHOP2";
+    : "R34H";
   const b1 = crypto.randomBytes(2).toString("hex").toUpperCase();
   const b2 = crypto.randomBytes(2).toString("hex").toUpperCase();
   const b3 = crypto.randomBytes(2).toString("hex").toUpperCase();
@@ -1568,55 +1613,58 @@ app.post("/api/admin/licenses/revoke", (req, res) => {
 });
 
 // 2. Payment Webhooks & Checkout Simulation (/api/checkout/create & /api/webhooks/payment)
-app.post("/api/checkout/create", (req, res) => {
-  const body = req.body || {};
-  const plan = body.plan || "annual";
-  const provider = body.provider || "stripe";
-  const email = String(body.email || "").trim();
-  const cryptoCurrency = body.cryptoCurrency || "XMR";
-  const planLookup = {
-    monthly: { id: "monthly", name: "Monthly Pro", tier: "monthly", amountEur: 7.00, days: 30 },
-    yearly: { id: "annual", name: "Annual Pro (€4.97/mo)", tier: "annual", amountEur: 59.99, days: 365 },
-    annual: { id: "annual", name: "Annual Pro (€4.97/mo)", tier: "annual", amountEur: 59.99, days: 365 },
-    "30days": { id: "30d_pass", name: "30-Day One-Time Pass", tier: "monthly", amountEur: 12.99, days: 30 },
-    "30d_pass": { id: "30d_pass", name: "30-Day One-Time Pass", tier: "monthly", amountEur: 12.99, days: 30 },
-    lifetime: { id: "lifetime", name: "Lifetime VIP Master Pass", tier: "lifetime", amountEur: 199.99, days: 36500 }
-  };
-  const selected = planLookup[plan] || planLookup.annual;
-  const isCrypto = provider === "crypto" || provider === "nowpayments";
-  const finalAmountEur = isCrypto ? Number((selected.amountEur * 0.8).toFixed(2)) : selected.amountEur;
-  const sessionId = `cs_live_${crypto.randomBytes(8).toString("hex")}`;
-
-  res.json({
-    ok: true,
-    sessionId,
-    provider: isCrypto ? `nowpayments_${cryptoCurrency.toLowerCase()}` : provider === "sellapp" ? "sellapp" : "stripe_hubcloud",
-    plan: selected.id,
-    planName: selected.name,
-    tier: selected.tier,
-    email,
-    amountEur: finalAmountEur,
-    currency: "EUR",
-    cryptoDiscountApplied: isCrypto ? "20% OFF" : null,
-    statementDescriptor: "HUBCLOUD.DEV * CLOUD SYNC",
-    checkoutUrl: `/hubcloud?session=${sessionId}&plan=${selected.id}&provider=${encodeURIComponent(provider)}&email=${encodeURIComponent(email)}`
-  });
-});
-
 app.post("/api/webhooks/payment", (req, res) => {
   monDb = loadMonetizationDb();
   if (!requireWebhook(req, res)) return;
-  const {
-    orderId: existingOrderId = "",
-    provider = "stripe_hubcloud",
-    event = "checkout.session.completed",
-    plan = "annual",
-    email = "",
-    amountEur
-  } = req.body || {};
+  const body = req.body || {};
 
-  const isCrypto = String(provider).includes("crypto") || String(provider).includes("nowpayments") || String(provider).includes("xmr");
-  const prefix = isCrypto ? "SLX" : String(provider).includes("patreon") ? "PATREON" : "SHOP2";
+  // Support NOWPayments IPN payload fields (order_id, payment_status, price_amount, pay_currency, payment_id)
+  const npStatus = body.payment_status ? String(body.payment_status).toLowerCase() : "";
+  const existingOrderId = String(body.orderId || body.order_id || "").trim();
+  const matchedOrder = existingOrderId
+    ? (monDb.orders || []).find(o => o.orderId === existingOrderId || o.sessionId === existingOrderId)
+    : null;
+
+  if (npStatus && !["finished", "confirmed", "sending"].includes(npStatus)) {
+    if (matchedOrder) {
+      matchedOrder.status = npStatus;
+      matchedOrder.nowPaymentsPaymentId = body.payment_id || matchedOrder.nowPaymentsPaymentId || null;
+      matchedOrder.updatedAt = new Date().toISOString();
+      saveMonetizationDb(monDb);
+    }
+    return res.json({
+      ok: true,
+      fulfilled: false,
+      payment_status: npStatus,
+      orderId: existingOrderId || null,
+      message: `Order status updated to ${npStatus}; awaiting finished/confirmed status to issue license key.`
+    });
+  }
+
+  // Idempotency: if order already has a licenseKey issued, return existing key
+  if (matchedOrder && matchedOrder.status === "paid" && matchedOrder.licenseKey) {
+    const existingLic = (monDb.licenses || []).find(l => l.key === matchedOrder.licenseKey);
+    return res.json({
+      ok: true,
+      idempotent: true,
+      order: matchedOrder,
+      license: existingLic || null,
+      licenseKey: matchedOrder.licenseKey
+    });
+  }
+
+  const provider = body.provider || (npStatus || req.isNowPaymentsIpn ? `nowpayments_${String(body.pay_currency || "crypto").toLowerCase()}` : "stripe_hubcloud");
+  const event = body.event || (npStatus ? `payment_status:${npStatus}` : "checkout.session.completed");
+  const plan = body.plan || (matchedOrder && matchedOrder.plan) || "annual";
+  const email = body.email || body.customer_email || (matchedOrder && matchedOrder.email) || "";
+  const amountEur = typeof body.amountEur === "number"
+    ? body.amountEur
+    : (typeof body.price_amount === "number" || (typeof body.price_amount === "string" && body.price_amount)
+      ? Number(body.price_amount)
+      : (matchedOrder ? matchedOrder.amountEur : undefined));
+
+  const isCrypto = Boolean(npStatus || req.isNowPaymentsIpn || String(provider).includes("crypto") || String(provider).includes("nowpayments") || String(provider).includes("xmr"));
+  const prefix = body.prefix || ((npStatus || req.isNowPaymentsIpn || String(provider).includes("nowpayments")) ? "R34H" : isCrypto ? "R34H" : String(provider).includes("patreon") ? "PATREON" : "SHOP2");
 
   const planLookup = {
     monthly: { tier: "monthly", name: "30-Day Monthly Pro (€7.00/mo)", priceEur: 7.00, days: 30 },
@@ -1889,7 +1937,8 @@ app.get("/api/admin/stats", (req, res) => {
       estimatedBannerRevenueEur: Number(bannerRev.toFixed(2)),
       totalRevenueEur: Number((subRevenue + cpaRev + bannerRev).toFixed(2))
     },
-    paymentConfig: paymentConfigForAdmin(monDb.paymentConfig),
+    paymentConfig: paymentConfigForAdmin(monDb.paymentConfig, monDb),
+    gateways: { nowpayments: { status: getNowPaymentsCredentials(monDb).status, accountEmail: getNowPaymentsCredentials(monDb).accountEmail, connected: Boolean(getNowPaymentsCredentials(monDb).apiKey), ipnCallbackUrl: "https://r34hub-five.vercel.app/api/webhooks/payment" } },
     adsConfig: monDb.adsConfig,
     licenses: monDb.licenses,
     orders: monDb.orders
@@ -1901,6 +1950,7 @@ app.get("/api/admin/stats", (req, res) => {
 app.get("/api/hubcloud/config", (req, res) => {
   monDb = loadMonetizationDb();
   const pc = monDb.paymentConfig || {};
+  const np = getNowPaymentsCredentials(monDb);
   res.json({
     ok: true,
     brand: pc.decoyBrandName || "HubCloud.dev",
@@ -1908,6 +1958,10 @@ app.get("/api/hubcloud/config", (req, res) => {
     descriptor: pc.stripeDescriptor || "HUBCLOUD.DEV * CLOUD SYNC",
     currency: pc.currency || "EUR",
     cryptoDiscountPercent: pc.cryptoDiscountPercent || 20,
+    nowPayments: {
+      connected: Boolean(np.apiKey),
+      status: np.status
+    },
     checkoutLinks: {
       stripeMonthlyUrl: pc.stripeMonthlyUrl || "",
       stripeAnnualUrl: pc.stripeAnnualUrl || "",
@@ -1921,26 +1975,27 @@ app.get("/api/hubcloud/config", (req, res) => {
   });
 });
 
-function createHubCloudOrderHandler(req, res) {
+async function createHubCloudOrderHandler(req, res) {
   monDb = loadMonetizationDb();
   const body = req.body || {};
   const plan = body.plan || "annual";
-  const provider = body.provider || "stripe_hubcloud";
+  const provider = body.provider || "nowpayments";
   const email = String(body.email || "").trim() || "buyer@r34hub.app";
   const cryptoCurrency = String(body.cryptoCurrency || "USDT_TRC20").toUpperCase();
   const txHash = String(body.txHash || "").trim();
 
   const planLookup = {
-    monthly: { id: "monthly", name: "Monthly Pro", tier: "monthly", amountEur: 7.00, days: 30 },
-    yearly: { id: "annual", name: "Annual Pro (€4.97/mo)", tier: "annual", amountEur: 59.99, days: 365 },
-    annual: { id: "annual", name: "Annual Pro (€4.97/mo)", tier: "annual", amountEur: 59.99, days: 365 },
-    "30days": { id: "30d_pass", name: "30-Day One-Time Pass", tier: "monthly", amountEur: 12.99, days: 30 },
-    "30d_pass": { id: "30d_pass", name: "30-Day One-Time Pass", tier: "monthly", amountEur: 12.99, days: 30 },
-    lifetime: { id: "lifetime", name: "Lifetime VIP Master Pass", tier: "lifetime", amountEur: 199.99, days: 36500 }
+    monthly: { id: "monthly", name: "Monthly Pro", tier: "monthly", amountEur: 7.00, amountUsd: 7.50, days: 30 },
+    yearly: { id: "annual", name: "Annual Pro (€4.97/mo)", tier: "annual", amountEur: 59.99, amountUsd: 64.99, days: 365 },
+    annual: { id: "annual", name: "Annual Pro (€4.97/mo)", tier: "annual", amountEur: 59.99, amountUsd: 64.99, days: 365 },
+    "30days": { id: "30d_pass", name: "30-Day One-Time Pass", tier: "monthly", amountEur: 12.99, amountUsd: 13.99, days: 30 },
+    "30d_pass": { id: "30d_pass", name: "30-Day One-Time Pass", tier: "monthly", amountEur: 12.99, amountUsd: 13.99, days: 30 },
+    lifetime: { id: "lifetime", name: "Lifetime VIP Master Pass", tier: "lifetime", amountEur: 199.99, amountUsd: 214.99, days: 36500 }
   };
   const selected = planLookup[plan] || planLookup.annual;
   const isCrypto = String(provider).includes("crypto") || String(provider).includes("nowpayments") || ["USDT_TRC20", "BTC", "SOL", "ETH", "TON", "XMR"].includes(String(provider).toUpperCase());
   const finalAmountEur = isCrypto ? Number((selected.amountEur * 0.8).toFixed(2)) : selected.amountEur;
+  const finalAmountUsd = isCrypto ? Number((selected.amountUsd * 0.8).toFixed(2)) : selected.amountUsd;
   const orderId = `ord_${crypto.randomBytes(5).toString("hex")}`;
   const now = new Date();
 
@@ -1949,31 +2004,78 @@ function createHubCloudOrderHandler(req, res) {
   const walletAddress = wallets[cryptoCurrency] || wallets.USDT_TRC20 || "";
 
   let externalCheckoutUrl = "";
-  if (!isCrypto) {
+  let invoiceUrl = "";
+  let nowPaymentsInvoice = null;
+  let nowPaymentsError = null;
+
+  if (isCrypto) {
+    const np = getNowPaymentsCredentials(monDb);
+    if (np.apiKey) {
+      try {
+        const npRes = await fetchWithTimeout("https://api.nowpayments.io/v1/invoice", {
+          method: "POST",
+          headers: {
+            "x-api-key": np.apiKey,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            price_amount: finalAmountUsd,
+            price_currency: "usd",
+            order_id: orderId,
+            order_description: `HubCloud.dev — ${selected.name} (${selected.days} Days Cloud Sync & Pro Key)`,
+            ipn_callback_url: "https://r34hub-five.vercel.app/api/webhooks/payment",
+            success_url: `https://r34hub-five.vercel.app/hubcloud?order=${encodeURIComponent(orderId)}&status=paid`,
+            cancel_url: "https://r34hub-five.vercel.app/hubcloud"
+          })
+        }, 8000);
+        const npData = await npRes.json().catch(() => ({}));
+        if (npRes.ok && npData && npData.invoice_url) {
+          invoiceUrl = npData.invoice_url;
+          externalCheckoutUrl = npData.invoice_url;
+          nowPaymentsInvoice = {
+            id: npData.id,
+            invoice_url: npData.invoice_url,
+            price_amount: npData.price_amount,
+            price_currency: npData.price_currency,
+            created_at: npData.created_at
+          };
+        } else {
+          nowPaymentsError = (npData && (npData.message || npData.error)) || `NOWPayments HTTP ${npRes.status}`;
+        }
+      } catch (err) {
+        nowPaymentsError = err.message || "NOWPayments invoice request failed";
+      }
+    }
+    if (!externalCheckoutUrl) {
+      externalCheckoutUrl = pc.nowPaymentsUrl || pc.sellAppLifetimeUrl || "";
+    }
+  } else {
     if (selected.id === "monthly") externalCheckoutUrl = pc.stripeMonthlyUrl || pc.ghostPortalUrl || "";
     else if (selected.id === "annual") externalCheckoutUrl = pc.stripeAnnualUrl || pc.ghostPortalUrl || "";
     else if (selected.id === "30d_pass") externalCheckoutUrl = pc.sellApp30dUrl || "";
     else if (selected.id === "lifetime") externalCheckoutUrl = pc.sellAppLifetimeUrl || "";
-  } else {
-    externalCheckoutUrl = pc.nowPaymentsUrl || pc.sellAppLifetimeUrl || "";
   }
 
   const orderRecord = {
     orderId,
     sessionId: orderId,
-    provider: isCrypto ? `crypto_${cryptoCurrency.toLowerCase()}` : provider,
+    provider: isCrypto ? (invoiceUrl ? "nowpayments_live" : `crypto_${cryptoCurrency.toLowerCase()}`) : provider,
     event: "order.created",
     email,
     plan: selected.id,
     tier: selected.tier,
     planName: selected.name,
     amountEur: finalAmountEur,
-    currency: isCrypto ? `EUR (${cryptoCurrency})` : "EUR",
+    amountUsd: finalAmountUsd,
+    currency: isCrypto ? `USD (${finalAmountUsd}) / EUR (€${finalAmountEur})` : "EUR",
     cryptoCurrency: isCrypto ? cryptoCurrency : null,
     walletAddress: isCrypto ? walletAddress : null,
     txHash: txHash || null,
     licenseKey: null,
     status: txHash ? "verifying_tx" : "pending_payment",
+    invoice_url: invoiceUrl || null,
+    nowPaymentsInvoiceId: nowPaymentsInvoice ? nowPaymentsInvoice.id : null,
+    nowPaymentsError,
     externalCheckoutUrl,
     createdAt: now.toISOString()
   };
@@ -1993,23 +2095,29 @@ function createHubCloudOrderHandler(req, res) {
     tier: selected.tier,
     email,
     amountEur: finalAmountEur,
+    price_amount: finalAmountUsd,
+    price_currency: "usd",
     currency: "EUR",
     cryptoCurrency: orderRecord.cryptoCurrency,
     walletAddress: orderRecord.walletAddress,
     cryptoDiscountApplied: isCrypto ? "20% OFF" : null,
     statementDescriptor: pc.stripeDescriptor || "HUBCLOUD.DEV * CLOUD SYNC",
+    invoice_url: invoiceUrl || externalCheckoutUrl || null,
+    nowPaymentsInvoice,
+    nowPaymentsError,
     externalCheckoutUrl,
     statusUrl: `/api/hubcloud/order-status?orderId=${encodeURIComponent(orderId)}`,
-    checkoutUrl: `/hubcloud?orderId=${encodeURIComponent(orderId)}&plan=${encodeURIComponent(selected.id)}&provider=${encodeURIComponent(provider)}&email=${encodeURIComponent(email)}`
+    checkoutUrl: invoiceUrl || `/hubcloud?orderId=${encodeURIComponent(orderId)}&plan=${encodeURIComponent(selected.id)}&provider=${encodeURIComponent(provider)}&email=${encodeURIComponent(email)}`
   });
 }
 
 app.post("/api/hubcloud/create-order", createHubCloudOrderHandler);
 app.post("/api/hubcloud/checkout", createHubCloudOrderHandler);
+app.post("/api/checkout/create", createHubCloudOrderHandler);
 
 app.get("/api/hubcloud/order-status", (req, res) => {
   monDb = loadMonetizationDb();
-  const orderId = String(req.query.orderId || req.query.session || "").trim();
+  const orderId = String(req.query.orderId || req.query.order || req.query.session || "").trim();
   if (!orderId) return res.status(400).json({ ok: false, error: "Missing orderId parameter" });
   const order = (monDb.orders || []).find(o => o.orderId === orderId || o.sessionId === orderId);
   if (!order) return res.status(404).json({ ok: false, error: "Order not found" });
@@ -2020,8 +2128,10 @@ app.get("/api/hubcloud/order-status", (req, res) => {
     plan: order.plan,
     planName: order.planName,
     amountEur: order.amountEur,
+    amountUsd: order.amountUsd,
     currency: order.currency,
     email: order.email,
+    invoice_url: order.invoice_url || order.externalCheckoutUrl || null,
     licenseKey: order.licenseKey || null,
     createdAt: order.createdAt
   });

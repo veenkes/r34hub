@@ -80,6 +80,7 @@
           <div>
             <label class="block text-zinc-400 mb-1">Key Prefix</label>
             <select id="gen-prefix" class="w-full bg-[#09090B] border subtle-border rounded-lg px-3 py-2 text-white font-mono">
+              <option value="R34H">R34H- (NOWPayments Live Pro)</option>
               <option value="SHOP2">SHOP2- (Stripe / Ghost)</option>
               <option value="SLX">SLX- (Sell.app / Crypto)</option>
               <option value="PATREON">PATREON- (Patreon VIP)</option>
@@ -137,7 +138,10 @@
     <section id="admintab-payments" class="hidden space-y-5">
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <div class="p-5 rounded-xl bg-[#121215] border subtle-border space-y-4">
-          <h3 class="text-sm font-bold text-white">Decoy Storefront (`HubCloud.dev`), Checkout Links & Crypto Wallets</h3>
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <h3 class="text-sm font-bold text-white">Decoy Storefront (`HubCloud.dev`), NOWPayments & Crypto Wallets</h3>
+            <span id="np-live-badge" class="px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-[11px] font-mono">● NOWPayments: CONNECTED / LIVE</span>
+          </div>
           <div class="space-y-3 text-xs">
             <div>
               <label class="block text-zinc-400 mb-1">Webhook Endpoint URL (Configure in Stripe / Sell.app / NOWPayments)</label>
@@ -384,6 +388,10 @@
       document.getElementById('pay-sellapp-30d').value = pc.sellApp30dUrl || '';
       document.getElementById('pay-sellapp-lifetime').value = pc.sellAppLifetimeUrl || '';
       document.getElementById('pay-nowpayments-url').value = pc.nowPaymentsUrl || '';
+      const npBadge = document.getElementById('np-live-badge');
+      if (npBadge && pc.nowPaymentsConnected) {
+        npBadge.textContent = `● NOWPayments LIVE (${pc.nowPaymentsApiKeyMasked || 'API Connected'})`;
+      }
       document.getElementById('wallet-usdt').value = cw.USDT_TRC20 || '';
       document.getElementById('wallet-btc').value = cw.BTC || '';
       document.getElementById('wallet-sol').value = cw.SOL || '';
