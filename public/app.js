@@ -1992,8 +1992,8 @@ function renderReels() {
       <h2>0 posts matched on ${esc(sourceLabel())}</h2>
       <p>Current filter: Rating <strong>${esc(RATING_LABEL[state.rating] || state.rating)}</strong>${state.tags ? ` · Tags: <strong>${esc(state.tags)}</strong>` : ''}</p>
       <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:14px;">
-        ${state.rating !== 'all' ? '<button class="btn btn-primary" type="button" onclick="setRating(\'all\', true)">🔞 Switch Rating to All (18+)</button>' : ''}
-        ${state.source !== 'multiboard' ? '<button class="btn btn-ghost" type="button" onclick="selectSourceInPlace(\'multiboard\', false)">⚡ Search Across All Boards</button>' : ''}
+        ${state.rating !== 'all' ? '<button class="btn btn-primary" type="button" onclick="setRating(\'all\', true)">Switch Rating to All (18+)</button>' : ''}
+        ${state.source !== 'multiboard' ? `<button class="btn btn-ghost" type="button" onclick="selectSourceInPlace('multiboard', false)">${icon('layers')} Search Across All Boards</button>` : ''}
         <button class="btn btn-ghost" type="button" onclick="resetAllFilters()">Reset Filters</button>
       </div>
     </div>`;
