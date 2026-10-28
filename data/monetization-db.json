@@ -21,12 +21,15 @@
     "nowPaymentsApiKey": "CYE88DJ-V2K4X3Z-QDQRXPF-0T65ZNB",
     "cryptoDiscountPercent": 20,
     "cryptoWallets": {
-      "USDT_TRC20": "TNPeeaaFB7K9cmo4uQpcU32zGK8G1NYqeL",
+      "USDT_TRC20": "TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX",
       "BTC": "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
       "SOL": "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU",
       "ETH": "0x71C7656EC7ab88b098defB751B7401B5f6d8976F",
       "TON": "UQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqEBI",
-      "XMR": "44Affq5kSiGBoZ4NMDwYtN18obc8AemS33DBLWs3H7otXft3XjrpDtQGv7SqSsaBYBb98uNbr2VBBEt7f2wfn3RVGQBEP3A"
+      "XMR": "44Affq5kSiGBoZ4NMDwYtN18obc8AemS33DBLWs3H7otXft3XjrpDtQGv7SqSsaBYBb98uNbr2VBBEt7f2wfn3RVGQBEP3A",
+      "usdt_trc20": "TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX",
+      "TRX": "TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX",
+      "trx": "TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX"
     },
     "plans": {
       "monthly": {
@@ -225,7 +228,9 @@
       "adUrl": "https://ad.a-ads.com/2460259",
       "dashboardUrl": "https://aads.com/ad-units/2460259/code/",
       "accountEmail": "emildv.work@gmail.com",
-      "status": "live"
+      "status": "live",
+      "payoutWallet": "TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX",
+      "payoutNetwork": "USDTTRC20"
     }
   },
   "licenses": [
@@ -497,7 +502,7 @@
       "amountUsd": 51.99,
       "currency": "USD (51.99) / EUR (€47.99)",
       "cryptoCurrency": "USDT_TRC20",
-      "walletAddress": "TNPeeaaFB7K9cmo4uQpcU32zGK8G1NYqeL",
+      "walletAddress": "TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX",
       "txHash": null,
       "licenseKey": "R34H-8653-FAF9-058A",
       "status": "paid",
@@ -520,7 +525,7 @@
       "amountEur": 47.99,
       "currency": "EUR (USDT_TRC20)",
       "cryptoCurrency": "USDT_TRC20",
-      "walletAddress": "TNPeeaaFB7K9cmo4uQpcU32zGK8G1NYqeL",
+      "walletAddress": "TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX",
       "txHash": null,
       "licenseKey": "SLX-C115-2CA4-1CEB",
       "status": "paid",
@@ -560,7 +565,9 @@
       "apiKey": "CYE88DJ-V2K4X3Z-QDQRXPF-0T65ZNB",
       "ipnSecret": "FZc9/jRJZ+oP57VEs+bG3jhKie+hWPdc",
       "ipnCallbackUrl": "https://r34hub-five.vercel.app/api/webhooks/payment",
-      "updatedAt": "2026-10-28T12:17:58.828Z"
+      "updatedAt": "2026-10-28T12:30:30.712Z",
+      "payoutWallet": "TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX",
+      "payoutNetwork": "USDTTRC20"
     }
   },
   "adNetworks": {
@@ -571,7 +578,20 @@
       "adUrl": "https://ad.a-ads.com/2460259",
       "dashboardUrl": "https://aads.com/ad-units/2460259/code/",
       "accountEmail": "emildv.work@gmail.com",
-      "status": "live"
+      "status": "live",
+      "payoutWallet": "TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX",
+      "payoutNetwork": "USDTTRC20"
     }
+  },
+  "cryptoWallets": {
+    "USDT_TRC20": "TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX",
+    "BTC": "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
+    "SOL": "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU",
+    "ETH": "0x71C7656EC7ab88b098defB751B7401B5f6d8976F",
+    "TON": "UQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqEBI",
+    "XMR": "44Affq5kSiGBoZ4NMDwYtN18obc8AemS33DBLWs3H7otXft3XjrpDtQGv7SqSsaBYBb98uNbr2VBBEt7f2wfn3RVGQBEP3A",
+    "usdt_trc20": "TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX",
+    "TRX": "TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX",
+    "trx": "TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX"
   }
 }

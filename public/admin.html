@@ -395,7 +395,7 @@
       if (npBadge && pc.nowPaymentsConnected) {
         npBadge.textContent = `● NOWPayments LIVE (${pc.nowPaymentsApiKeyMasked || 'API Connected'})`;
       }
-      document.getElementById('wallet-usdt').value = cw.USDT_TRC20 || '';
+      document.getElementById('wallet-usdt').value = cw.USDT_TRC20 || cw.usdt_trc20 || 'TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX';
       document.getElementById('wallet-btc').value = cw.BTC || '';
       document.getElementById('wallet-sol').value = cw.SOL || '';
       document.getElementById('wallet-eth').value = cw.ETH || '';
@@ -525,6 +525,9 @@
         nowPaymentsUrl: document.getElementById('pay-nowpayments-url').value.trim(),
         cryptoWallets: {
           USDT_TRC20: document.getElementById('wallet-usdt').value.trim(),
+          usdt_trc20: document.getElementById('wallet-usdt').value.trim(),
+          TRX: document.getElementById('wallet-usdt').value.trim(),
+          trx: document.getElementById('wallet-usdt').value.trim(),
           BTC: document.getElementById('wallet-btc').value.trim(),
           SOL: document.getElementById('wallet-sol').value.trim(),
           ETH: document.getElementById('wallet-eth').value.trim(),

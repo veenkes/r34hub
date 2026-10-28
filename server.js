@@ -1872,7 +1872,7 @@ app.post("/api/ads/click", (req, res) => {
   });
 });
 
-app.post("/api/admin/ads/update", (req, res) => {
+function adminUpdateConfigHandler(req, res) {
   monDb = loadMonetizationDb();
   if (!requireAdmin(req, res)) return;
   const body = req.body || {};
@@ -1906,7 +1906,27 @@ app.post("/api/admin/ads/update", (req, res) => {
     Object.assign(monDb.paymentConfig, restPayment);
     if (cryptoWallets && typeof cryptoWallets === "object") {
       monDb.paymentConfig.cryptoWallets = Object.assign({}, monDb.paymentConfig.cryptoWallets || {}, cryptoWallets);
+      if (cryptoWallets.USDT_TRC20 || cryptoWallets.usdt_trc20) {
+        const w = cryptoWallets.USDT_TRC20 || cryptoWallets.usdt_trc20;
+        monDb.paymentConfig.cryptoWallets.USDT_TRC20 = w;
+        monDb.paymentConfig.cryptoWallets.usdt_trc20 = w;
+        monDb.paymentConfig.cryptoWallets.TRX = cryptoWallets.TRX || w;
+        monDb.paymentConfig.cryptoWallets.trx = cryptoWallets.trx || w;
+        monDb.gateways = monDb.gateways || {};
+        monDb.gateways.nowpayments = Object.assign({}, monDb.gateways.nowpayments || {}, { payoutWallet: w, payoutNetwork: "USDTTRC20" });
+        monDb.adNetworks = monDb.adNetworks || {};
+        monDb.adNetworks.aads = Object.assign({}, monDb.adNetworks.aads || {}, { payoutWallet: w, payoutNetwork: "USDTTRC20" });
+      }
     }
+  }
+  if (body.cryptoWallets && typeof body.cryptoWallets === "object") {
+    monDb.paymentConfig.cryptoWallets = Object.assign({}, monDb.paymentConfig.cryptoWallets || {}, body.cryptoWallets);
+  }
+  if (body.gateways && typeof body.gateways === "object") {
+    monDb.gateways = Object.assign({}, monDb.gateways || {}, body.gateways);
+  }
+  if (body.adNetworks && typeof body.adNetworks === "object") {
+    monDb.adNetworks = Object.assign({}, monDb.adNetworks || {}, body.adNetworks);
   }
 
   saveMonetizationDb(monDb);
@@ -1978,7 +1998,9 @@ app.get("/api/hubcloud/config", (req, res) => {
       sellAppLifetimeUrl: pc.sellAppLifetimeUrl || "",
       nowPaymentsUrl: pc.nowPaymentsUrl || ""
     },
-    cryptoWallets: pc.cryptoWallets || {},
+    cryptoWallets: Object.assign({ USDT_TRC20: "TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX", usdt_trc20: "TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX", TRX: "TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX", trx: "TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX" }, pc.cryptoWallets || {}),
+    gateways: { nowpayments: { status: np.status, connected: Boolean(np.apiKey), payoutWallet: (monDb.gateways && monDb.gateways.nowpayments && monDb.gateways.nowpayments.payoutWallet) || "TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX", network: "USDTTRC20" } },
+    adNetworks: monDb.adNetworks || { aads: { enabled: true, unitId: "2460259", payoutWallet: "TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX", network: "USDTTRC20" } },
     plans: pc.plans || {}
   });
 });
@@ -1987,7 +2009,7 @@ async function createHubCloudOrderHandler(req, res) {
   monDb = loadMonetizationDb();
   const body = req.body || {};
   const plan = body.plan || "annual";
-  const provider = body.provider || "nowpayments";
+  const provider = body.provider || body.paymentMethod || "nowpayments";
   const email = String(body.email || "").trim() || "buyer@r34hub.app";
   const cryptoCurrency = String(body.cryptoCurrency || "USDT_TRC20").toUpperCase();
   const txHash = String(body.txHash || "").trim();
@@ -2009,7 +2031,7 @@ async function createHubCloudOrderHandler(req, res) {
 
   const pc = monDb.paymentConfig || {};
   const wallets = pc.cryptoWallets || {};
-  const walletAddress = wallets[cryptoCurrency] || wallets.USDT_TRC20 || "";
+  const walletAddress = wallets[cryptoCurrency] || wallets[cryptoCurrency.toLowerCase()] || wallets.USDT_TRC20 || wallets.usdt_trc20 || "TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX";
 
   let externalCheckoutUrl = "";
   let invoiceUrl = "";
