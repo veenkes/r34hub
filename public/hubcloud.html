@@ -666,23 +666,23 @@
         </div>
       </section>
 
-      <!-- 4 PRICING CARDS (Includes Impulse 7-Day Starter Pass €2.49) -->
+      <!-- 4 PRICING CARDS (Conversion-Optimized: €9.99 7d, €14.99 30d, €1.99/mo Annual €23.99/yr, €39.99 Lifetime) -->
       <section class="plans-grid" role="radiogroup" aria-label="Premium Plans">
         <div class="plan-card" id="card-starter7d" onclick="selectPlan('starter7d')">
           <span class="plan-badge" style="background:#38bdf8;color:#04131d;">Fast Trial</span>
           <div>
-            <h3 class="plan-name">7 Days Starter</h3>
-            <p class="plan-sub">Impulse 7-day crypto pass</p>
+            <h3 class="plan-name">14 Days Starter</h3>
+            <p class="plan-sub">14 Days Full Access • Instant crypto checkout</p>
             <div class="plan-price">
-              <span class="plan-strike">€18.99</span>
-              <strong>€14.99</strong>
-              <span>/ 7d</span>
+              <span class="plan-strike">€14.99</span>
+              <strong>€11.99</strong>
+              <span>/ 14d</span>
             </div>
             <ul class="plan-perks">
-              <li>100% zero ads for 7 full days</li>
+              <li>100% zero ads for 14 full days</li>
               <li>All 11 boards &amp; Multi-Board search</li>
               <li>Original HD video &amp; batch ZIP</li>
-              <li>Instant key on screen &amp; email</li>
+              <li>Works across up to 5 devices</li>
             </ul>
           </div>
           <div class="plan-select-indicator" id="btn-sel-starter7d">Select plan</div>
@@ -693,9 +693,9 @@
             <h3 class="plan-name">30 Days Access</h3>
             <p class="plan-sub">One-time crypto payment • No auto-rebill</p>
             <div class="plan-price">
-              <span class="plan-strike">€24.99</span>
-              <strong>€19.99</strong>
-              <span>/ 30d</span>
+              <span class="plan-strike">€18.99</span>
+              <strong>€13.99</strong>
+              <span>/ mo</span>
             </div>
             <ul class="plan-perks">
               <li>100% zero ads across Grid &amp; Reels</li>
@@ -708,13 +708,13 @@
         </div>
 
         <div class="plan-card is-selected" id="card-annual" onclick="selectPlan('annual')">
-          <span class="plan-badge">Save 29% • Best Value</span>
+          <span class="plan-badge">Save 60% • Best Value</span>
           <div>
             <h3 class="plan-name">Annual Pro (365 Days)</h3>
-            <p class="plan-sub">€47.99/yr in crypto • Full year pass</p>
+            <p class="plan-sub">€23.99/yr in crypto • Full year pass</p>
             <div class="plan-price">
-              <span class="plan-strike">€7.00</span>
-              <strong>€3.99</strong>
+              <span class="plan-strike">€4.99</span>
+              <strong>€1.99</strong>
               <span>/ mo</span>
             </div>
             <ul class="plan-perks">
@@ -732,8 +732,8 @@
             <h3 class="plan-name">Lifetime VIP</h3>
             <p class="plan-sub">Pay once, keep forever • Never expires</p>
             <div class="plan-price">
-              <span class="plan-strike">€199.99</span>
-              <strong>€159.99</strong>
+              <span class="plan-strike">€79.99</span>
+              <strong>€39.99</strong>
               <span>once</span>
             </div>
             <ul class="plan-perks">
@@ -752,7 +752,7 @@
         <!-- LEFT COLUMN: CRYPTO CHECKOUT BOX -->
         <section class="checkout-box" id="checkout-panel">
           <div class="checkout-head">
-            <h2 id="chk-heading">Crypto Checkout: Annual Pro — €47.99 (365 Days)</h2>
+            <h2 id="chk-heading">Crypto Checkout: Annual Pro — €23.99 (365 Days)</h2>
             <p>Your license key (<code style="color:#34d399;">R34PRO-XXXX-XXXX-XXXX</code>) is displayed on screen and emailed to you immediately after payment.</p>
           </div>
 
@@ -783,7 +783,7 @@
 
           <button type="button" class="btn-crypto-main" onclick="startCryptoCheckout()">
             <span>⚡</span>
-            <span id="btn-crypto-label">Pay with Cryptocurrency (€47.99) →</span>
+            <span id="btn-crypto-label">Pay with Cryptocurrency (€23.99) →</span>
           </button>
 
           <div id="crypto-drawer" class="drawer-box hidden">
@@ -866,10 +866,10 @@
     };
 
     const PLANS = {
-      starter7d: { cryptoEur: 14.99, name: '7 Days Starter — €14.99 (7 Days)' },
-      monthly: { cryptoEur: 19.99, name: '30 Days Access — €19.99 (30 Days)' },
-      annual: { cryptoEur: 47.99, name: 'Annual Pro — €47.99 (365 Days)' },
-      lifetime: { cryptoEur: 159.99, name: 'Lifetime VIP — €159.99 (Forever)' }
+      starter7d: { cryptoEur: 11.99, name: '14 Days Starter — €11.99 (14 Days)' },
+      monthly: { cryptoEur: 13.99, name: '30 Days Access — €13.99 (30 Days)' },
+      annual: { cryptoEur: 23.99, name: 'Annual Pro — €23.99 (365 Days · €1.99/mo)' },
+      lifetime: { cryptoEur: 39.99, name: 'Lifetime VIP — €39.99 (Forever)' }
     };
 
     function showToast(msg) {

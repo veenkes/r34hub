@@ -2824,7 +2824,7 @@ function maybeShowSmartProBooster(reason = 'power_user') {
       <button type="button" onclick="this.closest('#smart-pro-booster').remove()" style="border:0;background:transparent;color:#9ca3af;font-size:16px;line-height:1;padding:4px;cursor:pointer;" aria-label="Dismiss">×</button>
     </div>
     <div style="font-size:13px;font-weight:700;color:#fff;line-height:1.35;">Unlock 100% Ad-Free Browsing, Original 4K HD Streams & Unlimited Collections</div>
-    <div style="font-size:12px;color:#9ca3af;">Instant crypto key activation across 5 devices — try <strong style="color:#34d399;">7 Days for €14.99</strong> or <strong style="color:#fff;">€3.99/mo Annual</strong>.</div>
+    <div style="font-size:12px;color:#9ca3af;">Instant crypto key activation across 5 devices — try <strong style="color:#34d399;">14 Days for €11.99</strong> or <strong style="color:#fff;">€1.99/mo Annual (€23.99/yr)</strong>.</div>
     <div style="display:flex;gap:8px;margin-top:4px;">
       <a href="/premium" class="btn btn-tiny btn-primary" style="flex:1;justify-content:center;background:#10b981;color:#04130d;font-weight:800;min-height:38px;">Upgrade with Crypto →</a>
       <button type="button" class="btn btn-tiny btn-ghost" style="min-height:38px;" onclick="this.closest('#smart-pro-booster').remove()">Later</button>
