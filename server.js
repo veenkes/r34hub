@@ -1028,7 +1028,7 @@ async function gatherSources(targetSources, params, budgetMs) {
 app.get('/api/posts', async (req, res) => {
   const source = String(req.query.source || req.query.board || 'all');
   const tags = String(req.query.tags || '');
-  const rating = String(req.query.rating || 'all'); // 's', 'q', 'e', 'all'
+  const rating = String(req.query.rating || 's'); // 's', 'q', 'e', 'all'
   const sort = String(req.query.sort || 'latest'); // 'latest', 'score', 'trending', 'video', 'no_ai'
   const page = Math.max(1, parseInt(req.query.page || '1', 10));
   const limit = Math.min(48, Math.max(8, parseInt(req.query.limit || '24', 10)));
@@ -1051,11 +1051,11 @@ app.get('/api/posts', async (req, res) => {
     let partial = false;
 
     if (source === 'all') {
-      let targetSources = ['paheal', 'xbooru', 'yandere', 'danbooru', 'tbib'];
+      let targetSources = ['safebooru', 'danbooru', 'konachan', 'yandere'];
       if (sort === 'video') {
-        targetSources = ['paheal', 'xbooru', 'sakugabooru', 'danbooru'];
-      } else if (rating === 's') {
-        targetSources = ['safebooru', 'danbooru', 'konachan', 'yandere'];
+        targetSources = ['sakugabooru', 'danbooru', 'paheal'];
+      } else if (rating === 'e' || rating === 'all') {
+        targetSources = ['paheal', 'xbooru', 'yandere', 'danbooru', 'tbib'];
       }
 
       const perSourceLimit = Math.min(20, Math.max(8, Math.ceil(limit / 2)));
@@ -2304,7 +2304,13 @@ app.post("/api/hubcloud/submit-tx", (req, res) => {
   res.json({ ok: true, order });
 });
 
-// 5. Production SEO Endpoints (/robots.txt & /sitemap.xml)
+// 5. Production SEO Endpoints (/robots.txt, /sitemap.xml & IndexNow verification)
+app.get("/r34hub9f4a8821emil2026.txt", (req, res) => {
+  res.setHeader("Content-Type", "text/plain; charset=utf-8");
+  res.setHeader("Cache-Control", "public, max-age=86400");
+  res.send("r34hub9f4a8821emil2026");
+});
+
 app.get("/robots.txt", (req, res) => {
   const proto = req.get("x-forwarded-proto") || req.protocol || "https";
   const host = req.get("host") || "r34hub-five.vercel.app";

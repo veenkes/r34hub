@@ -134,6 +134,10 @@
       "destination": "/api/index.js"
     },
     {
+      "source": "/r34hub9f4a8821emil2026.txt",
+      "destination": "/api/index.js"
+    },
+    {
       "source": "/robots.txt",
       "destination": "/api/index.js"
     },

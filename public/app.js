@@ -2,7 +2,7 @@ const state = {
   activeTab: 'home',
   source: 'all',
   tags: '',
-  rating: 'all',
+  rating: 's',
   sort: 'score',
   page: 1,
   isLoading: false,
@@ -90,7 +90,7 @@ function feedQuery() {
   const params = new URLSearchParams();
   if (state.sort && state.sort !== 'score') params.set('filter[sort]', state.sort);
   if (state.tags.trim()) params.set('tags', state.tags.trim());
-  if (state.rating && state.rating !== 'all') params.set('rating', state.rating);
+  if (state.rating && state.rating !== 's') params.set('rating', state.rating);
   return params.toString();
 }
 
@@ -196,7 +196,7 @@ function renderActiveTagPills() {
   const countEl = document.getElementById('active-filter-count');
   const tokens = parseTagTokens();
   let filters = tokens.length;
-  if (state.rating !== 'all') filters += 1;
+  if (state.rating !== 's') filters += 1;
   if (state.sort !== 'score') filters += 1;
   if (state.source !== 'all') filters += 1;
   if (countEl) {
@@ -423,8 +423,8 @@ function renderHomeBoards() {
 }
 
 function featuredRating(sourceId) {
-  if (sourceId === 'safebooru') return 's';
-  return 'all';
+  if (sourceId === 'paheal' || sourceId === 'rule34xxx' || sourceId === 'xbooru') return 'all';
+  return 's';
 }
 
 function paintFeatured(row, items) {
@@ -622,13 +622,13 @@ window.resetAllFilters = function() {
   state.tags = '';
   state.source = 'all';
   state.sort = 'score';
-  state.rating = 'all';
+  state.rating = 's';
   state.page = 1;
   const input = document.getElementById('tag-search-input');
   if (input) input.value = '';
   const clearBtn = document.getElementById('clear-search-btn');
   if (clearBtn) clearBtn.classList.add('hidden');
-  paintChoice('.rating-btn', 'rating', 'all');
+  paintChoice('.rating-btn', 'rating', 's');
   paintChoice('.sort-btn', 'sort', 'score');
   renderSourcePills();
   showBrowseAndReload();
@@ -1163,17 +1163,19 @@ function toggleCardVideo(media) {
 }
 
 const ADULT_FALLBACK_THUMBS = [
-  'https://xbooru.com/thumbnails/257/thumbnail_66ade81490698aa620f16b9eddc415ef.jpg',
-  'https://xbooru.com/thumbnails/105/thumbnail_513ed2466c54fe4feaea546d8e33519c.jpg',
-  'https://xbooru.com/thumbnails/136/thumbnail_276a23befae5fb9d516c394229ece0c7.jpg',
-  'https://xbooru.com/thumbnails/129/thumbnail_693397d7d43639a89e9bcaab439c2d6b.jpg'
+  'https://xbooru.com/images/257/66ade81490698aa620f16b9eddc415ef.jpeg',
+  'https://xbooru.com/images/105/513ed2466c54fe4feaea546d8e33519c.jpeg',
+  'https://xbooru.com/images/136/276a23befae5fb9d516c394229ece0c7.png',
+  'https://xbooru.com/images/129/693397d7d43639a89e9bcaab439c2d6b.png',
+  'https://xbooru.com/images/131/6e67b0bbe2adfeba20fb28cbff1e4dbb.jpeg',
+  'https://xbooru.com/images/105/27d2e5faf95f990fd83a597d4b6b6c89.jpeg'
 ];
 
 function pickAdultAdArtwork(idx = 0) {
+  // Only use feed posts if they are explicitly rated 'e'; otherwise always use our dedicated 18+ adult artwork pool so ads are 18+ even when the feed is on Safe ('s') default!
   const explicitPosts = (state.posts || []).filter(p => p && p.rating === 'e' && !looksLikeVideo(cardStill(p).src));
-  const pool = explicitPosts.length ? explicitPosts : (state.posts || []).filter(p => p && !looksLikeVideo(cardStill(p).src));
-  if (pool.length) {
-    const chosen = pool[(idx * 3 + 1) % pool.length];
+  if (explicitPosts.length) {
+    const chosen = explicitPosts[(idx * 3 + 1) % explicitPosts.length];
     const shown = cardStill(chosen);
     const charTag = (chosen.characterTags && chosen.characterTags[0]) || (chosen.tags && chosen.tags[0]) || 'waifu';
     return {
@@ -1182,8 +1184,9 @@ function pickAdultAdArtwork(idx = 0) {
       tag: charTag
     };
   }
-  const fb = ADULT_FALLBACK_THUMBS[idx % ADULT_FALLBACK_THUMBS.length];
-  return { src: fb, proxy: '', tag: 'hentai_waifu' };
+  const rawUrl = ADULT_FALLBACK_THUMBS[Math.floor(idx / 3) % ADULT_FALLBACK_THUMBS.length];
+  const proxied = `/api/media?url=${encodeURIComponent(rawUrl)}&referer=${encodeURIComponent('https://xbooru.com/')}`;
+  return { src: rawUrl, proxy: proxied, tag: 'hentai_waifu' };
 }
 
 function buildSponsoredCardHTML(idx = 12) {
