@@ -1721,27 +1721,82 @@ body.mode-reels #grid-density-bar { display: none !important; }
     bottom: calc(74px + env(safe-area-inset-bottom)) !important;
   }
 
-  /* Enforce >= 44x44px touch targets on mobile */
+  /* Enforce >= 44x44px touch targets across EVERY interactive element on mobile */
   .icon-btn, .icon-btn.bare, .reel .icon-btn, .x, .go-btn, .domain-btn.is-compact, .player-btn {
     min-width: 44px !important;
     min-height: 44px !important;
     width: 44px !important;
     height: 44px !important;
   }
-  .domain-btn, .filter-pill, .btn, .choice, .side-link, .domain-option, .tags-toggle {
+  .topnav .brand {
+    display: inline-flex !important;
+    align-items: center !important;
+    min-height: 44px !important;
+    min-width: 44px !important;
+    padding: 0 10px !important;
+  }
+  .domain-btn, .filter-pill, .btn, .choice, .side-link, .domain-option, .tags-toggle,
+  .view-mode-btn, .density-btn, .card-body .btn, .board-head, .linkish,
+  .field, select.field, input.field, .search input, .player-range,
+  .token, .token button, .quick-tag, .tag, .tag button, .tag-block {
     min-height: 44px !important;
   }
-  .view-mode-btn, .density-btn {
-    min-height: 40px !important;
-    min-width: 40px !important;
+  .view-mode-btn, .density-btn, .tag-block {
+    min-width: 44px !important;
     padding: 6px 10px !important;
+  }
+  .linkish {
+    display: inline-flex !important;
+    align-items: center !important;
+    padding: 6px 8px !important;
+  }
+
+
+  /* Ultra-compact Mobile Feed Header (< 768px): keep first post row above the fold! */
+  .posts-chrome {
+    gap: 6px !important;
+    margin-bottom: 8px !important;
+  }
+  main.wrap {
+    padding-top: 6px !important;
+  }
+  .posts-tools {
+    flex-wrap: nowrap !important;
+    gap: 6px !important;
+  }
+  .posts-domain {
+    flex-wrap: nowrap !important;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+  }
+  #multiboard-pill-btn,
+  .posts-domain > .filter-pill,
+  #share-feed-btn,
+  .view-mode-seg {
+    display: none !important;
+  }
+  #feed-status-badge {
+    max-width: 96px !important;
+  }
+  .density-btn {
+    min-width: 34px !important;
+    padding: 4px 6px !important;
+  }
+  #visit-board, .page-head {
+    display: none !important;
+  }
+  .feed-search-wrap #search-history-bar:empty {
+    display: none !important;
+  }
+  .feed-search-wrap #search-history-bar {
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    scrollbar-width: none !important;
+    margin-top: 4px !important;
   }
   .card-body .btn {
-    min-height: 42px !important;
-  }
-  .token button, .quick-tag {
-    min-height: 40px !important;
-    padding: 6px 10px !important;
+    min-height: 44px !important;
+    font-size: 12.5px !important;
   }
 
   /* Hide redundant text labels on ultra-narrow mobile top bar to prevent collisions */

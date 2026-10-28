@@ -285,6 +285,16 @@
           <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-arrow"/></svg>
         </button>
       </div>
+      <div id="home-popular-tags" class="filter-strip" style="margin-top:12px;">
+        <button type="button" class="filter-pill" onclick="applySavedSearchChip('genshin_impact')">genshin impact</button>
+        <button type="button" class="filter-pill" onclick="applySavedSearchChip('blue_archive')">blue archive</button>
+        <button type="button" class="filter-pill" onclick="applySavedSearchChip('hololive')">hololive</button>
+        <button type="button" class="filter-pill" onclick="applySavedSearchChip('zenless_zone_zero')">zenless zone zero</button>
+        <button type="button" class="filter-pill" onclick="applySavedSearchChip('honkai:_star_rail')">honkai: star rail</button>
+        <button type="button" class="filter-pill" onclick="applySavedSearchChip('frieren')">frieren</button>
+        <button type="button" class="filter-pill" onclick="applySavedSearchChip('overwatch')">overwatch</button>
+        <button type="button" class="filter-pill" onclick="applySavedSearchChip('animated')">animated</button>
+      </div>
       <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-top:28px;">
         <div>
           <h2 class="section-title" style="margin:0;">Featured</h2>
@@ -335,7 +345,11 @@
           </div>
         </div>
         <div id="collections-bar" class="filter-strip" style="padding:0;"></div>
-        <input id="saved-search-input" class="field" type="search" placeholder="Filter saved posts by tag or board…" oninput="renderSavedPosts()" style="padding:8px 12px;font-size:13px;background:#0d0d12;border:1px solid var(--line);border-radius:10px;" />
+        <div id="saved-pinned-wrap" class="hidden" style="padding-top:8px;border-top:1px solid var(--line);">
+          <div class="kicker" style="margin-bottom:6px;">Pinned Searches</div>
+          <div id="saved-pinned-list" class="filter-strip" style="padding:0;"></div>
+        </div>
+        <input id="saved-search-input" class="field" type="search" placeholder="Filter saved posts by tag or board…" oninput="renderSavedPosts()"  />
       </div>
       <div id="saved-grid" class="masonry-grid"></div>
     </section>
@@ -371,7 +385,7 @@
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;">
             <div>
               <label class="row-label" style="display:block;margin-bottom:6px;">Default Rating</label>
-              <select id="pref-default-rating" class="field" onchange="saveUserPref('defaultRating', this.value)" style="width:100%;padding:8px 10px;border-radius:10px;background:#0d0d12;border:1px solid var(--line);">
+              <select id="pref-default-rating" class="field" onchange="saveUserPref('defaultRating', this.value)" style="width:100%;">
                 <option value="s">Safe (Default)</option>
                 <option value="q">Questionable</option>
                 <option value="e">Explicit 18+</option>
@@ -380,7 +394,7 @@
             </div>
             <div>
               <label class="row-label" style="display:block;margin-bottom:6px;">Grid Thumbnail Size</label>
-              <select id="pref-grid-density" class="field" onchange="setGridDensity(this.value)" style="width:100%;padding:8px 10px;border-radius:10px;background:#0d0d12;border:1px solid var(--line);">
+              <select id="pref-grid-density" class="field" onchange="setGridDensity(this.value)" style="width:100%;">
                 <option value="s">Compact (Small)</option>
                 <option value="m" selected>Comfort (Medium)</option>
                 <option value="l">Large (HD Cards)</option>
@@ -388,7 +402,7 @@
             </div>
             <div>
               <label class="row-label" style="display:block;margin-bottom:6px;">Reels Video Autoplay</label>
-              <select id="pref-autoplay" class="field" onchange="saveUserPref('autoplayReels', this.value === '1')" style="width:100%;padding:8px 10px;border-radius:10px;background:#0d0d12;border:1px solid var(--line);">
+              <select id="pref-autoplay" class="field" onchange="saveUserPref('autoplayReels', this.value === '1')" style="width:100%;">
                 <option value="1" selected>Autoplay On</option>
                 <option value="0">Click to Play</option>
               </select>
@@ -519,10 +533,7 @@
             <button id="modal-ai-prompt-btn" class="btn btn-ghost btn-tiny" type="button"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-spark"/></svg>Copy Prompt</button>
             <button id="modal-ai-similar-btn" class="btn btn-ghost btn-tiny" type="button"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-search"/></svg>Find Similar</button>
           </div>
-          <div class="pair" style="margin-top:6px">
-            <button id="modal-ai-chat-btn" class="btn btn-primary btn-tiny" type="button"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chat"/></svg>AI Chat 18+</button>
-            <button id="modal-ai-video-btn" class="btn btn-ghost btn-tiny" type="button"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-wand"/></svg>Animate 18+</button>
-          </div>
+
           <div id="modal-ai-prompt-box" class="hidden" style="margin-top:8px;padding:8px;border-radius:8px;background:#09090b;border:1px solid var(--line);font-family:monospace;font-size:11px;color:var(--muted);word-break:break-word;"></div>
         </div>
 
