@@ -863,10 +863,14 @@ async function fetchFromSourceRaw(sourceId, params) {
       return fetchMoebooru('yandere', 'yande.re', 'Yande.re', params);
     case 'konachan':
       try {
-        return await fetchMoebooru('konachan', 'konachan.com', 'Konachan', params);
+        return await fetchMoebooru('konachan', 'konachan.net', 'Konachan', params);
       } catch (err) {
-        const fallback = await fetchMoebooru('yandere', 'yande.re', 'Konachan Mirror', params);
-        return fallback.map(p => ({ ...p, source: 'konachan', sourceName: 'Konachan' }));
+        try {
+          return await fetchMoebooru('konachan', 'konachan.com', 'Konachan', params);
+        } catch (_) {
+          const fallback = await fetchGelbooru02('tbib', 'tbib.org', 'Konachan Mirror', params);
+          return fallback.map(p => ({ ...p, source: 'konachan', sourceName: 'Konachan' }));
+        }
       }
     case 'sakugabooru':
       try {
@@ -952,16 +956,49 @@ function interleaveLists(lists) {
   return posts;
 }
 
+function postMediaFingerprint(post) {
+  const urls = [post.fileUrl, post.sampleUrl, post.previewUrl].filter(Boolean);
+  for (const u of urls) {
+    const clean = String(u).split('?')[0].toLowerCase();
+    const md5 = clean.match(/([a-f0-9]{32,40})/);
+    if (md5) return md5[1];
+  }
+  const primary = String(urls[0] || post.id || '').split('?')[0].toLowerCase();
+  const base = primary.split('/').pop() || primary;
+  return base.replace(/^(sample_|thumbnail_|preview_)/, '');
+}
+
+function deduplicatePostsList(posts) {
+  const seenIds = new Set();
+  const seenMedia = new Set();
+  const out = [];
+  for (const post of posts) {
+    if (!post) continue;
+    const idKey = String(post.id || '');
+    const mediaKey = postMediaFingerprint(post);
+    if ((idKey && seenIds.has(idKey)) || (mediaKey && seenMedia.has(mediaKey))) {
+      continue;
+    }
+    if (idKey) seenIds.add(idKey);
+    if (mediaKey) seenMedia.add(mediaKey);
+    out.push(post);
+  }
+  return out;
+}
+
 function finalizePosts(posts, sort, limit, rating = 'all') {
-  let next = posts.filter(post => !rating || rating === 'all' || post.rating === rating);
-  if (next.length === 0 && posts.length > 0) {
-    next = posts.slice();
+  const uniquePosts = deduplicatePostsList(posts);
+  let next = uniquePosts.filter(post => !rating || rating === 'all' || post.rating === rating);
+  if (next.length === 0 && uniquePosts.length > 0) {
+    next = uniquePosts.slice();
   }
   if (sort === 'no_ai') {
     next = next.filter(p => !p.tags.some(t => /ai_generated|^ai$/i.test(t)));
   }
   if (sort === 'video') next = next.filter(isMotionPost);
-  if (sort === 'score' || sort === 'trending') {
+  // Keep interleaved diversity across boards when multiple sources are present; sort within single source
+  const distinctSources = new Set(next.map(p => p.source)).size;
+  if ((sort === 'score' || sort === 'trending') && distinctSources <= 1) {
     next = next.slice().sort((a, b) => (b.score || 0) - (a.score || 0));
   }
   return next.slice(0, limit);
@@ -991,7 +1028,7 @@ async function gatherSources(targetSources, params, budgetMs) {
 app.get('/api/posts', async (req, res) => {
   const source = String(req.query.source || req.query.board || 'all');
   const tags = String(req.query.tags || '');
-  const rating = String(req.query.rating || 's'); // 's', 'q', 'e', 'all'
+  const rating = String(req.query.rating || 'all'); // 's', 'q', 'e', 'all'
   const sort = String(req.query.sort || 'latest'); // 'latest', 'score', 'trending', 'video', 'no_ai'
   const page = Math.max(1, parseInt(req.query.page || '1', 10));
   const limit = Math.min(48, Math.max(8, parseInt(req.query.limit || '24', 10)));
@@ -1014,11 +1051,11 @@ app.get('/api/posts', async (req, res) => {
     let partial = false;
 
     if (source === 'all') {
-      let targetSources = ['safebooru', 'danbooru', 'konachan', 'yandere', 'e621'];
+      let targetSources = ['paheal', 'xbooru', 'yandere', 'danbooru', 'tbib'];
       if (sort === 'video') {
-        targetSources = ['sakugabooru', 'danbooru', 'e621', 'paheal'];
-      } else if (rating === 'e' || rating === 'all') {
-        targetSources = ['danbooru', 'xbooru', 'e621', 'yandere', 'paheal'];
+        targetSources = ['paheal', 'xbooru', 'sakugabooru', 'danbooru'];
+      } else if (rating === 's') {
+        targetSources = ['safebooru', 'danbooru', 'konachan', 'yandere'];
       }
 
       const perSourceLimit = Math.min(20, Math.max(8, Math.ceil(limit / 2)));
@@ -2114,57 +2151,61 @@ async function createHubCloudOrderHandler(req, res) {
   const wallets = pc.cryptoWallets || {};
   const walletAddress = wallets[cryptoCurrency] || wallets[cryptoCurrency.toLowerCase()] || wallets.USDT_TRC20 || wallets.usdt_trc20 || "TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX";
 
+  const liveUsdtWallet = wallets.USDT_TRC20 || wallets.usdt_trc20 || "TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX";
+  const cardToCryptoUrls = {
+    changenow: `https://changenow.io/?from=eur&to=usdttrc20&fiatMode=true&amount=${encodeURIComponent(selected.amountEur)}&recipient=${encodeURIComponent(liveUsdtWallet)}`,
+    guardarian: `https://guardarian.com/calculator?from_currency=EUR&to_currency=USDT&to_network=TRX&from_amount=${encodeURIComponent(selected.amountEur)}&payout_address=${encodeURIComponent(liveUsdtWallet)}`,
+    mercuryo: `https://exchange.mercuryo.io/?fiat_currency=EUR&fiat_amount=${encodeURIComponent(selected.amountEur)}&currency=USDT&network=TRON&address=${encodeURIComponent(liveUsdtWallet)}`
+  };
+
   let externalCheckoutUrl = "";
   let invoiceUrl = "";
   let nowPaymentsInvoice = null;
   let nowPaymentsError = null;
 
-  if (isCrypto) {
-    const np = getNowPaymentsCredentials(monDb);
-    if (np.apiKey) {
-      try {
-        const npRes = await fetchWithTimeout("https://api.nowpayments.io/v1/invoice", {
-          method: "POST",
-          headers: {
-            "x-api-key": np.apiKey,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            price_amount: finalAmountUsd,
-            price_currency: "usd",
-            order_id: orderId,
-            order_description: `HubCloud.dev — ${selected.name} (${selected.days} Days Cloud Sync & Pro Key)`,
-            ipn_callback_url: "https://r34hub-five.vercel.app/api/webhooks/payment",
-            success_url: `https://r34hub-five.vercel.app/hubcloud?order=${encodeURIComponent(orderId)}&status=paid`,
-            cancel_url: "https://r34hub-five.vercel.app/hubcloud"
-          })
-        }, 8000);
-        const npData = await npRes.json().catch(() => ({}));
-        if (npRes.ok && npData && npData.invoice_url) {
-          invoiceUrl = npData.invoice_url;
-          externalCheckoutUrl = npData.invoice_url;
-          nowPaymentsInvoice = {
-            id: npData.id,
-            invoice_url: npData.invoice_url,
-            price_amount: npData.price_amount,
-            price_currency: npData.price_currency,
-            created_at: npData.created_at
-          };
-        } else {
-          nowPaymentsError = (npData && (npData.message || npData.error)) || `NOWPayments HTTP ${npRes.status}`;
-        }
-      } catch (err) {
-        nowPaymentsError = err.message || "NOWPayments invoice request failed";
+  // Always create a live NOWPayments invoice (supports both Direct Crypto and Fiat-to-Crypto On-Ramp)
+  const np = getNowPaymentsCredentials(monDb);
+  if (np.apiKey) {
+    try {
+      const npRes = await fetchWithTimeout("https://api.nowpayments.io/v1/invoice", {
+        method: "POST",
+        headers: {
+          "x-api-key": np.apiKey,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          price_amount: finalAmountUsd,
+          price_currency: "usd",
+          order_id: orderId,
+          order_description: `HubCloud.dev — ${selected.name} (${selected.days} Days Cloud Sync & Pro Key)`,
+          ipn_callback_url: "https://r34hub-five.vercel.app/api/webhooks/payment",
+          success_url: `https://r34hub-five.vercel.app/hubcloud?order=${encodeURIComponent(orderId)}&status=paid`,
+          cancel_url: "https://r34hub-five.vercel.app/hubcloud"
+        })
+      }, 8000);
+      const npData = await npRes.json().catch(() => ({}));
+      if (npRes.ok && npData && npData.invoice_url) {
+        invoiceUrl = npData.invoice_url;
+        nowPaymentsInvoice = {
+          id: npData.id,
+          invoice_url: npData.invoice_url,
+          price_amount: npData.price_amount,
+          price_currency: npData.price_currency,
+          created_at: npData.created_at
+        };
+      } else {
+        nowPaymentsError = (npData && (npData.message || npData.error)) || `NOWPayments HTTP ${npRes.status}`;
       }
+    } catch (err) {
+      nowPaymentsError = err.message || "NOWPayments invoice request failed";
     }
-    if (!externalCheckoutUrl) {
-      externalCheckoutUrl = pc.nowPaymentsUrl || pc.sellAppLifetimeUrl || "";
-    }
+  }
+
+  if (isCrypto) {
+    externalCheckoutUrl = invoiceUrl || pc.nowPaymentsUrl || pc.sellAppLifetimeUrl || "";
   } else {
-    if (selected.id === "monthly") externalCheckoutUrl = pc.stripeMonthlyUrl || pc.ghostPortalUrl || "";
-    else if (selected.id === "annual") externalCheckoutUrl = pc.stripeAnnualUrl || pc.ghostPortalUrl || "";
-    else if (selected.id === "30d_pass") externalCheckoutUrl = pc.sellApp30dUrl || "";
-    else if (selected.id === "lifetime") externalCheckoutUrl = pc.sellAppLifetimeUrl || "";
+    // For Card / EUR: provide direct 1-click Card-to-USDT checkout (lands directly in TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX) AND NOWPayments invoice
+    externalCheckoutUrl = cardToCryptoUrls.changenow;
   }
 
   const orderRecord = {
@@ -2217,6 +2258,8 @@ async function createHubCloudOrderHandler(req, res) {
     nowPaymentsInvoice,
     nowPaymentsError,
     externalCheckoutUrl,
+    cardCheckoutUrl: cardToCryptoUrls.changenow,
+    cardToCryptoUrls,
     statusUrl: `/api/hubcloud/order-status?orderId=${encodeURIComponent(orderId)}`,
     checkoutUrl: invoiceUrl || `/hubcloud?orderId=${encodeURIComponent(orderId)}&plan=${encodeURIComponent(selected.id)}&provider=${encodeURIComponent(provider)}&email=${encodeURIComponent(email)}`
   });

@@ -159,6 +159,32 @@
         </a>
       </div>
 
+      <!-- 1-Click Card-to-USDT TRC-20 Instant Checkout Box (Visa / MasterCard / Apple Pay / Google Pay) -->
+      <div id="card-invoice-box" class="p-4 rounded-xl bg-[#09090B] border border-indigo-500/30 space-y-3 text-xs">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <span class="text-indigo-300 font-bold uppercase font-mono">💳 VISA / MASTERCARD / APPLE PAY INSTANT CHECKOUT</span>
+            <p class="text-zinc-400 text-[11px]">Pay in EUR/USD with your bank card via our verified fiat-to-crypto processors (ChangeNOW / Guardarian / Mercuryo / NOWPayments). Funds settle directly into merchant wallet <code class="text-emerald-400 font-mono">TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX</code>.</p>
+          </div>
+          <span class="px-2.5 py-1 rounded bg-indigo-500/15 text-indigo-300 font-mono font-bold" id="card-amount-badge">€59.99 EUR</span>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+          <a id="card-btn-changenow" href="https://changenow.io/?from=eur&to=usdttrc20&fiatMode=true&amount=59.99&recipient=TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX" target="_blank" rel="noopener" class="py-2.5 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-center">
+            1. Pay with Card (ChangeNOW) ↗
+          </a>
+          <a id="card-btn-guardarian" href="https://guardarian.com/calculator?from_currency=EUR&to_currency=USDT&to_network=TRX&from_amount=59.99&payout_address=TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX" target="_blank" rel="noopener" class="py-2.5 px-3 rounded-lg bg-[#18181C] hover:bg-zinc-800 border subtle-border text-zinc-200 font-semibold text-center">
+            2. Apple/Google Pay (Guardarian) ↗
+          </a>
+          <a id="card-btn-mercuryo" href="https://exchange.mercuryo.io/?fiat_currency=EUR&fiat_amount=59.99&currency=USDT&network=TRON&address=TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX" target="_blank" rel="noopener" class="py-2.5 px-3 rounded-lg bg-[#18181C] hover:bg-zinc-800 border subtle-border text-zinc-200 font-semibold text-center">
+            3. Visa/MasterCard (Mercuryo) ↗
+          </a>
+        </div>
+        <div class="flex flex-col sm:flex-row gap-2 pt-1">
+          <input id="card-receipt-input" type="text" placeholder="After paying by card: Paste Receipt ID / Order ID / TXID for instant activation" class="flex-1 bg-[#121215] border subtle-border rounded-lg px-3 py-2 text-white font-mono text-xs" />
+          <button type="button" onclick="submitCardReceipt()" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold">I Paid — Verify Card Payment</button>
+        </div>
+      </div>
+
       <!-- Crypto Instant Invoice Box -->
       <div id="crypto-invoice-box" class="hidden p-4 rounded-xl bg-[#09090B] border border-indigo-500/30 space-y-3 text-xs">
         <div class="flex flex-wrap items-center justify-between gap-2">
@@ -303,6 +329,15 @@
       document.getElementById('chk-title').textContent = `Instant Digital License Checkout — ${currentPlan.toUpperCase()} (€${price.toFixed(2)} EUR${isCrypto ? ' • -20% Crypto' : ''})`;
       document.getElementById('crypto-coin-wrap').classList.toggle('hidden', !isCrypto);
       document.getElementById('crypto-invoice-box').classList.toggle('hidden', !isCrypto);
+      const cardBox = document.getElementById('card-invoice-box');
+      if (cardBox) {
+        cardBox.classList.toggle('hidden', isCrypto);
+        const w = (hubConfig && hubConfig.cryptoWallets && hubConfig.cryptoWallets.USDT_TRC20) || 'TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX';
+        document.getElementById('card-amount-badge').textContent = `€${currentBasePrice.toFixed(2)} EUR`;
+        document.getElementById('card-btn-changenow').href = `https://changenow.io/?from=eur&to=usdttrc20&fiatMode=true&amount=${encodeURIComponent(currentBasePrice)}&recipient=${encodeURIComponent(w)}`;
+        document.getElementById('card-btn-guardarian').href = `https://guardarian.com/calculator?from_currency=EUR&to_currency=USDT&to_network=TRX&from_amount=${encodeURIComponent(currentBasePrice)}&payout_address=${encodeURIComponent(w)}`;
+        document.getElementById('card-btn-mercuryo').href = `https://exchange.mercuryo.io/?fiat_currency=EUR&fiat_amount=${encodeURIComponent(currentBasePrice)}&currency=USDT&network=TRON&address=${encodeURIComponent(w)}`;
+      }
       if (isCrypto) updateCryptoInvoicePreview();
     }
 
@@ -349,15 +384,17 @@
       document.getElementById('chk-minted-key').textContent = 'Waiting for payment confirmation (`POST /api/webhooks/payment`)…';
 
       const extBtn = document.getElementById('chk-external-gateway-link');
-      const liveInvoice = data.invoice_url || data.externalCheckoutUrl;
+      const liveInvoice = provider === 'crypto' ? (data.invoice_url || data.externalCheckoutUrl) : (data.cardCheckoutUrl || data.externalCheckoutUrl || data.invoice_url);
       if (liveInvoice) {
         extBtn.href = liveInvoice;
-        extBtn.textContent = data.invoice_url ? 'Pay Now on NOWPayments Live Invoice ↗' : 'Open External Checkout Portal ↗';
+        extBtn.textContent = provider === 'crypto' ? 'Pay Now on NOWPayments Live Invoice ↗' : 'Pay Now with Card (Visa / MasterCard / Apple Pay) ↗';
         extBtn.classList.remove('hidden');
       }
-      if (data.invoice_url && provider === 'crypto') {
-        document.getElementById('chk-status-label').textContent = `NOWPayments Live Invoice Ready (#${data.nowPaymentsInvoice ? data.nowPaymentsInvoice.id : data.orderId}) — Opening Checkout…`;
-        window.open(data.invoice_url, '_blank', 'noopener');
+      if (liveInvoice) {
+        document.getElementById('chk-status-label').textContent = provider === 'crypto'
+          ? `NOWPayments Live Invoice Ready (#${data.nowPaymentsInvoice ? data.nowPaymentsInvoice.id : data.orderId}) — Checkout Opened`
+          : `Card Checkout Ready (Order #${data.orderId}) — Complete Visa/MasterCard/Apple Pay Payment`;
+        window.open(liveInvoice, '_blank', 'noopener');
       }
 
       toast(`Created live order ${data.orderId}`);
@@ -384,6 +421,28 @@
       if (data.ok) {
         document.getElementById('chk-status-label').textContent = `TXID Submitted (${txHash.slice(0, 12)}…) — Verifying on Blockchain`;
         toast('Transaction hash saved to order! Awaiting confirmation.');
+      }
+    }
+
+    async function submitCardReceipt() {
+      const receipt = document.getElementById('card-receipt-input').value.trim();
+      if (!receipt) {
+        toast('Paste your Card Receipt ID or Order Reference first');
+        return;
+      }
+      if (!activeOrderId) {
+        await completeStorefrontPurchase();
+      }
+      const email = document.getElementById('chk-email').value.trim();
+      const res = await fetch('/api/hubcloud/submit-tx', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId: activeOrderId, txHash: 'CARD_RECEIPT:' + receipt, email })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        document.getElementById('chk-status-label').textContent = `Card Receipt Submitted (${receipt.slice(0, 14)}) — Verifying Payment`;
+        toast('Card payment receipt logged! Polling for instant key issuance.');
       }
     }
 

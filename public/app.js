@@ -2,7 +2,7 @@ const state = {
   activeTab: 'home',
   source: 'all',
   tags: '',
-  rating: 's',
+  rating: 'all',
   sort: 'score',
   page: 1,
   isLoading: false,
@@ -90,7 +90,7 @@ function feedQuery() {
   const params = new URLSearchParams();
   if (state.sort && state.sort !== 'score') params.set('filter[sort]', state.sort);
   if (state.tags.trim()) params.set('tags', state.tags.trim());
-  if (state.rating && state.rating !== 's') params.set('rating', state.rating);
+  if (state.rating && state.rating !== 'all') params.set('rating', state.rating);
   return params.toString();
 }
 
@@ -196,7 +196,7 @@ function renderActiveTagPills() {
   const countEl = document.getElementById('active-filter-count');
   const tokens = parseTagTokens();
   let filters = tokens.length;
-  if (state.rating !== 's') filters += 1;
+  if (state.rating !== 'all') filters += 1;
   if (state.sort !== 'score') filters += 1;
   if (state.source !== 'all') filters += 1;
   if (countEl) {
@@ -423,8 +423,8 @@ function renderHomeBoards() {
 }
 
 function featuredRating(sourceId) {
-  if (sourceId === 'paheal' || sourceId === 'rule34xxx' || sourceId === 'xbooru') return 'all';
-  return 's';
+  if (sourceId === 'safebooru') return 's';
+  return 'all';
 }
 
 function paintFeatured(row, items) {
@@ -622,13 +622,13 @@ window.resetAllFilters = function() {
   state.tags = '';
   state.source = 'all';
   state.sort = 'score';
-  state.rating = 's';
+  state.rating = 'all';
   state.page = 1;
   const input = document.getElementById('tag-search-input');
   if (input) input.value = '';
   const clearBtn = document.getElementById('clear-search-btn');
   if (clearBtn) clearBtn.classList.add('hidden');
-  paintChoice('.rating-btn', 'rating', 's');
+  paintChoice('.rating-btn', 'rating', 'all');
   paintChoice('.sort-btn', 'sort', 'score');
   renderSourcePills();
   showBrowseAndReload();
@@ -759,12 +759,29 @@ async function loadPosts(append = false, silent = false) {
     }
     if (!res.ok) throw new Error((data && data.error) || 'The boards did not answer');
     const blocked = new Set(state.blacklist.map(t => t.toLowerCase()));
-    const rawPosts = (data.posts || []).filter(p => !(p.tags || []).some(t => blocked.has(String(t).toLowerCase())));
+    const rawFiltered = (data.posts || []).filter(p => !(p.tags || []).some(t => blocked.has(String(t).toLowerCase())));
+    const rawPosts = [];
+    const batchSeenIds = new Set();
+    const batchSeenMedia = new Set();
+    for (const p of rawFiltered) {
+      const mk = featureImageKey(p);
+      if (batchSeenIds.has(p.id) || (mk && batchSeenMedia.has(mk))) continue;
+      batchSeenIds.add(p.id);
+      if (mk) batchSeenMedia.add(mk);
+      rawPosts.push(p);
+    }
 
     state.lastPartial = Boolean(data.partial);
     if (append) {
       const existingIds = new Set(state.posts.map(p => p.id));
-      const fresh = rawPosts.filter(p => !existingIds.has(p.id));
+      const existingMedia = new Set(state.posts.map(p => featureImageKey(p)).filter(Boolean));
+      const fresh = rawPosts.filter(p => {
+        const mk = featureImageKey(p);
+        if (existingIds.has(p.id) || (mk && existingMedia.has(mk))) return false;
+        existingIds.add(p.id);
+        if (mk) existingMedia.add(mk);
+        return true;
+      });
       state.posts = state.posts.concat(fresh);
       if (fresh.length === 0) {
         // One repeated or filtered-out page is not the end of the board.
@@ -778,7 +795,7 @@ async function loadPosts(append = false, silent = false) {
       const same = silent
         && state.posts.length === rawPosts.length
         && state.posts.every((post, index) => post.id === rawPosts[index].id);
-      const slides = [...document.querySelectorAll('#reels-feed .reel')];
+      const slides = [...document.querySelectorAll('#reels-feed .reel[data-id]')];
       const prefix = slides.length > 0 && slides.every((slide, index) => rawPosts[index] && slide.dataset.id === String(rawPosts[index].id));
       state.posts = rawPosts;
       if (!rawPosts.length && !data.partial) state.hasMore = false;
@@ -960,12 +977,77 @@ function playerSource(root) {
   };
 }
 
+let videoPlayCount = 0;
+
+function maybeShowVideoPreroll(containerEl, onComplete) {
+  if (state.isPro || !state.showAdsPreview || !containerEl) {
+    onComplete();
+    return;
+  }
+  videoPlayCount += 1;
+  if (videoPlayCount !== 1 && videoPlayCount % 3 !== 1) {
+    onComplete();
+    return;
+  }
+  if (containerEl.querySelector('.preroll-overlay')) return;
+  const aadsId = (state.adsConfig && state.adsConfig.aads && state.adsConfig.aads.unitId) || '2460259';
+  const art = pickAdultAdArtwork(videoPlayCount);
+  const activeTag = parseTagTokens()[0] || art.tag || 'hentai';
+  const overlay = document.createElement('div');
+  overlay.className = 'preroll-overlay';
+  overlay.style.cssText = 'position:absolute;inset:0;z-index:6;background:rgba(9,9,11,0.94);backdrop-filter:blur(10px);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;text-align:center;gap:10px;';
+  overlay.innerHTML = `
+    <span class="meta-badge" style="margin:0;background:rgba(225,29,72,0.22);border-color:rgba(225,29,72,0.55);color:#fda4af;font-weight:700;">🔞 18+ NSFW AD · Video starts in <b data-preroll-sec>3</b>s</span>
+    <div style="font-size:16px;font-weight:700;color:#fff;">Uncensored 18+ AI Undress & Hentai Video Chat</div>
+    <div style="font-size:12px;color:#d4d4d8;max-width:320px;">Turn any character into an explicit 18+ interactive animation or roleplay chat.</div>
+    <div style="width:100%;max-width:320px;height:90px;overflow:hidden;border-radius:8px;border:1px solid var(--line);background:#000;">
+      <iframe data-aa="${esc(aadsId)}" src="//acceptable.a-ads.com/${esc(aadsId)}" style="border:0;width:100%;height:90px;overflow:hidden;" title="Sponsored 18+"></iframe>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:4px;">
+      <button type="button" class="btn btn-primary btn-tiny" style="background:#e11d48;color:#fff;font-weight:700;" data-preroll-cta>🔞 Open 18+ AI Studio →</button>
+      <button type="button" class="btn btn-ghost btn-tiny" data-preroll-skip disabled>Skip (3)</button>
+    </div>
+  `;
+  overlay.addEventListener('click', e => e.stopPropagation());
+  containerEl.appendChild(overlay);
+
+  const secEl = overlay.querySelector('[data-preroll-sec]');
+  const skipBtn = overlay.querySelector('[data-preroll-skip]');
+  const ctaBtn = overlay.querySelector('[data-preroll-cta]');
+  let left = 3;
+  const finish = () => {
+    clearInterval(timer);
+    overlay.remove();
+    onComplete();
+  };
+  ctaBtn.addEventListener('click', () => {
+    triggerAdClick('post_video_ai', 'nud3_video', 'preroll', activeTag);
+    finish();
+  });
+  skipBtn.addEventListener('click', finish);
+  const timer = setInterval(() => {
+    left -= 1;
+    if (secEl) secEl.textContent = String(Math.max(0, left));
+    if (left <= 0) {
+      if (skipBtn) {
+        skipBtn.disabled = false;
+        skipBtn.textContent = 'Play video ▶';
+      }
+      finish();
+    } else if (skipBtn) {
+      skipBtn.textContent = `Skip (${left})`;
+    }
+  }, 1000);
+}
+
 function togglePlayer(root) {
   const video = root && root.querySelector('video');
   if (!video) return;
   if (!video.getAttribute('src')) {
     const source = playerSource(root);
-    loadVideo(video, source.file, source.proxy, true);
+    maybeShowVideoPreroll(root, () => {
+      loadVideo(video, source.file, source.proxy, true);
+    });
     return;
   }
   if (video.paused) video.play().catch(() => {});
@@ -1080,19 +1162,71 @@ function toggleCardVideo(media) {
   else playCardVideo(media);
 }
 
-function buildSponsoredCardHTML() {
+const ADULT_FALLBACK_THUMBS = [
+  'https://xbooru.com/thumbnails/257/thumbnail_66ade81490698aa620f16b9eddc415ef.jpg',
+  'https://xbooru.com/thumbnails/105/thumbnail_513ed2466c54fe4feaea546d8e33519c.jpg',
+  'https://xbooru.com/thumbnails/136/thumbnail_276a23befae5fb9d516c394229ece0c7.jpg',
+  'https://xbooru.com/thumbnails/129/thumbnail_693397d7d43639a89e9bcaab439c2d6b.jpg'
+];
+
+function pickAdultAdArtwork(idx = 0) {
+  const explicitPosts = (state.posts || []).filter(p => p && p.rating === 'e' && !looksLikeVideo(cardStill(p).src));
+  const pool = explicitPosts.length ? explicitPosts : (state.posts || []).filter(p => p && !looksLikeVideo(cardStill(p).src));
+  if (pool.length) {
+    const chosen = pool[(idx * 3 + 1) % pool.length];
+    const shown = cardStill(chosen);
+    const charTag = (chosen.characterTags && chosen.characterTags[0]) || (chosen.tags && chosen.tags[0]) || 'waifu';
+    return {
+      src: shown.src,
+      proxy: shown.proxy || chosen.proxiedPreviewUrl || '',
+      tag: charTag
+    };
+  }
+  const fb = ADULT_FALLBACK_THUMBS[idx % ADULT_FALLBACK_THUMBS.length];
+  return { src: fb, proxy: '', tag: 'hentai_waifu' };
+}
+
+function buildSponsoredCardHTML(idx = 12) {
   const aadsId = (state.adsConfig && state.adsConfig.aads && state.adsConfig.aads.unitId) || '2460259';
+  const art = pickAdultAdArtwork(idx);
+  const offers = [
+    { id: 'candy_ai', name: 'Candy.ai 18+', title: 'Uncensored 18+ NSFW AI Waifu Sex Chat', cta: 'Chat 18+ Uncensored' },
+    { id: 'nud3_video', name: 'Nud3.me 18+', title: 'AI Undress & 18+ Hentai Video Animator', cta: 'Undress / Animate 18+' },
+    { id: 'spicychat_ai', name: 'SpicyChat 18+', title: 'No-Filter 18+ Adult Roleplay & Voice AI', cta: 'Start 18+ Roleplay' }
+  ];
+  const offer = offers[Math.floor(idx / 12) % offers.length];
   return `
-    <aside class="masonry-item sponsor">
-      <div class="kicker">Sponsored</div>
-      <h3>AI character chat</h3>
-      <p>Open a chat from the kind of character you are browsing.</p>
-      <div style="width:100%;height:90px;overflow:hidden;border-radius:8px;margin:4px 0;"><iframe data-aa="${esc(aadsId)}" src="//acceptable.a-ads.com/${esc(aadsId)}" style="border:0px; padding:0; width:100%; height:100%; overflow:hidden; background-color: transparent;" loading="lazy" title="Sponsored"></iframe></div>
-      <div class="sponsor-actions">
-        <button type="button" class="btn btn-primary btn-tiny" onclick="triggerAdClick('infeed_native','candy_ai','native','anime')">Open</button>
-        <button type="button" class="btn btn-ghost btn-tiny" onclick="openProModal()">Remove ads</button>
+    <article class="masonry-item card is-in is-ad-card" style="--d:${idx % 8}">
+      <div class="card-media" onclick="triggerAdClick('infeed_native','${esc(offer.id)}','grid-ad-${idx}','${esc(art.tag)}')">
+        <img
+          src="${esc(art.src)}"
+          data-proxy="${esc(art.proxy)}"
+          alt=""
+          loading="lazy"
+          decoding="async"
+          referrerpolicy="no-referrer"
+          onerror="useProxy(this)"
+        />
+        <div class="card-float">
+          <span class="pill" style="background:rgba(225,29,72,0.88);color:#fff;font-weight:700;">18+ NSFW AD</span>
+          <span class="pill">${esc(offer.name)}</span>
+        </div>
+        <div style="position:absolute;left:0;right:0;bottom:0;padding:24px 10px 10px;background:linear-gradient(180deg,transparent,rgba(0,0,0,0.92));color:#fff;font-size:12px;font-weight:650;line-height:1.3;">
+          ${esc(offer.title)}
+        </div>
       </div>
-    </aside>
+      <div style="width:100%;height:60px;overflow:hidden;background:#09090b;border-top:1px solid var(--line);">
+        <iframe data-aa="${esc(aadsId)}" src="//acceptable.a-ads.com/${esc(aadsId)}" style="border:0px;padding:0;width:100%;height:60px;overflow:hidden;background-color:transparent;" loading="lazy" title="Sponsored 18+"></iframe>
+      </div>
+      <div class="card-body">
+        <button type="button" class="btn btn-tiny btn-primary" onclick="triggerAdClick('infeed_native','${esc(offer.id)}','grid-ad-${idx}','${esc(art.tag)}')">
+          ${icon('spark')}<span class="btn-label">${esc(offer.cta)}</span>
+        </button>
+        <button type="button" class="btn btn-tiny btn-ghost" onclick="openProModal()">
+          <span class="btn-label">Hide ads</span>
+        </button>
+      </div>
+    </article>
   `;
 }
 
@@ -1167,12 +1301,13 @@ function buildPostCardHTML(post, idx) {
   `;
 }
 
+const AD_INTERVAL = 12;
+
 function cardsHtml(posts, offset) {
-  const freq = (state.adsConfig && state.adsConfig.infeedFrequency) || 8;
   const parts = [];
   posts.forEach((post, i) => {
     const idx = offset + i;
-    if (state.showAdsPreview && !state.isPro && idx > 0 && idx % freq === 0) parts.push(buildSponsoredCardHTML());
+    if (state.showAdsPreview && !state.isPro && idx > 0 && idx % AD_INTERVAL === 0) parts.push(buildSponsoredCardHTML(idx));
     parts.push(buildPostCardHTML(post, idx));
   });
   return parts.join('');
@@ -1336,12 +1471,98 @@ function bindReelsLoader() {
   state.reelsLoadObserver = observer;
 }
 
+function buildNativeReelAdHtml(idx) {
+  const aadsId = (state.adsConfig && state.adsConfig.aads && state.adsConfig.aads.unitId) || '2460259';
+  const art = pickAdultAdArtwork(idx);
+  const activeTag = parseTagTokens()[0] || art.tag || 'hentai';
+  const offers = [
+    {
+      id: 'candy_ai',
+      partner: 'Candy.ai 18+ NSFW',
+      title: `Uncensored 18+ AI Sex Chat & Voice with ${activeTag.replace(/_/g, ' ')}`,
+      sub: 'Send explicit prompts, custom kinks, and receive live 18+ NSFW photos & voice messages.',
+      cta: 'Start 18+ Uncensored Chat →',
+      tags: ['18+_nsfw', 'uncensored_ai', 'sex_chat', 'custom_waifu']
+    },
+    {
+      id: 'nud3_video',
+      partner: 'Nud3.me 18+ AI Studio',
+      title: '18+ AI Undress & Hentai Video Generator',
+      sub: 'Turn any Rule34 or anime image into an explicit 60fps 18+ animated video in one click.',
+      cta: 'Animate / Undress 18+ Now →',
+      tags: ['18+_video', 'ai_undress', 'animated_nsfw', 'rule34_ai']
+    },
+    {
+      id: 'crushon_ai',
+      partner: 'CrushOn.ai 18+ Unfiltered',
+      title: 'Zero-Filter 18+ Hentai & Erotic Roleplay AI',
+      sub: 'No censorship, no NSFW blocks. Roleplay any scenario with 200,000+ adult anime characters.',
+      cta: 'Play 18+ Roleplay Free →',
+      tags: ['18+_roleplay', 'no_filter', 'hentai_chat', 'explicit']
+    }
+  ];
+  const offer = offers[Math.floor(idx / AD_INTERVAL) % offers.length];
+  return `
+    <article class="reel post-card is-ad" data-kind="ad" data-ad-slot="${idx}">
+      <div class="reel-stage is-still" style="position:relative;background:#09090b;overflow:hidden;">
+        <div style="position:relative;aspect-ratio:4 / 5;max-height:520px;width:100%;overflow:hidden;cursor:pointer;" onclick="triggerAdClick('infeed_native','${esc(offer.id)}','reel-ad-${idx}','${esc(activeTag)}')">
+          <img
+            class="reel-still"
+            style="width:100%;height:100%;object-fit:cover;display:block;filter: contrast(1.05);"
+            src="${esc(art.src)}"
+            data-proxy="${esc(art.proxy)}"
+            alt=""
+            referrerpolicy="no-referrer"
+            onerror="useProxy(this)"
+          />
+          <div style="position:absolute;top:12px;left:12px;right:12px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+            <span class="pill" style="background:rgba(225,29,72,0.92);color:#fff;font-weight:700;padding:4px 10px;border-radius:999px;font-size:11px;letter-spacing:0.04em;">🔞 18+ NSFW SPONSORED POST</span>
+            <span class="pill" style="background:rgba(9,9,11,0.8);color:#e4e4e7;padding:4px 10px;border-radius:999px;font-size:11px;">${esc(offer.partner)}</span>
+          </div>
+          <div style="position:absolute;left:0;right:0;bottom:0;padding:48px 16px 16px;background:linear-gradient(180deg,transparent 0%,rgba(9,9,11,0.88) 45%,#09090b 100%);">
+            <h3 style="margin:0 0 6px;font-size:18px;color:#fff;font-weight:700;line-height:1.25;">${esc(offer.title)}</h3>
+            <p style="margin:0 0 12px;font-size:13px;color:#d4d4d8;line-height:1.45;">${esc(offer.sub)}</p>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">
+              ${offer.tags.map(t => `<span class="meta-badge" style="margin:0;background:rgba(225,29,72,0.18);border-color:rgba(225,29,72,0.4);color:#fda4af;font-size:11px;">#${esc(t)}</span>`).join('')}
+            </div>
+            <div style="display:flex;gap:8px;">
+              <button type="button" class="btn btn-primary" style="flex:1;background:#e11d48;color:#fff;font-weight:700;" onclick="event.stopPropagation();triggerAdClick('infeed_native','${esc(offer.id)}','reel-ad-${idx}','${esc(activeTag)}')">${esc(offer.cta)}</button>
+              <button type="button" class="btn btn-ghost" onclick="event.stopPropagation();openProModal()">Hide 18+ Ads</button>
+            </div>
+          </div>
+        </div>
+        <div style="width:100%;height:90px;overflow:hidden;background:#09090b;border-top:1px solid var(--line);">
+          <iframe data-aa="${esc(aadsId)}" src="//acceptable.a-ads.com/${esc(aadsId)}" style="border:0px;padding:0;width:100%;height:90px;overflow:hidden;background-color:transparent;" loading="lazy" title="Sponsored 18+"></iframe>
+        </div>
+      </div>
+      <div class="reel-bar">
+        <button type="button" class="icon-btn accent" aria-label="18+ AI chat" onclick="triggerAdClick('reels_cta','${esc(offer.id)}','reel-ad-${idx}','${esc(activeTag)}')">${icon('spark')}</button>
+        <button type="button" class="icon-btn" aria-label="Animate 18+" onclick="triggerAdClick('post_video_ai','nud3_video','reel-ad-${idx}','${esc(activeTag)}')">${icon('wand')}</button>
+        <span class="reel-meta">18+ Adult Partner · ${esc(offer.partner)}</span>
+        <button type="button" class="tags-toggle" onclick="openProModal()">Pro · No Ads ${icon('chevron')}</button>
+      </div>
+    </article>`;
+}
+
+function reelsHtmlWithAds(posts, startOffset) {
+  const parts = [];
+  posts.forEach((post, i) => {
+    const idx = startOffset + i;
+    if (state.showAdsPreview && !state.isPro && idx > 0 && idx % AD_INTERVAL === 0) {
+      parts.push(buildNativeReelAdHtml(idx));
+    }
+    parts.push(reelSlideHtml(post, idx));
+  });
+  return parts.join('');
+}
+
 function appendReels(posts) {
   const container = document.getElementById('reels-feed');
   if (!container || !posts.length) return;
-  const start = container.querySelectorAll('.reel').length;
-  container.insertAdjacentHTML('beforeend', posts.map((post, index) => reelSlideHtml(post, start + index)).join(''));
-  observeReelSlides([...container.querySelectorAll('.reel')].slice(start));
+  const start = container.querySelectorAll('.reel[data-id]').length;
+  const prevTotal = container.querySelectorAll('.reel').length;
+  container.insertAdjacentHTML('beforeend', reelsHtmlWithAds(posts, start));
+  observeReelSlides([...container.querySelectorAll('.reel[data-id]')].slice(start));
   paintReelsStatus();
 }
 
@@ -1354,8 +1575,8 @@ function renderReels() {
     bindReelsLoader();
     return;
   }
-  container.innerHTML = state.posts.map((post, index) => reelSlideHtml(post, index)).join('');
-  observeReelSlides([...container.querySelectorAll('.reel')]);
+  container.innerHTML = reelsHtmlWithAds(state.posts, 0);
+  observeReelSlides([...container.querySelectorAll('.reel[data-id]')]);
   bindReelsLoader();
   paintReelsStatus();
   requestAnimationFrame(() => {
