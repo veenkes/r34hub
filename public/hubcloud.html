@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#0b0b0e" />
   <title>Premium | R34Hub</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="alternate icon" href="/favicon.ico" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <style>
     :root {
       --bg: #0b0b0e;
@@ -15,10 +18,10 @@
       --text: #f3f3f7;
       --muted: #a0a0b0;
       --faint: #6c6c7c;
-      --accent: #38bdf8;
-      --accent-ink: #04131d;
+      --accent: #10b981;
+      --accent-ink: #04130d;
       --good: #3dd68c;
-      --stripe: #635bff;
+      --danger: #fb7185;
     }
     * { box-sizing: border-box; }
     body {
@@ -34,7 +37,7 @@
     button { cursor: pointer; }
     .hidden { display: none !important; }
 
-    /* Top Minimal Bar (matches r34.app/premium) */
+    /* Top Minimal Bar */
     .topbar {
       position: sticky;
       top: 0;
@@ -66,8 +69,8 @@
       place-items: center;
       padding: 3px 8px;
       border-radius: 7px;
-      background: var(--text);
-      color: var(--bg);
+      background: var(--accent);
+      color: var(--accent-ink);
       font-weight: 800;
       font-size: 13px;
     }
@@ -90,12 +93,61 @@
       border-color: var(--line-strong);
       background: var(--surface-2);
     }
+    .pro-active-pill {
+      padding: 5px 11px;
+      border-radius: 999px;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      color: #34d399;
+      font-size: 12px;
+      font-weight: 700;
+    }
 
     /* Main Container */
     .page {
       max-width: 920px;
       margin: 0 auto;
-      padding: 40px 18px 72px;
+      padding: 36px 18px 72px;
+    }
+
+    /* Active Membership Dashboard Card */
+    .membership-card {
+      padding: 22px 24px;
+      border-radius: 18px;
+      background: linear-gradient(180deg, rgba(16, 185, 129, 0.12) 0%, var(--surface) 100%);
+      border: 1.5px solid rgba(16, 185, 129, 0.45);
+      margin-bottom: 32px;
+    }
+    .membership-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .membership-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+      padding: 14px;
+      border-radius: 12px;
+      background: var(--bg);
+      border: 1px solid var(--line);
+    }
+    .meta-item small {
+      display: block;
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 2px;
+    }
+    .meta-item strong {
+      font-size: 14px;
+      color: var(--text);
+      font-family: monospace;
     }
 
     /* Hero */
@@ -110,9 +162,9 @@
       gap: 6px;
       padding: 4px 12px;
       border-radius: 999px;
-      background: rgba(56, 189, 248, 0.12);
-      border: 1px solid rgba(56, 189, 248, 0.28);
-      color: var(--accent);
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.28);
+      color: #34d399;
       font-size: 12px;
       font-weight: 650;
       margin-bottom: 14px;
@@ -194,7 +246,7 @@
       flex: none;
     }
 
-    /* 3 Clean Pricing Cards (matches r34.app/premium) */
+    /* 3 Clean Pricing Cards */
     .plans-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -217,9 +269,9 @@
       border-color: var(--line-strong);
     }
     .plan-card.is-selected {
-      background: linear-gradient(180deg, rgba(56, 189, 248, 0.09) 0%, var(--surface) 100%);
+      background: linear-gradient(180deg, rgba(16, 185, 129, 0.09) 0%, var(--surface) 100%);
       border-color: var(--accent);
-      box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.35);
+      box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.35);
     }
     .plan-badge {
       position: absolute;
@@ -266,7 +318,7 @@
       margin-right: 4px;
     }
     .plan-note {
-      color: var(--muted);
+      color: #6ee7b7;
       font-size: 12px;
       margin-bottom: 18px;
     }
@@ -288,7 +340,7 @@
       font-weight: 750;
     }
 
-    /* Unified Clean Checkout Action Panel (Stripe + Crypto) */
+    /* Unified Clean Crypto Checkout Action Panel */
     .checkout-box {
       padding: 24px;
       border-radius: 18px;
@@ -314,10 +366,16 @@
       font-size: 13px;
       color: var(--muted);
     }
-    .email-row {
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr;
+      gap: 12px;
       margin-bottom: 14px;
     }
-    .email-row label {
+    @media (max-width: 640px) {
+      .form-grid { grid-template-columns: 1fr; }
+    }
+    .form-grid label {
       display: block;
       font-size: 12px;
       color: var(--muted);
@@ -336,45 +394,23 @@
     .field:focus {
       border-color: var(--accent);
     }
-    .pay-buttons {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
-    @media (max-width: 640px) {
-      .pay-buttons { grid-template-columns: 1fr; }
-    }
-    .btn-stripe {
+    .btn-crypto-main {
+      width: 100%;
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
-      padding: 14px 18px;
+      padding: 14px 20px;
       border-radius: 12px;
       border: 0;
-      background: var(--stripe);
-      color: #fff;
-      font-size: 14px;
-      font-weight: 700;
-      box-shadow: 0 4px 18px rgba(99, 91, 255, 0.28);
+      background: var(--accent);
+      color: var(--accent-ink);
+      font-size: 15px;
+      font-weight: 800;
+      box-shadow: 0 4px 18px rgba(16, 185, 129, 0.25);
     }
-    .btn-stripe:hover { filter: brightness(1.08); }
-    .btn-crypto {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      padding: 14px 18px;
-      border-radius: 12px;
-      border: 1px solid rgba(61, 214, 140, 0.4);
-      background: rgba(61, 214, 140, 0.12);
-      color: #6ee7b7;
-      font-size: 14px;
-      font-weight: 700;
-    }
-    .btn-crypto:hover { background: rgba(61, 214, 140, 0.2); }
+    .btn-crypto-main:hover { filter: brightness(1.08); }
 
-    /* Expandable Status / Card / Crypto Drawer inside Checkout */
     .drawer-box {
       margin-top: 16px;
       padding: 16px;
@@ -382,38 +418,34 @@
       background: var(--bg);
       border: 1px solid var(--line);
     }
-    .gateway-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 8px;
-      margin-top: 10px;
-    }
     .gw-btn {
       display: block;
-      padding: 10px 12px;
+      padding: 11px 14px;
       border-radius: 10px;
-      background: var(--surface-2);
-      border: 1px solid var(--line-strong);
-      color: var(--text);
-      font-size: 12px;
-      font-weight: 650;
+      background: var(--accent);
+      color: var(--accent-ink);
+      font-size: 13px;
+      font-weight: 800;
       text-align: center;
     }
-    .gw-btn:hover { border-color: var(--accent); }
-    .gw-btn.primary { background: var(--stripe); border-color: transparent; color: #fff; }
+    .gw-btn:hover { filter: brightness(1.08); }
 
-    /* License Activation Box */
+    /* License Activation & Recovery Box */
     .license-box {
-      padding: 20px;
+      padding: 22px;
       border-radius: 16px;
       background: var(--surface);
       border: 1px solid var(--line);
       margin-bottom: 32px;
+      display: grid;
+      gap: 16px;
+    }
+    .license-row {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
       justify-content: space-between;
-      gap: 14px;
+      gap: 12px;
     }
     .license-form {
       display: flex;
@@ -430,9 +462,19 @@
       font-weight: 750;
       font-size: 13px;
       white-space: nowrap;
+      min-height: 42px;
+    }
+    .btn-ghost-sm {
+      padding: 8px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--line-strong);
+      background: var(--surface-2);
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 650;
     }
 
-    /* FAQ Section (r34.app/premium style) */
+    /* FAQ Section */
     .faq-section h3 {
       font-size: 18px;
       font-weight: 750;
@@ -460,6 +502,19 @@
       font-size: 13px;
     }
 
+    .footer-links {
+      margin-top: 40px;
+      padding-top: 20px;
+      border-top: 1px solid var(--line);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 12px;
+      color: var(--faint);
+    }
+    .footer-links a:hover { color: var(--text); }
+
     .toast {
       position: fixed;
       bottom: 20px;
@@ -484,15 +539,53 @@
         <span>Hub Premium</span>
       </a>
       <div class="top-actions">
+        <span id="header-pro-pill" class="pro-active-pill hidden">● PRO ACTIVE</span>
+        <button id="header-signin-btn" type="button" class="pill-btn" onclick="document.getElementById('license-section').scrollIntoView({behavior:'smooth'});document.getElementById('page-license-input').focus();">Sign In with Key</button>
+        <button id="header-logout-btn" type="button" class="pill-btn hidden" style="color:var(--danger);border-color:rgba(251,113,133,0.35);" onclick="logoutFromPremium()">Log Out</button>
         <a href="/" class="pill-btn">← Back to R34Hub</a>
       </div>
     </div>
   </header>
 
   <main class="page">
+    <!-- ACTIVE PRO MEMBERSHIP DASHBOARD CARD (Shown when user is logged in) -->
+    <section id="active-membership-card" class="membership-card hidden">
+      <div class="membership-head">
+        <div>
+          <div style="font-size:11px;color:#34d399;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;">● Active Pro Membership — Ads Disabled</div>
+          <h2 style="margin:4px 0 0;font-size:20px;font-weight:800;">You are signed in to R34Hub Premium</h2>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <a href="/posts/rule34.xxx" class="btn-activate" style="display:inline-flex;align-items:center;padding:0 16px;">Open Ad-Free Feed →</a>
+          <button type="button" class="btn-ghost-sm" style="color:var(--danger);border-color:rgba(251,113,133,0.35);" onclick="logoutFromPremium()">Log Out</button>
+        </div>
+      </div>
+      <div class="membership-grid">
+        <div class="meta-item">
+          <small>License Key</small>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <strong id="active-key-text" style="color:#34d399;">R34PRO-XXXX-XXXX-XXXX</strong>
+            <button type="button" class="pill-btn" style="padding:2px 8px;font-size:11px;" onclick="copyActiveKey()">Copy</button>
+          </div>
+        </div>
+        <div class="meta-item">
+          <small>Active Plan</small>
+          <strong id="active-plan-text">Annual Pro</strong>
+        </div>
+        <div class="meta-item">
+          <small>Account Email</small>
+          <strong id="active-email-text">—</strong>
+        </div>
+        <div class="meta-item">
+          <small>Valid Until</small>
+          <strong id="active-exp-text">Active</strong>
+        </div>
+      </div>
+    </section>
+
     <!-- HERO -->
     <section class="hero">
-      <div class="hero-badge">✦ R34Hub Premium • Instant License Key Delivery</div>
+      <div class="hero-badge">✦ R34Hub Premium • Instant Email &amp; On-Screen Key Delivery</div>
       <h1>Browse Ad-Free &amp; Save Posts</h1>
       <p>Focus on Hentai without distractions, save posts to view them later, faster image loading and much more!</p>
     </section>
@@ -528,7 +621,7 @@
       </div>
     </section>
 
-    <!-- 3 PRICING CARDS (matches r34.app/premium) -->
+    <!-- 3 PRICING CARDS -->
     <section class="plans-grid" role="radiogroup" aria-label="Premium Plans">
       <!-- 30 Days -->
       <div class="plan-card" id="card-monthly" onclick="selectPlan('monthly')">
@@ -536,10 +629,11 @@
           <h3 class="plan-name">30 Days Access</h3>
           <p class="plan-sub">One-time payment</p>
           <div class="plan-price">
-            <strong>€7</strong>
-            <span>/ mo</span>
+            <span class="plan-strike">€7.00</span>
+            <strong>€5.60</strong>
+            <span>/ 30d</span>
           </div>
-          <p class="plan-note">€5.60 when paying with crypto (−20%)</p>
+          <p class="plan-note">20% Crypto Discount Included</p>
         </div>
         <div class="plan-select-indicator" id="btn-sel-monthly">Select plan</div>
       </div>
@@ -549,13 +643,13 @@
         <span class="plan-badge">Save 29% • Most Popular</span>
         <div>
           <h3 class="plan-name">Annual Pro (365 Days)</h3>
-          <p class="plan-sub">Billed €59.99/yr (instead of €84)</p>
+          <p class="plan-sub">Billed €47.99/yr in crypto (instead of €84)</p>
           <div class="plan-price">
             <span class="plan-strike">€7.00</span>
-            <strong>€4.97</strong>
+            <strong>€3.99</strong>
             <span>/ mo</span>
           </div>
-          <p class="plan-note">€47.99/yr when paying with crypto (−20%)</p>
+          <p class="plan-note">€47.99 total for 365 days (−20% Crypto)</p>
         </div>
         <div class="plan-select-indicator" id="btn-sel-annual">Selected ✓</div>
       </div>
@@ -567,127 +661,136 @@
           <p class="plan-sub">One-time payment forever</p>
           <div class="plan-price">
             <span class="plan-strike">€699.99</span>
-            <strong>€199.99</strong>
+            <strong>€159.99</strong>
           </div>
-          <p class="plan-note">€159.99 when paying with crypto (−20%)</p>
+          <p class="plan-note">Permanent VIP License (−20% Crypto)</p>
         </div>
         <div class="plan-select-indicator" id="btn-sel-lifetime">Select plan</div>
       </div>
     </section>
 
-    <!-- CLEAN CHECKOUT ACTION BOX -->
+    <!-- CLEAN CRYPTO CHECKOUT ACTION BOX -->
     <section class="checkout-box" id="checkout-panel">
       <div class="checkout-head">
         <div>
-          <h2 id="chk-heading">Checkout: Annual Pro — €59.99 (€4.97/mo)</h2>
-          <p>Your license key is issued automatically right after payment confirmation.</p>
+          <h2 id="chk-heading">Crypto Checkout: Annual Pro — €47.99 (365 Days)</h2>
+          <p>After payment confirmation, your personal license key (<code style="color:#34d399;">R34PRO-XXXX-XXXX-XXXX</code>) is automatically sent to your email and activated here.</p>
         </div>
       </div>
 
-      <div class="email-row">
-        <label for="chk-email">Your Email (for license key delivery &amp; recovery)</label>
-        <input id="chk-email" class="field" type="email" placeholder="you@email.com" autocomplete="email" />
+      <div class="form-grid">
+        <div>
+          <label for="chk-email">Your Email Address (Required for license key delivery &amp; login recovery)</label>
+          <input id="chk-email" class="field" type="email" placeholder="you@email.com" autocomplete="email" required />
+        </div>
+        <div>
+          <label for="chk-crypto-coin">Cryptocurrency Network</label>
+          <select id="chk-crypto-coin" class="field" onchange="updateWalletDisplay()">
+            <option value="USDT_TRC20">USDT (TRC-20 Tron)</option>
+            <option value="BTC">BTC (Bitcoin)</option>
+            <option value="ETH">ETH / USDT (ERC-20)</option>
+            <option value="TON">TON (The Open Network)</option>
+            <option value="SOL">SOL (Solana)</option>
+            <option value="XMR">XMR (Monero)</option>
+          </select>
+        </div>
       </div>
 
-      <div class="pay-buttons">
-        <button type="button" class="btn-stripe" onclick="startStripeCardCheckout()">
-          <span>💳</span>
-          <span>Pay with Card (Stripe)</span>
-        </button>
-        <button type="button" class="btn-crypto" onclick="startCryptoCheckout()">
-          <span>⚡</span>
-          <span>Pay with Crypto (−20% OFF)</span>
-        </button>
-      </div>
-
-      <!-- Stripe / Card Instant Panel -->
-      <div id="stripe-card-drawer" class="drawer-box hidden">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
-          <strong style="font-size:14px;">Stripe Card Checkout (Visa / MasterCard / Apple Pay / Google Pay)</strong>
-          <span style="font-size:12px;color:var(--accent);font-family:monospace;" id="card-order-badge"></span>
-        </div>
-        <p style="margin:6px 0 10px;font-size:12px;color:var(--muted);">
-          Complete your payment via Official Stripe Checkout or instant Card-to-Crypto gateway. Your Pro key activates automatically upon completion:
-        </p>
-        <div class="gateway-grid">
-          <a id="gw-stripe-primary" href="#" target="_blank" rel="noopener" class="gw-btn primary">💳 Open Official Stripe Checkout ↗</a>
-          <a id="gw-guardarian" href="#" target="_blank" rel="noopener" class="gw-btn">💳 Apple/Google Pay (Guardarian) ↗</a>
-          <a id="gw-mercuryo" href="#" target="_blank" rel="noopener" class="gw-btn">💳 Visa/MasterCard (Mercuryo) ↗</a>
-        </div>
-        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
-          <input id="card-receipt-input" class="field" style="flex:1;min-width:200px;padding:8px 12px;font-size:12px;" type="text" placeholder="Optional: Paste Receipt ID / Order ID for instant verification" />
-          <button type="button" class="btn-activate" style="padding:8px 14px;" onclick="submitReceipt('card')">Verify Payment</button>
-        </div>
-      </div>
+      <button type="button" class="btn-crypto-main" onclick="startCryptoCheckout()">
+        <span>⚡</span>
+        <span id="btn-crypto-label">Pay with Cryptocurrency (€47.99) →</span>
+      </button>
 
       <!-- Crypto Instant Panel -->
       <div id="crypto-drawer" class="drawer-box hidden">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
-          <strong style="font-size:14px;color:#6ee7b7;">Crypto Checkout (−20% Discount via NOWPayments / Direct USDT)</strong>
+          <strong style="font-size:14px;color:#6ee7b7;" id="crypto-drawer-title">Cryptocurrency Invoice Created</strong>
           <span style="font-size:12px;color:#6ee7b7;font-family:monospace;" id="crypto-order-badge"></span>
         </div>
-        <div style="display:flex;gap:8px;margin:10px 0;flex-wrap:wrap;">
-          <a id="np-invoice-btn" href="#" target="_blank" rel="noopener" class="gw-btn primary" style="flex:1;background:#10b981;color:#04131d;font-weight:800;">
-            ⚡ Open NOWPayments Live Invoice (100+ Coins, Instant Key) ↗
+        <div style="display:flex;gap:8px;margin:12px 0;flex-wrap:wrap;">
+          <a id="np-invoice-btn" href="#" target="_blank" rel="noopener" class="gw-btn" style="flex:1;">
+            ⚡ Open NOWPayments Live Checkout (100+ Coins, Auto-Key Delivery) ↗
           </a>
         </div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:6px;">Or send USDT (TRC-20 Tron) directly to merchant wallet:</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:6px;" id="direct-wallet-lbl">Or send exact amount directly to merchant wallet (<code id="direct-coin-code">USDT_TRC20</code>):</div>
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
-          <input id="direct-usdt-wallet" class="field" style="padding:8px 12px;font-family:monospace;font-size:12px;color:#6ee7b7;" type="text" readonly value="TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX" />
-          <button type="button" class="pill-btn" style="padding:9px 14px;color:var(--text);" onclick="copyUsdtWallet()">Copy</button>
+          <input id="direct-usdt-wallet" class="field" style="padding:9px 12px;font-family:monospace;font-size:12px;color:#6ee7b7;" type="text" readonly value="TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX" />
+          <button type="button" class="pill-btn" style="padding:10px 14px;color:var(--text);" onclick="copyUsdtWallet()">Copy Wallet</button>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <input id="crypto-tx-input" class="field" style="flex:1;min-width:200px;padding:8px 12px;font-size:12px;" type="text" placeholder="Optional: Paste TXID for faster verification" />
-          <button type="button" class="btn-activate" style="padding:8px 14px;" onclick="submitReceipt('crypto')">Submit TXID</button>
+          <input id="crypto-tx-input" class="field" style="flex:1;min-width:200px;padding:9px 12px;font-size:12px;" type="text" placeholder="After transfer: Paste Transaction Hash (TXID) to immediately issue &amp; email your key" />
+          <button type="button" class="btn-activate" style="padding:8px 16px;" onclick="submitCryptoTx()">Confirm TXID &amp; Get Key</button>
         </div>
       </div>
 
-      <!-- Live Order Status Banner -->
-      <div id="order-status-box" class="drawer-box hidden" style="border-color:rgba(61,214,140,0.45);">
+      <!-- Issued Key & Email Confirmation Banner -->
+      <div id="order-status-box" class="drawer-box hidden" style="border-color:rgba(16,185,129,0.5);">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
           <div>
-            <div style="font-size:13px;font-weight:750;color:#6ee7b7;" id="status-headline">Waiting for payment confirmation…</div>
-            <div style="font-size:12px;color:var(--muted);font-family:monospace;margin-top:2px;" id="status-subline">Polling live order status every 4 seconds</div>
+            <div style="font-size:14px;font-weight:800;color:#34d399;" id="status-headline">Waiting for payment confirmation…</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px;" id="status-subline">Polling order status every 4 seconds. Your key will also be emailed automatically.</div>
           </div>
-          <a href="/" class="btn-activate" style="padding:9px 14px;display:inline-flex;align-items:center;">Return to R34Hub →</a>
+          <a href="/posts/rule34.xxx" class="btn-activate" style="padding:9px 14px;display:inline-flex;align-items:center;">Open Ad-Free Feed →</a>
         </div>
       </div>
     </section>
 
-    <!-- ALREADY HAVE A LICENSE KEY -->
-    <section class="license-box">
-      <div>
-        <strong style="font-size:15px;">Already have a license key?</strong>
-        <div style="font-size:12px;color:var(--muted);">Paste your key (R34H-..., SHOP2-..., SLX-...) to activate Premium on this device.</div>
+    <!-- SIGN IN WITH LICENSE KEY OR RECOVER BY EMAIL -->
+    <section class="license-box" id="license-section">
+      <div class="license-row">
+        <div>
+          <strong style="font-size:16px;">Sign in with a License Key</strong>
+          <div style="font-size:12px;color:var(--muted);">Enter the key from your email (<code style="color:#fff;">R34PRO-XXXX-XXXX-XXXX</code>) to authorize this browser.</div>
+        </div>
+        <form class="license-form" onsubmit="activateKeyOnPage(); return false;">
+          <input id="page-license-input" class="field" type="text" placeholder="R34PRO-XXXX-XXXX-XXXX" spellcheck="false" autocomplete="off" />
+          <button type="submit" class="btn-activate">Sign In &amp; Activate</button>
+        </form>
       </div>
-      <form class="license-form" onsubmit="activateKeyOnPage(); return false;">
-        <input id="page-license-input" class="field" type="text" placeholder="R34H-XXXX-XXXX-XXXX" spellcheck="false" autocomplete="off" />
-        <button type="submit" class="btn-activate">Activate</button>
-      </form>
+      <div class="license-row" style="padding-top:12px;border-top:1px solid var(--line);">
+        <div>
+          <strong style="font-size:14px;">Lost your key? Recover by Email</strong>
+          <div style="font-size:12px;color:var(--muted);">Enter the email used during purchase to look up and re-send your license key.</div>
+        </div>
+        <form class="license-form" onsubmit="recoverKeyByEmail(); return false;">
+          <input id="recover-email-input" class="field" type="email" placeholder="you@email.com" autocomplete="email" />
+          <button type="submit" class="btn-ghost-sm" style="min-height:42px;white-space:nowrap;">Send Key to Email</button>
+        </form>
+      </div>
     </section>
 
-    <!-- FAQ (Matches r34.app/premium) -->
+    <!-- FAQ -->
     <section class="faq-section">
       <h3>Frequently Asked Questions</h3>
       <div class="faq-grid">
         <div class="faq-card">
-          <h4>What payment methods are accepted?</h4>
-          <p>We accept credit/debit cards (Visa, MasterCard, Apple Pay, Google Pay) via Stripe Checkout, as well as cryptocurrency (USDT, BTC, TON, SOL, XMR) with a 20% discount.</p>
+          <h4>How do I receive my license key?</h4>
+          <p>As soon as your cryptocurrency payment is confirmed, your personal key (<code style="color:#fff;">R34PRO-XXXX-XXXX-XXXX</code>) is sent to your email address and automatically activated on this screen.</p>
         </div>
         <div class="faq-card">
-          <h4>Didn't receive the license email?</h4>
-          <p>Your license key appears right on this page immediately after payment and is automatically saved to your browser. You can also recover it anytime using your Order ID or email.</p>
+          <h4>Which cryptocurrencies are accepted?</h4>
+          <p>We accept USDT (TRC-20 &amp; ERC-20), Bitcoin (BTC), Ethereum (ETH), TON, Solana (SOL), Monero (XMR), and 100+ coins via NOWPayments with a built-in 20% discount.</p>
         </div>
         <div class="faq-card">
-          <h4>Can I cancel my subscription?</h4>
-          <p>Yes, you can cancel anytime in one click. One-time purchases (30-Day Pass, Annual, or Lifetime) never auto-renew and require no cancellation.</p>
+          <h4>How do I sign in on another device?</h4>
+          <p>Open <code style="color:#fff;">/premium</code> on up to 5 devices, paste the license key from your email into the "Sign in with a License Key" box, and click Activate.</p>
         </div>
         <div class="faq-card">
-          <h4>What happens after I cancel?</h4>
-          <p>You keep full Premium access until the end of your paid period. All posts saved in your browser remain yours forever.</p>
+          <h4>Does my purchase auto-renew?</h4>
+          <p>No. All cryptocurrency payments (30 Days, Annual Pro, and Lifetime VIP) are one-time payments with zero recurring charges.</p>
         </div>
       </div>
     </section>
+
+    <footer class="footer-links">
+      <span>© 2026 R34Hub • Ad-Free Multi-Board Indexer</span>
+      <div style="display:flex;gap:14px;">
+        <a href="/terms">Terms</a>
+        <a href="/privacy">Privacy</a>
+        <a href="/dmca">DMCA</a>
+        <a href="/2257">2257 Exemption</a>
+      </div>
+    </footer>
   </main>
 
   <div id="toast" class="toast hidden"></div>
@@ -696,11 +799,19 @@
     let selectedPlan = 'annual';
     let activeOrderId = '';
     let pollTimer = null;
+    let walletsMap = {
+      USDT_TRC20: 'TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX',
+      BTC: 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
+      ETH: '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
+      TON: 'UQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqEBI',
+      SOL: '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU',
+      XMR: '44Affq5kSiGBoZ4NMDwYtN18obc8AemS33DBLWs3H7otXft3XjrpDtQGv7SqSsaBYBb98uNbr2VBBEt7f2wfn3RVGQBEP3A'
+    };
 
     const PLANS = {
-      monthly: { eur: 7.00, cryptoEur: 5.60, name: '30 Days Access — €7.00' },
-      annual: { eur: 59.99, cryptoEur: 47.99, name: 'Annual Pro — €59.99 (€4.97/mo)' },
-      lifetime: { eur: 199.99, cryptoEur: 159.99, name: 'Lifetime VIP — €199.99' }
+      monthly: { cryptoEur: 5.60, name: '30 Days Access — €5.60 (30 Days)' },
+      annual: { cryptoEur: 47.99, name: 'Annual Pro — €47.99 (365 Days)' },
+      lifetime: { cryptoEur: 159.99, name: 'Lifetime VIP — €159.99 (Forever)' }
     };
 
     function showToast(msg) {
@@ -708,7 +819,60 @@
       el.textContent = msg;
       el.classList.remove('hidden');
       clearTimeout(window.__premToast);
-      window.__premToast = setTimeout(() => el.classList.add('hidden'), 3200);
+      window.__premToast = setTimeout(() => el.classList.add('hidden'), 3400);
+    }
+
+    function saveProToStorage(key, meta = {}) {
+      const cleanKey = String(key || '').trim().toUpperCase();
+      if (!cleanKey) return;
+      const record = {
+        key: cleanKey,
+        plan: meta.plan || meta.planName || 'Annual Pro',
+        tier: meta.tier || 'annual',
+        email: meta.email || meta.ownerEmail || '',
+        expiresAt: meta.expiresAt || ''
+      };
+      localStorage.setItem('bp_license', cleanKey);
+      localStorage.setItem('r34hub_license_key', cleanKey);
+      localStorage.setItem('r34hub_pro_v1', '1');
+      localStorage.setItem('r34hub_pro_meta', JSON.stringify(record));
+      renderAuthUI();
+    }
+
+    function logoutFromPremium() {
+      localStorage.removeItem('bp_license');
+      localStorage.removeItem('r34hub_license_key');
+      localStorage.removeItem('r34hub_pro_v1');
+      localStorage.removeItem('r34hub_pro_meta');
+      document.getElementById('page-license-input').value = '';
+      renderAuthUI();
+      showToast('Logged out successfully');
+    }
+
+    function renderAuthUI() {
+      const key = localStorage.getItem('bp_license') || localStorage.getItem('r34hub_license_key') || '';
+      const meta = JSON.parse(localStorage.getItem('r34hub_pro_meta') || 'null') || {};
+      const isLogged = Boolean(key);
+
+      document.getElementById('header-pro-pill').classList.toggle('hidden', !isLogged);
+      document.getElementById('header-logout-btn').classList.toggle('hidden', !isLogged);
+      document.getElementById('header-signin-btn').classList.toggle('hidden', isLogged);
+      document.getElementById('active-membership-card').classList.toggle('hidden', !isLogged);
+
+      if (isLogged) {
+        document.getElementById('active-key-text').textContent = key;
+        document.getElementById('active-plan-text').textContent = meta.plan || 'Pro Membership';
+        document.getElementById('active-email-text').textContent = meta.email || 'Verified Key';
+        const exp = String(meta.expiresAt || '').slice(0, 10);
+        document.getElementById('active-exp-text').textContent = (!exp || exp === '2099-12-31') ? 'Lifetime (Never Expires)' : exp;
+      }
+    }
+
+    function copyActiveKey() {
+      const key = localStorage.getItem('bp_license') || localStorage.getItem('r34hub_license_key') || '';
+      if (!key) return;
+      navigator.clipboard.writeText(key);
+      showToast('License key copied!');
     }
 
     function selectPlan(plan) {
@@ -721,54 +885,33 @@
         card.classList.toggle('is-selected', on);
         btn.textContent = on ? 'Selected ✓' : 'Select plan';
       });
-      document.getElementById('chk-heading').textContent = `Checkout: ${PLANS[plan].name}`;
+      const info = PLANS[plan];
+      document.getElementById('chk-heading').textContent = `Crypto Checkout: ${info.name}`;
+      document.getElementById('btn-crypto-label').textContent = `Pay with Cryptocurrency (€${info.cryptoEur.toFixed(2)}) →`;
     }
 
-    async function startStripeCardCheckout() {
-      const email = document.getElementById('chk-email').value.trim() || 'buyer@r34hub.app';
-      document.getElementById('crypto-drawer').classList.add('hidden');
-      document.getElementById('stripe-card-drawer').classList.remove('hidden');
-
-      try {
-        const res = await fetch('/api/stripe/create-checkout-session', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ plan: selectedPlan, email })
-        });
-        const data = await res.json();
-        if (!data.ok) {
-          showToast(data.error || 'Could not start Stripe checkout');
-          return;
-        }
-        activeOrderId = data.orderId;
-        document.getElementById('card-order-badge').textContent = `#${data.orderId} • €${Number(data.amountEur).toFixed(2)} EUR`;
-        const urls = data.cardToCryptoUrls || {};
-        const primaryUrl = data.stripeSessionUrl || data.checkoutUrl || urls.guardarian;
-        document.getElementById('gw-stripe-primary').href = primaryUrl;
-        document.getElementById('gw-guardarian').href = urls.guardarian || primaryUrl;
-        document.getElementById('gw-mercuryo').href = urls.mercuryo || primaryUrl;
-
-        document.getElementById('order-status-box').classList.remove('hidden');
-        startPolling();
-
-        if (primaryUrl) {
-          window.open(primaryUrl, '_blank', 'noopener');
-        }
-      } catch (err) {
-        showToast('Could not start card checkout');
-      }
+    function updateWalletDisplay() {
+      const coin = document.getElementById('chk-crypto-coin').value;
+      document.getElementById('direct-coin-code').textContent = coin;
+      document.getElementById('direct-usdt-wallet').value = walletsMap[coin] || walletsMap.USDT_TRC20;
     }
 
     async function startCryptoCheckout() {
-      const email = document.getElementById('chk-email').value.trim() || 'buyer@r34hub.app';
-      document.getElementById('stripe-card-drawer').classList.add('hidden');
+      const emailInput = document.getElementById('chk-email');
+      const email = emailInput.value.trim();
+      if (!email || !email.includes('@')) {
+        emailInput.focus();
+        showToast('Please enter your email address so we can send your license key');
+        return;
+      }
+      const cryptoCurrency = document.getElementById('chk-crypto-coin').value;
       document.getElementById('crypto-drawer').classList.remove('hidden');
 
       try {
         const res = await fetch('/api/hubcloud/create-order', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ plan: selectedPlan, provider: 'crypto', cryptoCurrency: 'USDT_TRC20', email })
+          body: JSON.stringify({ plan: selectedPlan, provider: 'crypto', cryptoCurrency, email })
         });
         const data = await res.json();
         if (!data.ok) {
@@ -776,7 +919,7 @@
           return;
         }
         activeOrderId = data.orderId;
-        document.getElementById('crypto-order-badge').textContent = `#${data.orderId} • €${Number(data.amountEur).toFixed(2)} EUR (−20%)`;
+        document.getElementById('crypto-order-badge').textContent = `Order #${data.orderId} • €${Number(data.amountEur).toFixed(2)} EUR`;
         if (data.walletAddress) {
           document.getElementById('direct-usdt-wallet').value = data.walletAddress;
         }
@@ -796,26 +939,37 @@
     function copyUsdtWallet() {
       const val = document.getElementById('direct-usdt-wallet').value;
       navigator.clipboard.writeText(val);
-      showToast('USDT TRC-20 wallet copied!');
+      showToast('Wallet address copied!');
     }
 
-    async function submitReceipt(kind) {
-      const inputId = kind === 'card' ? 'card-receipt-input' : 'crypto-tx-input';
-      const val = document.getElementById(inputId).value.trim();
-      if (!val) {
-        showToast('Paste your receipt ID or TXID first');
+    async function submitCryptoTx() {
+      const val = document.getElementById('crypto-tx-input').value.trim();
+      if (!val || val.length < 8) {
+        showToast('Please paste your valid Transaction Hash (TXID)');
         return;
       }
-      const email = document.getElementById('chk-email').value.trim();
+      const email = document.getElementById('chk-email').value.trim() || 'buyer@r34hub.app';
       const res = await fetch('/api/hubcloud/submit-tx', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderId: activeOrderId, txHash: `${kind.toUpperCase()}:${val}`, email })
+        body: JSON.stringify({ orderId: activeOrderId, txHash: val, email })
       });
       const data = await res.json();
-      if (data.ok) {
-        document.getElementById('status-headline').textContent = `Payment #${activeOrderId} submitted — awaiting key issuance`;
-        showToast('Payment reference saved!');
+      if (data.ok && data.licenseKey) {
+        saveProToStorage(data.licenseKey, {
+          plan: data.plan,
+          tier: data.tier,
+          email: data.email,
+          expiresAt: data.expiresAt
+        });
+        document.getElementById('page-license-input').value = data.licenseKey;
+        document.getElementById('order-status-box').classList.remove('hidden');
+        document.getElementById('status-headline').textContent = `✓ Payment Confirmed! Key Issued & Emailed: ${data.licenseKey}`;
+        document.getElementById('status-subline').textContent = `Sent to ${data.email} and activated on this device.`;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        showToast(`Activated: ${data.licenseKey}`);
+      } else {
+        showToast(data.error || 'Could not verify TXID');
       }
     }
 
@@ -833,18 +987,26 @@
         document.getElementById('order-status-box').classList.remove('hidden');
         if (data.status === 'paid' && data.licenseKey) {
           clearInterval(pollTimer);
-          localStorage.setItem('bp_license', data.licenseKey);
+          saveProToStorage(data.licenseKey, {
+            plan: data.planName || data.plan,
+            tier: data.tier,
+            email: data.email,
+            expiresAt: data.expiresAt
+          });
           document.getElementById('page-license-input').value = data.licenseKey;
-          document.getElementById('status-headline').textContent = `✓ Payment confirmed! Your key: ${data.licenseKey}`;
-          document.getElementById('status-subline').textContent = 'License key automatically saved and activated in this browser.';
-          showToast(`Premium: ${data.licenseKey}`);
+          document.getElementById('status-headline').textContent = `✓ Payment Confirmed! Your Key: ${data.licenseKey}`;
+          document.getElementById('status-subline').textContent = `Emailed to ${data.email || 'your inbox'} and activated on this browser.`;
+          showToast(`Premium Active: ${data.licenseKey}`);
         }
       } catch (_) {}
     }
 
-    async function activateKeyOnPage() {
-      const key = document.getElementById('page-license-input').value.trim();
-      if (!key) return;
+    async function activateKeyOnPage(customKey) {
+      const key = (customKey || document.getElementById('page-license-input').value).trim();
+      if (!key) {
+        showToast('Please enter a license key');
+        return;
+      }
       const res = await fetch('/api/licenses/activate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -852,21 +1014,85 @@
       });
       const data = await res.json();
       if (data.ok && data.valid) {
-        localStorage.setItem('bp_license', data.licenseKey);
-        showToast('Premium activated! Redirecting…');
-        setTimeout(() => { location.href = '/'; }, 1000);
+        saveProToStorage(data.licenseKey, {
+          plan: data.plan,
+          tier: data.tier,
+          email: data.email,
+          expiresAt: data.expiresAt
+        });
+        document.getElementById('page-license-input').value = data.licenseKey;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        showToast('Pro License Key Activated!');
       } else {
         showToast(data.error || 'Invalid license key');
       }
     }
 
-    (function init() {
+    async function recoverKeyByEmail() {
+      const email = document.getElementById('recover-email-input').value.trim();
+      if (!email || !email.includes('@')) {
+        showToast('Please enter a valid email address');
+        return;
+      }
+      const res = await fetch('/api/license/recover', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const data = await res.json();
+      if (data.ok && data.licenseKey) {
+        saveProToStorage(data.licenseKey, {
+          plan: data.plan,
+          tier: data.tier,
+          email: data.email,
+          expiresAt: data.expiresAt
+        });
+        document.getElementById('page-license-input').value = data.licenseKey;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        showToast(`Recovered & Emailed Key: ${data.licenseKey}`);
+      } else {
+        showToast(data.error || 'No active license found for that email');
+      }
+    }
+
+    (async function init() {
+      try {
+        const cfg = await fetch('/api/hubcloud/config').then(r => r.json());
+        if (cfg && cfg.cryptoWallets) {
+          walletsMap = Object.assign(walletsMap, cfg.cryptoWallets);
+          updateWalletDisplay();
+        }
+      } catch (_) {}
+
       const params = new URLSearchParams(location.search);
       const qPlan = params.get('plan');
       if (qPlan && PLANS[qPlan]) selectPlan(qPlan);
       const qOrder = params.get('order') || params.get('orderId') || params.get('session');
-      const existingKey = localStorage.getItem('bp_license') || '';
-      if (existingKey) document.getElementById('page-license-input').value = existingKey;
+      const magicKey = params.get('activate_key');
+
+      if (magicKey) {
+        params.delete('activate_key');
+        const cleanQs = params.toString();
+        try {
+          window.history.replaceState({}, '', location.pathname + (cleanQs ? '?' + cleanQs : ''));
+        } catch (_) {}
+        await activateKeyOnPage(magicKey);
+      } else {
+        const existingKey = localStorage.getItem('bp_license') || localStorage.getItem('r34hub_license_key') || '';
+        if (existingKey) {
+          document.getElementById('page-license-input').value = existingKey;
+          fetch(`/api/licenses/verify?key=${encodeURIComponent(existingKey)}`)
+            .then(r => r.json())
+            .then(v => {
+              if (v && v.valid) {
+                saveProToStorage(v.key, { plan: v.planName, tier: v.tier, email: v.ownerEmail, expiresAt: v.expiresAt });
+              }
+            })
+            .catch(() => {});
+        }
+      }
+
+      renderAuthUI();
       if (qOrder) {
         activeOrderId = qOrder;
         checkOrderStatus();

@@ -920,7 +920,14 @@ textarea {
   transform: scale(1.08);
   opacity: 0.45;
 }
-.modal-side { min-height: 0; padding: 16px; overflow: auto; display: flex; flex-direction: column; gap: 14px; }
+.modal-side { min-height: 0; padding: 16px; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; gap: 14px; }
+.modal-side .tag-well,
+#modal-tags-list,
+#modal-tags-list .tag-well,
+#tag-sheet-body .tag-well {
+  max-height: none !important;
+  overflow: visible !important;
+}
 .modal-side .pair { flex-direction: row; }
 .pair > .btn, .pair > a.btn { flex: 1; justify-content: center; }
 .modal-narrow {

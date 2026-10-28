@@ -6,6 +6,9 @@
   <meta name="theme-color" content="#000000" />
   <meta name="6a97888e-site-verification" content="6d05d9a7540ffc84889838dd34fd8554" />
   <title>R34Hub — Search every board in one feed</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="alternate icon" href="/favicon.ico" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <link rel="stylesheet" href="/app.css" />
 </head>
 <body class="mode-home">
@@ -61,6 +64,7 @@
         <span class="mark">R34</span>
       </a>
       <div class="nav-actions" id="navbar-actions">
+        <button id="nav-pro-badge" class="btn btn-tiny hidden" type="button" onclick="openProModal()" style="background:rgba(16,185,129,0.16);border:1px solid rgba(16,185,129,0.4);color:#34d399;font-weight:700;padding:5px 10px;border-radius:999px;">✓ PRO</button>
         <button id="open-search-btn" class="icon-btn bare nav-search" type="button" aria-label="Search posts" onclick="openSearchMenu()">
           <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-search"/></svg>
           <span id="search-dot" class="dot-mark hidden"></span>
@@ -97,8 +101,15 @@
         </div>
       </div> -->
       <button id="pro-cta-btn" class="side-link side-pro" type="button" onclick="closeSideMenu(); openProModal()"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-spark"/></svg><span id="pro-cta-text">Pro · €4.97</span></button>
+      <div id="side-pro-account" class="hidden" style="padding:10px 12px;border-radius:12px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);display:grid;gap:6px;font-size:12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
+          <strong style="color:#34d399;font-size:11px;text-transform:uppercase;letter-spacing:0.04em;">● Pro Active</strong>
+          <a href="/premium" style="color:#a0a0b0;text-decoration:underline;font-size:11px;">Account</a>
+        </div>
+        <div id="side-pro-key-label" style="font-family:monospace;color:#f3f3f7;font-size:11px;overflow:hidden;text-overflow:ellipsis;">R34PRO-••••</div>
+        <button id="side-logout-btn" type="button" class="btn btn-tiny btn-ghost" style="width:100%;margin-top:2px;" onclick="logoutPro()">Log out</button>
+      </div>
       <div class="side-gap"></div>
-      <a class="admin-link" href="/admin">Admin</a>
     </div>
   </div>
 
@@ -134,7 +145,7 @@
           <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-sliders"/></svg>
           <span class="sheet-jump-copy">
             <span class="sheet-jump-kicker">Board</span>
-            <strong id="sheet-board-name">All boards</strong>
+            <strong id="sheet-board-name">Rule34.xxx</strong>
           </span>
           <span id="active-filter-count" class="count is-zero">0</span>
           <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg>
@@ -165,8 +176,8 @@
           <div class="domain-wrap">
             <button id="domain-select-btn" class="domain-btn" type="button" aria-haspopup="listbox" aria-expanded="false" onclick="toggleDomainMenu('source-pills', this)">
               <img data-domain-icon alt="" width="20" height="20" hidden>
-              <span class="domain-fallback" data-domain-fallback>All</span>
-              <span id="feed-status-badge">All boards</span>
+              <span class="domain-fallback" data-domain-fallback>R34</span>
+              <span id="feed-status-badge">Rule34.xxx</span>
               <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevrons"/></svg>
             </button>
             <div id="source-pills" class="domain-menu hidden" role="listbox"></div>
@@ -197,7 +208,7 @@
         <div class="domain-wrap">
           <button id="home-domain-btn" class="domain-btn is-compact" type="button" aria-label="Choose a board" aria-expanded="false" onclick="toggleDomainMenu('home-domain-menu', this)">
             <img data-domain-icon alt="" width="20" height="20" hidden>
-            <span class="domain-fallback" data-domain-fallback>All</span>
+            <span class="domain-fallback" data-domain-fallback>R34</span>
           </button>
           <div id="home-domain-menu" class="domain-menu hidden" role="listbox"></div>
         </div>
@@ -323,9 +334,14 @@
         <div class="panel" style="padding:12px">
           <div class="kicker">AI tools</div>
           <div class="pair" style="margin-top:8px">
-            <button id="modal-ai-chat-btn" class="btn btn-primary btn-tiny" type="button"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chat"/></svg>Chat</button>
-            <button id="modal-ai-video-btn" class="btn btn-ghost btn-tiny" type="button"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-wand"/></svg>Animate</button>
+            <button id="modal-ai-prompt-btn" class="btn btn-ghost btn-tiny" type="button"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-spark"/></svg>Copy Prompt</button>
+            <button id="modal-ai-similar-btn" class="btn btn-ghost btn-tiny" type="button"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-search"/></svg>Similar</button>
           </div>
+          <div class="pair" style="margin-top:6px">
+            <button id="modal-ai-chat-btn" class="btn btn-primary btn-tiny" type="button"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chat"/></svg>AI Chat 18+</button>
+            <button id="modal-ai-video-btn" class="btn btn-ghost btn-tiny" type="button"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-wand"/></svg>Animate 18+</button>
+          </div>
+          <div id="modal-ai-prompt-box" class="hidden" style="margin-top:8px;padding:8px;border-radius:8px;background:#09090b;border:1px solid var(--line);font-family:monospace;font-size:11px;color:var(--muted);word-break:break-word;"></div>
         </div>
         <div>
           <div class="kicker">Find the artist</div>
@@ -333,7 +349,7 @@
         </div>
         <div>
           <div class="tag-head"><span class="kicker">Tags</span><span id="modal-tag-count" class="count">0</span></div>
-          <div id="modal-tags-list" class="tag-well"></div>
+          <div id="modal-tags-list"></div>
         </div>
         <div class="panel-head fine">
           <span id="modal-dimensions"></span>
@@ -353,38 +369,51 @@
         <button id="close-pro-modal" class="x" type="button" aria-label="Close"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-close"/></svg></button>
       </div>
       <div class="pro-body">
+        <div id="active-pro-panel" class="hidden" style="padding:14px;border-radius:12px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.35);display:grid;gap:8px;margin-bottom:4px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+            <strong style="color:#34d399;font-size:13px;">✓ Pro Membership Active</strong>
+            <span id="modal-pro-plan" class="meta-badge" style="margin:0;">Annual Pro</span>
+          </div>
+          <div style="font-size:12px;color:var(--muted);">License Key: <code id="modal-pro-key" style="color:#fff;font-family:monospace;">R34PRO-XXXX</code></div>
+          <div style="display:flex;gap:8px;margin-top:4px;">
+            <a class="btn btn-tiny btn-ghost" href="/premium" style="flex:1;text-align:center;">Manage Account</a>
+            <button type="button" class="btn btn-tiny btn-ghost" onclick="logoutPro()" style="color:#fb7185;border-color:rgba(251,113,133,0.35);">Log Out</button>
+          </div>
+        </div>
         <ul class="pro-perks">
           <li>Ads stay off</li>
           <li>Premium boards</li>
           <li>Download a page</li>
         </ul>
-        <div class="plans" role="radiogroup" aria-label="Plan">
-          <button class="plan" type="button" data-plan="monthly">
-            <span>Monthly</span>
-            <b>€7</b>
-            <small>per month</small>
-          </button>
-          <button class="plan is-on" type="button" data-plan="annual">
-            <span class="save-flag">Save 29%</span>
-            <span>Yearly</span>
-            <b>€4.97</b>
-            <small>€59.99 / year</small>
-          </button>
-          <button class="plan" type="button" data-plan="lifetime">
-            <span>Lifetime</span>
-            <b>€199.99</b>
-            <small>once, or crypto</small>
-          </button>
+        <div id="pro-purchase-block" style="display:grid;gap:14px;">
+          <div class="plans" role="radiogroup" aria-label="Plan">
+            <button class="plan" type="button" data-plan="monthly">
+              <span>Monthly</span>
+              <b>€7</b>
+              <small>€5.60 in crypto</small>
+            </button>
+            <button class="plan is-on" type="button" data-plan="annual">
+              <span class="save-flag">Save 29%</span>
+              <span>Yearly</span>
+              <b>€4.97</b>
+              <small>€47.99 / yr crypto</small>
+            </button>
+            <button class="plan" type="button" data-plan="lifetime">
+              <span>Lifetime</span>
+              <b>€199.99</b>
+              <small>€159.99 in crypto</small>
+            </button>
+          </div>
+          <div class="pro-pay">
+            <a class="btn btn-primary" href="/premium">Continue with Crypto (−20% OFF) →</a>
+            <button id="sim-crypto-checkout-btn" class="btn btn-ghost" type="button">Instant Crypto Invoice (USDT / BTC / TON / SOL)</button>
+            <p class="fine">Pay with cryptocurrency for 20% off. Your license key is emailed &amp; activated immediately.</p>
+          </div>
         </div>
-        <div class="pro-pay">
-          <a class="btn btn-primary" href="/premium">Pay by card (Stripe)</a>
-          <button id="sim-crypto-checkout-btn" class="btn btn-ghost" type="button">Pay with crypto, −20%</button>
-          <p class="fine">Card checkout opens HubCloud. Crypto is 20% off. A key signs this device in.</p>
-        </div>
-        <form class="pro-key" onsubmit="return false">
-          <label for="license-input">Sign in with a key</label>
+        <form id="pro-signin-form" class="pro-key" onsubmit="return false">
+          <label for="license-input">Sign in with a license key</label>
           <div class="license">
-            <input id="license-input" class="field" type="text" placeholder="SHOP2-XXXX-XXXX-XXXX" autocomplete="off" spellcheck="false" aria-label="License key" />
+            <input id="license-input" class="field" type="text" placeholder="R34PRO-XXXX-XXXX-XXXX" autocomplete="off" spellcheck="false" aria-label="License key" />
             <button id="verify-license-btn" class="btn btn-primary" type="button">Sign in</button>
           </div>
         </form>

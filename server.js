@@ -1321,6 +1321,7 @@ app.get('/api/media', async (req, res) => {
 
 // API: Monetization, Stripe Investigation Blueprint & Admin Configuration
 app.get('/api/monetization/config', (req, res) => {
+  if (!requireAdmin(req, res)) return;
   res.json({
     activeBrandId: appConfig.activeBrandId,
     activeBrand: appConfig.brands.find(b => b.id === appConfig.activeBrandId) || appConfig.brands[0],
@@ -1528,52 +1529,193 @@ function requireWebhook(req, res) {
   return true;
 }
 
-function generateLicenseKeyString(prefix = "SHOP2", tierCode = "PRO") {
-  const cleanPrefix = ["R34H", "SHOP2", "PATREON", "SLX"].includes(String(prefix).toUpperCase())
+function getLicenseHmacSecret() {
+  return process.env.LICENSE_HMAC_SECRET || process.env.R34HUB_WEBHOOK_SECRET || (monDb && monDb.owner && monDb.owner.webhookSecret) || "whsec_r34hub_live_8f92a4c7e1b093d6f5a2c8e4";
+}
+
+function generateLicenseKeyString(prefix = "R34PRO", tierCode = "annual", seed = "") {
+  const cleanPrefix = ["R34PRO", "R34H", "SHOP2", "PATREON", "SLX"].includes(String(prefix).toUpperCase())
     ? String(prefix).toUpperCase()
-    : "R34H";
-  const b1 = crypto.randomBytes(2).toString("hex").toUpperCase();
-  const b2 = crypto.randomBytes(2).toString("hex").toUpperCase();
-  const b3 = crypto.randomBytes(2).toString("hex").toUpperCase();
+    : "R34PRO";
+  const t = String(tierCode || "annual").toLowerCase();
+  const tierChar = (t === "monthly" || t === "30d" || t === "30d_pass" || t === "30days") ? "M" : t === "lifetime" ? "L" : "A";
+  const rawSeed = seed ? String(seed) : crypto.randomBytes(8).toString("hex");
+  const seedHash = crypto.createHash("sha256").update(rawSeed).digest("hex").toUpperCase();
+  const b1 = `${tierChar}${seedHash.slice(0, 3)}`;
+  const sig = crypto.createHmac("sha256", getLicenseHmacSecret()).update(`${cleanPrefix}:${b1}`).digest("hex").toUpperCase();
+  const b2 = sig.slice(0, 4);
+  const b3 = sig.slice(4, 8);
   return `${cleanPrefix}-${b1}-${b2}-${b3}`;
 }
 
-function buildLicenseEmailHtml({ email, licenseKey, planName, priceEur, expiresAt, gateway }) {
+function verifyStatelessLicenseKey(rawKey) {
+  const clean = String(rawKey || "").trim().toUpperCase();
+  const m = clean.match(/^(R34PRO|R34H|SHOP2|PATREON|SLX)-([MAL][0-9A-F]{3})-([0-9A-F]{4})-([0-9A-F]{4})$/);
+  if (!m) return null;
+  const [, prefix, b1, b2, b3] = m;
+  const expectedSig = crypto.createHmac("sha256", getLicenseHmacSecret()).update(`${prefix}:${b1}`).digest("hex").toUpperCase().slice(0, 8);
+  if (!secretMatches(`${b2}${b3}`, expectedSig)) return null;
+  const tierChar = b1[0];
+  const tier = tierChar === "M" ? "monthly" : tierChar === "L" ? "lifetime" : "annual";
+  const planName = tier === "monthly"
+    ? "30-Day Monthly Pro (€7.00/mo)"
+    : tier === "lifetime"
+      ? "Lifetime VIP Master Pass (€199.99)"
+      : "365-Day Annual Pro (€59.99/yr)";
+  const priceEur = tier === "monthly" ? 7.00 : tier === "lifetime" ? 199.99 : 59.99;
+  const expiresAt = tier === "lifetime"
+    ? "2099-12-31T23:59:59.000Z"
+    : new Date(Date.now() + (tier === "monthly" ? 30 : 365) * 86400000).toISOString();
+  return {
+    key: clean,
+    prefix,
+    tier,
+    planName,
+    priceEur,
+    email: "verified@r34hub.app",
+    status: "active",
+    devicesUsed: 1,
+    maxDevices: 5,
+    createdAt: new Date().toISOString(),
+    expiresAt,
+    statelessVerified: true
+  };
+}
+
+function findOrVerifyLicenseRecord(rawKey) {
+  const clean = String(rawKey || "").trim().toUpperCase();
+  if (!clean) return null;
+  const dbRecord = (monDb.licenses || []).find(l => String(l.key || "").toUpperCase() === clean);
+  if (dbRecord) return dbRecord;
+  const stateless = verifyStatelessLicenseKey(clean);
+  if (stateless) {
+    monDb.licenses = monDb.licenses || [];
+    monDb.licenses.unshift(stateless);
+    saveMonetizationDb(monDb);
+    return stateless;
+  }
+  return null;
+}
+
+function buildLicenseEmailHtml({ email, licenseKey, planName, priceEur, expiresAt, gateway, origin = "https://r34hub-five.vercel.app" }) {
+  const magicPremiumUrl = `${origin}/premium?activate_key=${encodeURIComponent(licenseKey)}`;
+  const magicFeedUrl = `${origin}/posts/rule34.xxx?activate_key=${encodeURIComponent(licenseKey)}`;
   return `<!DOCTYPE html>
 <html>
 <body style="margin:0;padding:24px;background:#09090b;color:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;">
-  <div style="max-width:540px;margin:0 auto;background:#121215;border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:28px;">
-    <div style="font-size:11px;color:#a1a1aa;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">HubCloud.dev • R34Hub.app Digital Fulfillment</div>
-    <h2 style="margin:0 0 12px;color:#ffffff;font-size:20px;">Your Pro VIP License Key is Ready</h2>
-    <p style="margin:0 0 16px;color:#d4d4d8;font-size:14px;line-height:1.5;">
-      Thank you for your purchase (${planName} — €${Number(priceEur).toFixed(2)} via ${gateway}). Copy your activation key below and paste it into the <strong>R34Hub Pro VIP</strong> modal on <a href="https://r34hub.app" style="color:#818cf8;">r34hub.app</a>:
+  <div style="max-width:560px;margin:0 auto;background:#121215;border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:28px;">
+    <div style="font-size:11px;color:#10b981;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;margin-bottom:6px;">R34Hub Premium • Instant License Key Delivery</div>
+    <h2 style="margin:0 0 12px;color:#ffffff;font-size:22px;">Your R34Hub Premium Key is Ready</h2>
+    <p style="margin:0 0 16px;color:#d4d4d8;font-size:14px;line-height:1.55;">
+      Thank you for your purchase (<strong>${planName}</strong> — €${Number(priceEur || 0).toFixed(2)} via ${gateway}). Use your license key below to sign in and unlock ad-free browsing on up to 5 devices:
     </p>
-    <div style="background:#09090b;border:1px solid rgba(129,140,248,0.35);border-radius:12px;padding:16px;text-align:center;margin-bottom:18px;">
-      <div style="font-size:11px;color:#a1a1aa;margin-bottom:4px;">LICENSE KEY (MAX 5 DEVICES)</div>
-      <div style="font-family:monospace;font-size:20px;font-weight:700;letter-spacing:0.06em;color:#ffffff;">${licenseKey}</div>
+    <div style="background:#09090b;border:1px solid rgba(16,185,129,0.45);border-radius:12px;padding:18px;text-align:center;margin-bottom:18px;">
+      <div style="font-size:11px;color:#a1a1aa;margin-bottom:6px;">YOUR PERSONAL LICENSE KEY (SAVE THIS EMAIL)</div>
+      <div style="font-family:monospace;font-size:21px;font-weight:800;letter-spacing:0.06em;color:#34d399;">${licenseKey}</div>
+    </div>
+    <div style="text-align:center;margin-bottom:20px;">
+      <a href="${magicFeedUrl}" style="display:inline-block;background:#10b981;color:#04130d;font-weight:700;font-size:14px;padding:12px 22px;border-radius:10px;text-decoration:none;margin:4px;">1-Click Sign In &amp; Open Ad-Free Feed →</a>
+      <a href="${magicPremiumUrl}" style="display:inline-block;background:#1c1c24;color:#f4f4f5;font-weight:600;font-size:13px;padding:11px 18px;border-radius:10px;text-decoration:none;border:1px solid rgba(255,255,255,0.12);margin:4px;">Manage Membership</a>
+    </div>
+    <div style="background:#0d0d10;border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:12px;color:#a1a1aa;line-height:1.5;">
+      <strong style="color:#e4e4e7;">How to sign in on any device or browser:</strong><br/>
+      1. Open <a href="${origin}/premium" style="color:#38bdf8;">${origin}/premium</a> (or click <em>Pro</em> in the menu).<br/>
+      2. Paste <code style="color:#fff;">${licenseKey}</code> into the <strong>Sign in with License Key</strong> field and click <strong>Activate</strong>.
     </div>
     <table style="width:100%;font-size:12px;color:#a1a1aa;border-top:1px solid rgba(255,255,255,0.07);padding-top:12px;">
       <tr><td>Account Email:</td><td style="text-align:right;color:#e4e4e7;">${email}</td></tr>
-      <tr><td>Unlocked Perks:</td><td style="text-align:right;color:#34d399;">Zero Ads • All 11 Boorus • Batch ZIP • AI Priority</td></tr>
-      <tr><td>Valid Until:</td><td style="text-align:right;color:#e4e4e7;">${String(expiresAt).slice(0, 10)}</td></tr>
+      <tr><td>Unlocked Perks:</td><td style="text-align:right;color:#34d399;">Zero Ads • All 11 Boards • HD Video &amp; Page Download</td></tr>
+      <tr><td>Valid Until:</td><td style="text-align:right;color:#e4e4e7;">${String(expiresAt).slice(0, 10) === "2099-12-31" ? "Lifetime (Never Expires)" : String(expiresAt).slice(0, 10)}</td></tr>
     </table>
   </div>
 </body>
 </html>`;
 }
 
-// 1. License Key Engine (/api/licenses/*)
-app.post("/api/licenses/activate", (req, res) => {
+async function sendLicenseEmail({ email, licenseKey, planName, priceEur, expiresAt, gateway, origin = "https://r34hub-five.vercel.app" }) {
+  const cleanEmail = String(email || "").trim().toLowerCase();
+  const html = buildLicenseEmailHtml({ email: cleanEmail || "buyer@r34hub.app", licenseKey, planName, priceEur, expiresAt, gateway, origin });
+  const subject = `Your R34Hub Premium License Key — ${licenseKey}`;
+  const magicLink = `${origin}/premium?activate_key=${encodeURIComponent(licenseKey)}`;
+
+  monDb.sentEmails = monDb.sentEmails || [];
+  const alreadySent = monDb.sentEmails.find(e => e.email === cleanEmail && e.licenseKey === licenseKey);
+  if (alreadySent) {
+    return { sent: true, cached: true, provider: alreadySent.provider, magicLink, html };
+  }
+
+  let deliveredVia = "in_app_and_receipt_log";
+  const resendKey = process.env.RESEND_API_KEY || (monDb.gateways && monDb.gateways.email && monDb.gateways.email.resendApiKey) || "";
+  const brevoKey = process.env.BREVO_API_KEY || (monDb.gateways && monDb.gateways.email && monDb.gateways.email.brevoApiKey) || "";
+  const webhookUrl = process.env.EMAIL_WEBHOOK_URL || (monDb.gateways && monDb.gateways.email && monDb.gateways.email.webhookUrl) || "";
+
+  if (cleanEmail && cleanEmail.includes("@") && cleanEmail !== "buyer@r34hub.app") {
+    if (resendKey) {
+      try {
+        const r = await fetchWithTimeout("https://api.resend.com/emails", {
+          method: "POST",
+          headers: { "Authorization": `Bearer ${resendKey}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            from: process.env.EMAIL_FROM || "R34Hub Premium <onboarding@resend.dev>",
+            to: [cleanEmail],
+            subject,
+            html
+          })
+        }, 5000);
+        if (r.ok) deliveredVia = "resend_api";
+      } catch (_) {}
+    } else if (brevoKey) {
+      try {
+        const r = await fetchWithTimeout("https://api.brevo.com/v3/smtp/email", {
+          method: "POST",
+          headers: { "api-key": brevoKey, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sender: { name: "R34Hub Premium", email: "emildv.work@gmail.com" },
+            to: [{ email: cleanEmail }],
+            subject,
+            htmlContent: html
+          })
+        }, 5000);
+        if (r.ok) deliveredVia = "brevo_api";
+      } catch (_) {}
+    } else if (webhookUrl) {
+      try {
+        const r = await fetchWithTimeout(webhookUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ to: cleanEmail, subject, licenseKey, planName, magicLink, html })
+        }, 5000);
+        if (r.ok) deliveredVia = "email_webhook";
+      } catch (_) {}
+    }
+  }
+
+  monDb.sentEmails.unshift({
+    id: `eml_${crypto.randomBytes(4).toString("hex")}`,
+    email: cleanEmail || "buyer@r34hub.app",
+    licenseKey,
+    planName,
+    subject,
+    magicLink,
+    provider: deliveredVia,
+    sentAt: new Date().toISOString()
+  });
+  monDb.sentEmails = monDb.sentEmails.slice(0, 100);
+  saveMonetizationDb(monDb);
+  return { sent: true, provider: deliveredVia, magicLink, html };
+}
+
+// 1. License Key Engine (/api/licenses/* & /api/payments/activate-key & /api/license/*)
+function activateLicenseHandler(req, res) {
   monDb = loadMonetizationDb();
-  const rawKey = String((req.body && (req.body.key || req.body.licenseKey)) || "").trim().toUpperCase();
+  const rawKey = String((req.body && (req.body.key || req.body.licenseKey)) || req.query.key || "").trim().toUpperCase();
   if (!rawKey) {
     return res.status(400).json({ ok: false, valid: false, error: "Please enter a license key." });
   }
 
-  const record = monDb.licenses.find(l => l.key.toUpperCase() === rawKey);
-
+  const record = findOrVerifyLicenseRecord(rawKey);
   if (!record) {
-    return res.status(404).json({ ok: false, valid: false, error: "License key not found." });
+    return res.status(404).json({ ok: false, valid: false, error: "License key not found. Please check your key or recover it by email." });
   }
   if (record.status === "revoked") {
     return res.status(403).json({ ok: false, valid: false, error: "This license key has been revoked by the administrator." });
@@ -1581,10 +1723,7 @@ app.post("/api/licenses/activate", (req, res) => {
   if (record.expiresAt && new Date(record.expiresAt).getTime() < Date.now()) {
     record.status = "expired";
     saveMonetizationDb(monDb);
-    return res.status(403).json({ ok: false, valid: false, error: "This license key has expired. Please renew at HubCloud.dev." });
-  }
-  if (record.devicesUsed >= (record.maxDevices || 5)) {
-    return res.status(403).json({ ok: false, valid: false, error: `Device limit reached (${record.devicesUsed}/${record.maxDevices} devices active).` });
+    return res.status(403).json({ ok: false, valid: false, error: "This license key has expired. Please renew at /premium." });
   }
 
   record.devicesUsed = Math.min(record.maxDevices || 5, (record.devicesUsed || 0) + 1);
@@ -1595,7 +1734,7 @@ app.post("/api/licenses/activate", (req, res) => {
     ok: true,
     valid: true,
     licenseKey: record.key,
-    platform: record.prefix === "SLX" ? "Sell.app / Crypto" : record.prefix === "PATREON" ? "Patreon VIP" : "HubCloud.dev (Stripe EUR)",
+    platform: record.prefix === "SLX" || record.prefix === "R34H" ? "Crypto (NOWPayments)" : record.prefix === "PATREON" ? "Patreon VIP" : "Stripe Checkout",
     plan: record.planName,
     tier: record.tier,
     email: record.email,
@@ -1612,23 +1751,30 @@ app.post("/api/licenses/activate", (req, res) => {
       unlimitedBlacklist: true
     }
   });
-});
+}
+app.post("/api/licenses/activate", activateLicenseHandler);
+app.post("/api/payments/activate-key", activateLicenseHandler);
+app.post("/api/license/activate", activateLicenseHandler);
 
 function verifyLicenseQueryHandler(req, res) {
   monDb = loadMonetizationDb();
-  const rawKey = String(req.query.key || "").trim().toUpperCase();
-  if (!rawKey) return res.status(400).json({ valid: false, error: "Missing key query parameter" });
-  const record = monDb.licenses.find(l => l.key.toUpperCase() === rawKey);
+  const rawKey = String(req.query.key || (req.body && (req.body.key || req.body.licenseKey)) || "").trim().toUpperCase();
+  if (!rawKey) return res.status(400).json({ valid: false, error: "Missing key parameter" });
+  const record = findOrVerifyLicenseRecord(rawKey);
   if (!record) return res.status(404).json({ valid: false, status: "not_found", error: "License key not found" });
   const expired = record.expiresAt && new Date(record.expiresAt).getTime() < Date.now();
   const status = record.status === "revoked" ? "revoked" : expired ? "expired" : "active";
   res.json({
+    ok: status === "active",
     valid: status === "active",
     status,
     key: record.key,
+    licenseKey: record.key,
     prefix: record.prefix,
     tier: record.tier,
+    plan: record.planName,
     planName: record.planName,
+    email: record.email,
     ownerEmail: record.email,
     devicesUsed: record.devicesUsed,
     maxDevices: record.maxDevices || 5,
@@ -1638,34 +1784,58 @@ function verifyLicenseQueryHandler(req, res) {
 }
 app.get("/api/licenses/verify", verifyLicenseQueryHandler);
 app.get("/api/license/verify", verifyLicenseQueryHandler);
+app.post("/api/monetization/verify-license", activateLicenseHandler);
 
-// Backwards-compatible verify endpoint
-app.post("/api/monetization/verify-license", (req, res) => {
+// Recover or Look Up License Key by Email (/api/license/recover & /api/license/lookup)
+async function recoverLicenseByEmailHandler(req, res) {
   monDb = loadMonetizationDb();
-  const rawKey = String((req.body && (req.body.licenseKey || req.body.key)) || "").trim().toUpperCase();
-  const record = monDb.licenses.find(l => l.key.toUpperCase() === rawKey);
-  if (!record || record.status !== "active") {
-    return res.status(401).json({ valid: false, error: "Invalid or revoked license key." });
+  const rawEmail = String((req.body && req.body.email) || req.query.email || "").trim().toLowerCase();
+  if (!rawEmail || !rawEmail.includes("@")) {
+    return res.status(400).json({ ok: false, error: "Please enter a valid email address." });
   }
-  if (record.expiresAt && new Date(record.expiresAt).getTime() < Date.now()) {
-    return res.status(401).json({ valid: false, error: "This license key has expired." });
+  const proto = req.get("x-forwarded-proto") || req.protocol || "https";
+  const host = req.get("host") || "r34hub-five.vercel.app";
+  const origin = `${proto}://${host}`;
+
+  // 1. Check active licenses for this email
+  let found = (monDb.licenses || []).find(l => String(l.email || "").toLowerCase() === rawEmail && l.status === "active");
+  // 2. Check paid orders for this email
+  if (!found) {
+    const paidOrder = (monDb.orders || []).find(o => String(o.email || "").toLowerCase() === rawEmail && o.status === "paid");
+    if (paidOrder) {
+      const key = paidOrder.licenseKey || generateLicenseKeyString("R34PRO", paidOrder.plan || "annual", paidOrder.orderId || rawEmail);
+      found = findOrVerifyLicenseRecord(key);
+      if (found) found.email = rawEmail;
+    }
   }
-  if ((record.devicesUsed || 0) >= (record.maxDevices || 5)) {
-    return res.status(403).json({ valid: false, error: "Device limit reached." });
+  if (!found) {
+    return res.status(404).json({ ok: false, error: "No active license key found for this email address." });
   }
-  record.devicesUsed = Math.min(record.maxDevices || 5, (record.devicesUsed || 0) + 1);
-  record.lastActivatedAt = new Date().toISOString();
-  saveMonetizationDb(monDb);
-  return res.json({
-    valid: true,
-    licenseKey: record.key,
-    platform: record.prefix === "SLX" ? "Sell.app Crypto" : "HubCloud.dev (Stripe EUR)",
-    plan: record.planName,
-    tier: record.tier,
-    email: record.email,
-    expiresAt: record.expiresAt
+
+  const mailResult = await sendLicenseEmail({
+    email: rawEmail,
+    licenseKey: found.key,
+    planName: found.planName,
+    priceEur: found.priceEur || 59.99,
+    expiresAt: found.expiresAt,
+    gateway: "License Recovery",
+    origin
   });
-});
+
+  res.json({
+    ok: true,
+    email: rawEmail,
+    licenseKey: found.key,
+    plan: found.planName,
+    tier: found.tier,
+    expiresAt: found.expiresAt,
+    magicLink: mailResult.magicLink,
+    emailSent: mailResult.sent,
+    emailReceiptHtml: mailResult.html
+  });
+}
+app.post("/api/license/recover", recoverLicenseByEmailHandler);
+app.get("/api/license/lookup", recoverLicenseByEmailHandler);
 
 // Admin: Generate 1 to 50 keys
 app.post("/api/admin/licenses/generate", (req, res) => {
@@ -1751,10 +1921,13 @@ app.post("/api/admin/licenses/revoke", (req, res) => {
 });
 
 // 2. Payment Webhooks & Checkout Simulation (/api/checkout/create & /api/webhooks/payment)
-function handlePaymentWebhook(req, res) {
+async function handlePaymentWebhook(req, res) {
   monDb = loadMonetizationDb();
   if (!requireWebhook(req, res)) return;
   const body = req.body || {};
+  const proto = req.get("x-forwarded-proto") || req.protocol || "https";
+  const host = req.get("host") || "r34hub-five.vercel.app";
+  const origin = `${proto}://${host}`;
 
   // Support NOWPayments IPN payload fields (order_id, payment_status, price_amount, pay_currency, payment_id)
   const npStatus = body.payment_status ? String(body.payment_status).toLowerCase() : "";
@@ -1781,52 +1954,53 @@ function handlePaymentWebhook(req, res) {
 
   // Idempotency: if order already has a licenseKey issued, return existing key
   if (matchedOrder && matchedOrder.status === "paid" && matchedOrder.licenseKey) {
-    const existingLic = (monDb.licenses || []).find(l => l.key === matchedOrder.licenseKey);
+    const existingLic = findOrVerifyLicenseRecord(matchedOrder.licenseKey);
     return res.json({
       ok: true,
       idempotent: true,
       order: matchedOrder,
       license: existingLic || null,
-      licenseKey: matchedOrder.licenseKey
+      licenseKey: matchedOrder.licenseKey,
+      magicLink: `${origin}/premium?activate_key=${encodeURIComponent(matchedOrder.licenseKey)}`
     });
   }
 
-  const provider = body.provider || (npStatus || req.isNowPaymentsIpn ? `nowpayments_${String(body.pay_currency || "crypto").toLowerCase()}` : "stripe_hubcloud");
-  const event = body.event || (npStatus ? `payment_status:${npStatus}` : "checkout.session.completed");
+  const provider = body.provider || `nowpayments_${String(body.pay_currency || "crypto").toLowerCase()}`;
+  const event = body.event || (npStatus ? `payment_status:${npStatus}` : "crypto.payment.confirmed");
   const plan = body.plan || (matchedOrder && matchedOrder.plan) || "annual";
-  const email = body.email || body.customer_email || (matchedOrder && matchedOrder.email) || "";
+  const email = String(body.email || body.customer_email || (matchedOrder && matchedOrder.email) || "").trim() || "buyer@r34hub.app";
   const amountEur = typeof body.amountEur === "number"
     ? body.amountEur
     : (typeof body.price_amount === "number" || (typeof body.price_amount === "string" && body.price_amount)
       ? Number(body.price_amount)
       : (matchedOrder ? matchedOrder.amountEur : undefined));
 
-  const isCrypto = Boolean(npStatus || req.isNowPaymentsIpn || String(provider).includes("crypto") || String(provider).includes("nowpayments") || String(provider).includes("xmr"));
-  const prefix = body.prefix || ((npStatus || req.isNowPaymentsIpn || String(provider).includes("nowpayments")) ? "R34H" : isCrypto ? "R34H" : String(provider).includes("patreon") ? "PATREON" : "SHOP2");
+  const prefix = body.prefix || "R34PRO";
 
   const planLookup = {
     monthly: { tier: "monthly", name: "30-Day Monthly Pro (€7.00/mo)", priceEur: 7.00, days: 30 },
     yearly: { tier: "annual", name: "365-Day Annual Pro (€59.99/yr)", priceEur: 59.99, days: 365 },
     annual: { tier: "annual", name: "365-Day Annual Pro (€59.99/yr)", priceEur: 59.99, days: 365 },
-    "30days": { tier: "monthly", name: "30-Day One-Time Pass (€12.99)", priceEur: 12.99, days: 30 },
-    "30d_pass": { tier: "monthly", name: "30-Day One-Time Pass (€12.99)", priceEur: 12.99, days: 30 },
+    "30days": { tier: "monthly", name: "30-Day Monthly Pro (€7.00/mo)", priceEur: 7.00, days: 30 },
+    "30d_pass": { tier: "monthly", name: "30-Day Monthly Pro (€7.00/mo)", priceEur: 7.00, days: 30 },
     lifetime: { tier: "lifetime", name: "Lifetime VIP Master Pass (€199.99)", priceEur: 199.99, days: 36500 }
   };
   const chosen = planLookup[plan] || planLookup.annual;
-  const finalPrice = typeof amountEur === "number" ? amountEur : (isCrypto ? Number((chosen.priceEur * 0.8).toFixed(2)) : chosen.priceEur);
+  const finalPrice = typeof amountEur === "number" ? amountEur : chosen.priceEur;
   const now = new Date();
   const expiresAt = chosen.tier === "lifetime"
     ? "2099-12-31T23:59:59.000Z"
     : new Date(now.getTime() + chosen.days * 86400000).toISOString();
 
-  const licenseKey = generateLicenseKeyString(prefix, chosen.tier);
+  const seed = existingOrderId || `${email}:${now.toISOString()}`;
+  const licenseKey = generateLicenseKeyString(prefix, chosen.tier, seed);
   const licenseRecord = {
     key: licenseKey,
     prefix,
     tier: chosen.tier,
     planName: chosen.name,
     priceEur: finalPrice,
-    email: String(email).trim() || "buyer@r34hub.app",
+    email,
     status: "active",
     devicesUsed: 1,
     maxDevices: 5,
@@ -1836,9 +2010,7 @@ function handlePaymentWebhook(req, res) {
   };
   monDb.licenses.unshift(licenseRecord);
 
-  let orderRecord = existingOrderId
-    ? (monDb.orders || []).find(o => o.orderId === existingOrderId || o.sessionId === existingOrderId)
-    : null;
+  let orderRecord = matchedOrder;
   if (orderRecord) {
     orderRecord.provider = provider || orderRecord.provider;
     orderRecord.event = event;
@@ -1858,7 +2030,7 @@ function handlePaymentWebhook(req, res) {
       plan: chosen.tier,
       planName: chosen.name,
       amountEur: finalPrice,
-      currency: isCrypto ? "EUR (Crypto -20%)" : "EUR",
+      currency: "EUR (Crypto)",
       licenseKey,
       status: "paid",
       createdAt: now.toISOString()
@@ -1867,13 +2039,14 @@ function handlePaymentWebhook(req, res) {
   }
   saveMonetizationDb(monDb);
 
-  const emailReceiptHtml = buildLicenseEmailHtml({
+  const mailResult = await sendLicenseEmail({
     email: licenseRecord.email,
     licenseKey,
     planName: chosen.name,
     priceEur: finalPrice,
     expiresAt,
-    gateway: isCrypto ? "NowPayments / Sell.app Crypto" : "HubCloud.dev (Stripe EUR)"
+    gateway: "NOWPayments Crypto",
+    origin
   });
 
   res.json({
@@ -1881,8 +2054,10 @@ function handlePaymentWebhook(req, res) {
     order: orderRecord,
     license: licenseRecord,
     licenseKey,
-    platform: isCrypto ? "NowPayments / Sell.app Crypto" : "HubCloud.dev (Stripe EUR)",
-    emailReceiptHtml
+    magicLink: mailResult.magicLink,
+    emailSent: mailResult.sent,
+    platform: "NOWPayments Crypto",
+    emailReceiptHtml: mailResult.html
   });
 }
 app.post("/api/webhooks/payment", handlePaymentWebhook);
@@ -1962,6 +2137,29 @@ app.get("/api/ads/config", (req, res) => {
     adNetworks: { aads, exoclick },
     adsConfig: Object.assign({}, monDb.adsConfig, { aads, exoclick })
   });
+});
+
+app.post("/api/ads/impression", (req, res) => {
+  monDb = loadMonetizationDb();
+  const { placement = "infeed_native", board = "all" } = req.body || {};
+  const tel = monDb.adsConfig.telemetry || {
+    totalImpressions: 0,
+    totalClicks: 0,
+    estimatedCpaRevenueEur: 0,
+    estimatedBannerRevenueEur: 0,
+    byPlacement: {},
+    byBoard: {},
+    recentClicks: []
+  };
+  tel.totalImpressions = (tel.totalImpressions || 0) + 1;
+  tel.byPlacement = tel.byPlacement || {};
+  tel.byPlacement[placement] = (tel.byPlacement[placement] || 0) + 1;
+  tel.byBoard = tel.byBoard || {};
+  tel.byBoard[board] = (tel.byBoard[board] || 0) + 1;
+  tel.estimatedBannerRevenueEur = Number(((tel.estimatedBannerRevenueEur || 0) + 0.0025).toFixed(4));
+  monDb.adsConfig.telemetry = tel;
+  saveMonetizationDb(monDb);
+  res.json({ ok: true, totalImpressions: tel.totalImpressions });
 });
 
 app.post("/api/ads/click", (req, res) => {
@@ -2091,10 +2289,12 @@ app.post("/api/admin/config", adminUpdateConfigHandler);
 app.get("/api/admin/stats", (req, res) => {
   monDb = loadMonetizationDb();
   if (!requireAdmin(req, res)) return;
-  const activeLicenses = monDb.licenses.filter(l => l.status === "active");
-  const subRevenue = monDb.orders.reduce((acc, o) => acc + (Number(o.amountEur) || 0), 0);
-  const cpaRev = (monDb.adsConfig.telemetry && monDb.adsConfig.telemetry.estimatedCpaRevenueEur) || 0;
-  const bannerRev = (monDb.adsConfig.telemetry && monDb.adsConfig.telemetry.estimatedBannerRevenueEur) || 0;
+  const activeLicenses = (monDb.licenses || []).filter(l => l.status === "active");
+  const paidOrders = (monDb.orders || []).filter(o => o.status === "paid");
+  const subRevenue = paidOrders.reduce((acc, o) => acc + (Number(o.amountEur) || 0), 0);
+  const tel = (monDb.adsConfig && monDb.adsConfig.telemetry) || {};
+  const cpaRev = Number(tel.estimatedCpaRevenueEur || 0);
+  const bannerRev = Number(tel.estimatedBannerRevenueEur || 0);
 
   res.json({
     ok: true,
@@ -2104,193 +2304,37 @@ app.get("/api/admin/stats", (req, res) => {
       decoyDomain: monDb.owner && monDb.owner.decoyDomain
     },
     summary: {
-      totalLicenses: monDb.licenses.length,
+      totalLicenses: (monDb.licenses || []).length,
       activeLicenses: activeLicenses.length,
-      lifetimeCount: monDb.licenses.filter(l => l.tier === "lifetime").length,
-      annualCount: monDb.licenses.filter(l => l.tier === "annual").length,
-      monthlyCount: monDb.licenses.filter(l => l.tier === "monthly").length,
-      totalOrders: monDb.orders.length,
+      lifetimeCount: (monDb.licenses || []).filter(l => l.tier === "lifetime").length,
+      annualCount: (monDb.licenses || []).filter(l => l.tier === "annual").length,
+      monthlyCount: (monDb.licenses || []).filter(l => l.tier === "monthly").length,
+      totalOrders: (monDb.orders || []).length,
+      paidOrders: paidOrders.length,
+      totalImpressions: Number(tel.totalImpressions || 0),
+      totalClicks: Number(tel.totalClicks || 0),
       subscriptionRevenueEur: Number(subRevenue.toFixed(2)),
       estimatedCpaRevenueEur: Number(cpaRev.toFixed(2)),
       estimatedBannerRevenueEur: Number(bannerRev.toFixed(2)),
       totalRevenueEur: Number((subRevenue + cpaRev + bannerRev).toFixed(2))
     },
     paymentConfig: paymentConfigForAdmin(monDb.paymentConfig, monDb),
-    gateways: { nowpayments: { status: getNowPaymentsCredentials(monDb).status, accountEmail: getNowPaymentsCredentials(monDb).accountEmail, connected: Boolean(getNowPaymentsCredentials(monDb).apiKey), ipnCallbackUrl: "https://r34hub-five.vercel.app/api/webhooks/payment" } },
+    gateways: {
+      nowpayments: {
+        status: getNowPaymentsCredentials(monDb).status,
+        accountEmail: getNowPaymentsCredentials(monDb).accountEmail,
+        connected: Boolean(getNowPaymentsCredentials(monDb).apiKey),
+        payoutWallet: "TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX",
+        payoutNetwork: "USDTTRC20",
+        ipnCallbackUrl: "https://r34hub-five.vercel.app/api/webhooks/payment"
+      }
+    },
+    adNetworks: monDb.adNetworks || {},
     adsConfig: monDb.adsConfig,
-    licenses: monDb.licenses,
-    orders: monDb.orders
+    licenses: monDb.licenses || [],
+    orders: monDb.orders || [],
+    sentEmails: monDb.sentEmails || []
   });
-});
-
-
-
-// Stripe Official Checkout Session API + Stripe Webhook + Decoy Bridge
-app.post("/api/stripe/create-checkout-session", async (req, res) => {
-  monDb = loadMonetizationDb();
-  const body = req.body || {};
-  const plan = body.plan || "annual";
-  const email = String(body.email || "").trim() || "buyer@r34hub.app";
-  const proto = req.get("x-forwarded-proto") || req.protocol || "https";
-  const host = req.get("host") || "r34hub-five.vercel.app";
-  const origin = `${proto}://${host}`;
-
-  const planLookup = {
-    monthly: { id: "monthly", name: "HubCloud Monthly Pro (30 Days)", tier: "monthly", amountEur: 7.00, amountUsd: 7.50, days: 30, mode: "payment", priceId: "price_1UVXCX06KENzvxOjC1IDGFZX", paymentLinkUrl: "https://buy.stripe.com/test_5kQdR176w5Od6mLaPadwc00" },
-    yearly: { id: "annual", name: "HubCloud Annual Pro (365 Days)", tier: "annual", amountEur: 59.99, amountUsd: 64.99, days: 365, mode: "payment", priceId: "price_1UVXCY06KENzvxOjR1Qcelxk", paymentLinkUrl: "https://buy.stripe.com/test_fZucMX62s7Wl8uTcXidwc01" },
-    annual: { id: "annual", name: "HubCloud Annual Pro (365 Days)", tier: "annual", amountEur: 59.99, amountUsd: 64.99, days: 365, mode: "payment", priceId: "price_1UVXCY06KENzvxOjR1Qcelxk", paymentLinkUrl: "https://buy.stripe.com/test_fZucMX62s7Wl8uTcXidwc01" },
-    "30days": { id: "30d_pass", name: "HubCloud 30-Day Pass", tier: "monthly", amountEur: 12.99, amountUsd: 13.99, days: 30, mode: "payment", priceId: "price_1UVXCX06KENzvxOjC1IDGFZX", paymentLinkUrl: "https://buy.stripe.com/test_5kQdR176w5Od6mLaPadwc00" },
-    "30d_pass": { id: "30d_pass", name: "HubCloud 30-Day Pass", tier: "monthly", amountEur: 12.99, amountUsd: 13.99, days: 30, mode: "payment", priceId: "price_1UVXCX06KENzvxOjC1IDGFZX", paymentLinkUrl: "https://buy.stripe.com/test_5kQdR176w5Od6mLaPadwc00" },
-    lifetime: { id: "lifetime", name: "HubCloud Lifetime VIP Master Pass", tier: "lifetime", amountEur: 199.99, amountUsd: 214.99, days: 36500, mode: "payment", priceId: "price_1UVXCY06KENzvxOjOMrLOVYZ", paymentLinkUrl: "https://buy.stripe.com/test_3cI28j0I86Sh5iH7CYdwc02" }
-  };
-  const selected = planLookup[plan] || planLookup.annual;
-  const orderId = `ord_${crypto.randomBytes(5).toString("hex")}`;
-  const now = new Date();
-  const pc = monDb.paymentConfig || {};
-  const wallets = pc.cryptoWallets || {};
-  const liveUsdtWallet = wallets.USDT_TRC20 || wallets.usdt_trc20 || "TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX";
-
-  const cardToCryptoUrls = {
-    guardarian: `https://guardarian.com/calculator?from_currency=EUR&to_currency=USDT&to_network=TRX&from_amount=${encodeURIComponent(selected.amountEur)}&payout_address=${encodeURIComponent(liveUsdtWallet)}`,
-    mercuryo: `https://exchange.mercuryo.io/?fiat_currency=EUR&fiat_amount=${encodeURIComponent(selected.amountEur)}&currency=USDT&network=TRON&address=${encodeURIComponent(liveUsdtWallet)}`,
-    changenow: `https://changenow.io/?from=eur&to=usdttrc20&fiatMode=true&amount=${encodeURIComponent(selected.amountEur)}&recipient=${encodeURIComponent(liveUsdtWallet)}`
-  };
-
-  const st = getStripeCredentials(monDb);
-  let stripeSessionUrl = "";
-  let stripeSessionId = "";
-  let stripeMode = "stripe_bridge";
-  let stripeError = null;
-
-  // 1. If a real Stripe Secret Key (sk_live_... or sk_test_...) is configured, create an official Stripe Checkout Session via Stripe REST API
-  if (st.secretKey && /^sk_(live|test)_/i.test(st.secretKey)) {
-    try {
-      const form = new URLSearchParams();
-      form.set("mode", selected.mode);
-      form.set("client_reference_id", orderId);
-      if (email && email.includes("@") && email !== "buyer@r34hub.app") {
-        form.set("customer_email", email);
-      }
-      form.set("success_url", `${origin}/premium?order=${encodeURIComponent(orderId)}&status=paid&session_id={CHECKOUT_SESSION_ID}`);
-      form.set("cancel_url", `${origin}/premium?plan=${encodeURIComponent(selected.id)}`);
-      form.set("line_items[0][quantity]", "1");
-      form.set("line_items[0][price_data][currency]", "eur");
-      form.set("line_items[0][price_data][unit_amount]", String(Math.round(selected.amountEur * 100)));
-      form.set("line_items[0][price_data][product_data][name]", selected.name);
-      form.set("line_items[0][price_data][product_data][description]", "Cloud Indexing, Sync & Ad-Free Pro License Key (Up to 5 Devices)");
-      if (selected.mode === "subscription") {
-        form.set("line_items[0][price_data][recurring][interval]", "month");
-      }
-      form.set("metadata[orderId]", orderId);
-      form.set("metadata[plan]", selected.id);
-      form.set("metadata[email]", email);
-
-      const stRes = await fetchWithTimeout("https://api.stripe.com/v1/checkout/sessions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${st.secretKey}`,
-          "Content-Type": "application/x-www-form-urlencoded"
-        },
-        body: form.toString()
-      }, 8000);
-      const stData = await stRes.json().catch(() => ({}));
-      if (stRes.ok && stData && stData.url) {
-        stripeSessionUrl = stData.url;
-        stripeSessionId = stData.id;
-        stripeMode = "stripe_checkout_live";
-      } else {
-        stripeError = (stData && stData.error && stData.error.message) || `Stripe HTTP ${stRes.status}`;
-      }
-    } catch (err) {
-      stripeError = err.message || "Stripe session request failed";
-    }
-  }
-
-  // 2. If Stripe Payment Link is configured in Admin or catalog, use it
-  if (!stripeSessionUrl) {
-    const customLink = (selected.id === "monthly" ? pc.stripeMonthlyUrl : selected.id === "annual" ? pc.stripeAnnualUrl : pc.stripeLifetimeUrl) || selected.paymentLinkUrl || "";
-    if (customLink && customLink.startsWith("https://buy.stripe.com/") && !customLink.includes("r34hub_hubcloud_")) {
-      const sep = customLink.includes("?") ? "&" : "?";
-      stripeSessionUrl = `${customLink}${sep}client_reference_id=${encodeURIComponent(orderId)}&prefilled_email=${encodeURIComponent(email)}`;
-      stripeMode = "stripe_payment_link";
-    }
-  }
-
-  const orderRecord = {
-    orderId,
-    sessionId: stripeSessionId || orderId,
-    provider: stripeMode,
-    event: "stripe.checkout.created",
-    email,
-    plan: selected.id,
-    tier: selected.tier,
-    planName: selected.name,
-    amountEur: selected.amountEur,
-    amountUsd: selected.amountUsd,
-    currency: "EUR",
-    walletAddress: liveUsdtWallet,
-    licenseKey: null,
-    status: "pending_payment",
-    stripeSessionUrl: stripeSessionUrl || null,
-    cardCheckoutUrl: cardToCryptoUrls.guardarian,
-    cardToCryptoUrls,
-    createdAt: now.toISOString()
-  };
-
-  monDb.orders = monDb.orders || [];
-  monDb.orders.unshift(orderRecord);
-  saveMonetizationDb(monDb);
-
-  res.json({
-    ok: true,
-    orderId,
-    sessionId: stripeSessionId || orderId,
-    mode: stripeMode,
-    plan: selected.id,
-    planName: selected.name,
-    amountEur: selected.amountEur,
-    currency: "EUR",
-    checkoutUrl: stripeSessionUrl || cardToCryptoUrls.guardarian,
-    stripeSessionUrl: stripeSessionUrl || null,
-    cardCheckoutUrl: cardToCryptoUrls.guardarian,
-    cardToCryptoUrls,
-    stripeError,
-    statusUrl: `/api/hubcloud/order-status?orderId=${encodeURIComponent(orderId)}`
-  });
-});
-
-app.post("/api/webhooks/stripe", (req, res) => {
-  monDb = loadMonetizationDb();
-  const body = req.body || {};
-  const eventType = body.type || body.event || "checkout.session.completed";
-  const obj = (body.data && body.data.object) || body;
-  const orderId = obj.client_reference_id || (obj.metadata && obj.metadata.orderId) || body.orderId || "";
-  const plan = (obj.metadata && obj.metadata.plan) || body.plan || "annual";
-  const email = (obj.customer_details && obj.customer_details.email) || obj.customer_email || (obj.metadata && obj.metadata.email) || body.email || "buyer@r34hub.app";
-  const amountEur = obj.amount_total ? Number((obj.amount_total / 100).toFixed(2)) : body.amountEur;
-
-  const stripeSig = String(req.get("stripe-signature") || "").trim();
-  const sentSecret = String(req.get("x-webhook-secret") || req.query.secret || body.secret || "").trim();
-  const expectedAdminSecret = process.env.R34HUB_WEBHOOK_SECRET || (monDb.owner && monDb.owner.webhookSecret) || "";
-  if (!stripeSig && !secretMatches(sentSecret, expectedAdminSecret)) {
-    return res.status(401).json({ ok: false, error: "Stripe signature or webhook secret required" });
-  }
-
-  if (!["checkout.session.completed", "payment_intent.succeeded", "invoice.paid"].includes(eventType)) {
-    return res.json({ ok: true, ignored: true, type: eventType });
-  }
-
-  req.body = {
-    orderId,
-    provider: "stripe_checkout",
-    event: eventType,
-    plan,
-    email,
-    amountEur,
-    prefix: "SHOP2",
-    secret: expectedAdminSecret
-  };
-  return handlePaymentWebhook(req, res);
 });
 
 // 4. HubCloud Storefront Public Config, Live Order Creation & Order Status Polling
@@ -2328,23 +2372,21 @@ async function createHubCloudOrderHandler(req, res) {
   monDb = loadMonetizationDb();
   const body = req.body || {};
   const plan = body.plan || "annual";
-  const provider = body.provider || body.paymentMethod || "nowpayments";
   const email = String(body.email || "").trim() || "buyer@r34hub.app";
   const cryptoCurrency = String(body.cryptoCurrency || "USDT_TRC20").toUpperCase();
   const txHash = String(body.txHash || "").trim();
 
   const planLookup = {
-    monthly: { id: "monthly", name: "Monthly Pro", tier: "monthly", amountEur: 7.00, amountUsd: 7.50, days: 30 },
-    yearly: { id: "annual", name: "Annual Pro (€4.97/mo)", tier: "annual", amountEur: 59.99, amountUsd: 64.99, days: 365 },
-    annual: { id: "annual", name: "Annual Pro (€4.97/mo)", tier: "annual", amountEur: 59.99, amountUsd: 64.99, days: 365 },
-    "30days": { id: "30d_pass", name: "30-Day One-Time Pass", tier: "monthly", amountEur: 12.99, amountUsd: 13.99, days: 30 },
-    "30d_pass": { id: "30d_pass", name: "30-Day One-Time Pass", tier: "monthly", amountEur: 12.99, amountUsd: 13.99, days: 30 },
+    monthly: { id: "monthly", name: "30-Day Monthly Pro", tier: "monthly", amountEur: 7.00, amountUsd: 7.50, days: 30 },
+    yearly: { id: "annual", name: "Annual Pro (365 Days)", tier: "annual", amountEur: 59.99, amountUsd: 64.99, days: 365 },
+    annual: { id: "annual", name: "Annual Pro (365 Days)", tier: "annual", amountEur: 59.99, amountUsd: 64.99, days: 365 },
+    "30days": { id: "monthly", name: "30-Day Monthly Pro", tier: "monthly", amountEur: 7.00, amountUsd: 7.50, days: 30 },
+    "30d_pass": { id: "monthly", name: "30-Day Monthly Pro", tier: "monthly", amountEur: 7.00, amountUsd: 7.50, days: 30 },
     lifetime: { id: "lifetime", name: "Lifetime VIP Master Pass", tier: "lifetime", amountEur: 199.99, amountUsd: 214.99, days: 36500 }
   };
   const selected = planLookup[plan] || planLookup.annual;
-  const isCrypto = String(provider).includes("crypto") || String(provider).includes("nowpayments") || ["USDT_TRC20", "BTC", "SOL", "ETH", "TON", "XMR"].includes(String(provider).toUpperCase());
-  const finalAmountEur = isCrypto ? Number((selected.amountEur * 0.8).toFixed(2)) : selected.amountEur;
-  const finalAmountUsd = isCrypto ? Number((selected.amountUsd * 0.8).toFixed(2)) : selected.amountUsd;
+  const finalAmountEur = Number((selected.amountEur * 0.8).toFixed(2));
+  const finalAmountUsd = Number((selected.amountUsd * 0.8).toFixed(2));
   const orderId = `ord_${crypto.randomBytes(5).toString("hex")}`;
   const now = new Date();
 
@@ -2352,19 +2394,10 @@ async function createHubCloudOrderHandler(req, res) {
   const wallets = pc.cryptoWallets || {};
   const walletAddress = wallets[cryptoCurrency] || wallets[cryptoCurrency.toLowerCase()] || wallets.USDT_TRC20 || wallets.usdt_trc20 || "TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX";
 
-  const liveUsdtWallet = wallets.USDT_TRC20 || wallets.usdt_trc20 || "TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX";
-  const cardToCryptoUrls = {
-    changenow: `https://changenow.io/?from=eur&to=usdttrc20&fiatMode=true&amount=${encodeURIComponent(selected.amountEur)}&recipient=${encodeURIComponent(liveUsdtWallet)}`,
-    guardarian: `https://guardarian.com/calculator?from_currency=EUR&to_currency=USDT&to_network=TRX&from_amount=${encodeURIComponent(selected.amountEur)}&payout_address=${encodeURIComponent(liveUsdtWallet)}`,
-    mercuryo: `https://exchange.mercuryo.io/?fiat_currency=EUR&fiat_amount=${encodeURIComponent(selected.amountEur)}&currency=USDT&network=TRON&address=${encodeURIComponent(liveUsdtWallet)}`
-  };
-
-  let externalCheckoutUrl = "";
   let invoiceUrl = "";
   let nowPaymentsInvoice = null;
   let nowPaymentsError = null;
 
-  // Always create a live NOWPayments invoice (supports both Direct Crypto and Fiat-to-Crypto On-Ramp)
   const np = getNowPaymentsCredentials(monDb);
   if (np.apiKey) {
     try {
@@ -2378,10 +2411,10 @@ async function createHubCloudOrderHandler(req, res) {
           price_amount: finalAmountUsd,
           price_currency: "usd",
           order_id: orderId,
-          order_description: `HubCloud.dev — ${selected.name} (${selected.days} Days Cloud Sync & Pro Key)`,
+          order_description: `R34Hub Premium — ${selected.name} (${selected.days} Days Ad-Free License Key)`,
           ipn_callback_url: "https://r34hub-five.vercel.app/api/webhooks/payment",
-          success_url: `https://r34hub-five.vercel.app/hubcloud?order=${encodeURIComponent(orderId)}&status=paid`,
-          cancel_url: "https://r34hub-five.vercel.app/hubcloud"
+          success_url: `https://r34hub-five.vercel.app/premium?order=${encodeURIComponent(orderId)}&status=paid`,
+          cancel_url: "https://r34hub-five.vercel.app/premium"
         })
       }, 8000);
       const npData = await npRes.json().catch(() => ({}));
@@ -2402,17 +2435,12 @@ async function createHubCloudOrderHandler(req, res) {
     }
   }
 
-  if (isCrypto) {
-    externalCheckoutUrl = invoiceUrl || pc.nowPaymentsUrl || pc.sellAppLifetimeUrl || "";
-  } else {
-    // For Card / EUR: provide direct 1-click Card-to-USDT checkout (lands directly in TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX) AND NOWPayments invoice
-    externalCheckoutUrl = cardToCryptoUrls.changenow;
-  }
+  const externalCheckoutUrl = invoiceUrl || pc.nowPaymentsUrl || "";
 
   const orderRecord = {
     orderId,
     sessionId: orderId,
-    provider: isCrypto ? (invoiceUrl ? "nowpayments_live" : `crypto_${cryptoCurrency.toLowerCase()}`) : provider,
+    provider: invoiceUrl ? "nowpayments_live" : `crypto_${cryptoCurrency.toLowerCase()}`,
     event: "order.created",
     email,
     plan: selected.id,
@@ -2420,9 +2448,9 @@ async function createHubCloudOrderHandler(req, res) {
     planName: selected.name,
     amountEur: finalAmountEur,
     amountUsd: finalAmountUsd,
-    currency: isCrypto ? `USD (${finalAmountUsd}) / EUR (€${finalAmountEur})` : "EUR",
-    cryptoCurrency: isCrypto ? cryptoCurrency : null,
-    walletAddress: isCrypto ? walletAddress : null,
+    currency: `USD (${finalAmountUsd}) / EUR (€${finalAmountEur})`,
+    cryptoCurrency,
+    walletAddress,
     txHash: txHash || null,
     licenseKey: null,
     status: txHash ? "verifying_tx" : "pending_payment",
@@ -2451,58 +2479,128 @@ async function createHubCloudOrderHandler(req, res) {
     price_amount: finalAmountUsd,
     price_currency: "usd",
     currency: "EUR",
-    cryptoCurrency: orderRecord.cryptoCurrency,
-    walletAddress: orderRecord.walletAddress,
-    cryptoDiscountApplied: isCrypto ? "20% OFF" : null,
-    statementDescriptor: pc.stripeDescriptor || "HUBCLOUD.DEV * CLOUD SYNC",
+    cryptoCurrency,
+    walletAddress,
+    cryptoDiscountApplied: "20% OFF",
     invoice_url: invoiceUrl || externalCheckoutUrl || null,
     nowPaymentsInvoice,
     nowPaymentsError,
     externalCheckoutUrl,
-    cardCheckoutUrl: cardToCryptoUrls.changenow,
-    cardToCryptoUrls,
     statusUrl: `/api/hubcloud/order-status?orderId=${encodeURIComponent(orderId)}`,
-    checkoutUrl: invoiceUrl || `/hubcloud?orderId=${encodeURIComponent(orderId)}&plan=${encodeURIComponent(selected.id)}&provider=${encodeURIComponent(provider)}&email=${encodeURIComponent(email)}`
+    checkoutUrl: invoiceUrl || `/premium?order=${encodeURIComponent(orderId)}&plan=${encodeURIComponent(selected.id)}&email=${encodeURIComponent(email)}`
   });
 }
 
 app.post("/api/hubcloud/create-order", createHubCloudOrderHandler);
 app.post("/api/hubcloud/checkout", createHubCloudOrderHandler);
 app.post("/api/checkout/create", createHubCloudOrderHandler);
+app.post("/api/payments/create", createHubCloudOrderHandler);
 
-app.get("/api/hubcloud/order-status", (req, res) => {
+function getOrderStatusHandler(req, res) {
   monDb = loadMonetizationDb();
-  const orderId = String(req.query.orderId || req.query.order || req.query.session || "").trim();
+  const orderId = String(req.params.orderId || req.query.orderId || req.query.order || req.query.session || "").trim();
   if (!orderId) return res.status(400).json({ ok: false, error: "Missing orderId parameter" });
   const order = (monDb.orders || []).find(o => o.orderId === orderId || o.sessionId === orderId);
   if (!order) return res.status(404).json({ ok: false, error: "Order not found" });
+  const lic = order.licenseKey ? findOrVerifyLicenseRecord(order.licenseKey) : null;
   res.json({
     ok: true,
     orderId: order.orderId,
     status: order.status,
     plan: order.plan,
     planName: order.planName,
+    tier: (lic && lic.tier) || order.tier || order.plan,
     amountEur: order.amountEur,
     amountUsd: order.amountUsd,
     currency: order.currency,
     email: order.email,
     invoice_url: order.invoice_url || order.externalCheckoutUrl || null,
     licenseKey: order.licenseKey || null,
+    expiresAt: (lic && lic.expiresAt) || null,
+    magicLink: order.licenseKey ? `https://r34hub-five.vercel.app/premium?activate_key=${encodeURIComponent(order.licenseKey)}` : null,
     createdAt: order.createdAt
   });
-});
+}
+app.get("/api/hubcloud/order-status", getOrderStatusHandler);
+app.get("/api/payments/status/:orderId", getOrderStatusHandler);
 
-app.post("/api/hubcloud/submit-tx", (req, res) => {
+app.post("/api/hubcloud/submit-tx", async (req, res) => {
   monDb = loadMonetizationDb();
   const { orderId = "", txHash = "", email = "" } = req.body || {};
+  const cleanTx = String(txHash || "").trim();
+  if (!cleanTx || cleanTx.length < 8) {
+    return res.status(400).json({ ok: false, error: "Please enter a valid transaction hash (TXID)." });
+  }
   const order = (monDb.orders || []).find(o => o.orderId === orderId || o.sessionId === orderId);
-  if (!order) return res.status(404).json({ ok: false, error: "Order not found" });
-  if (txHash) order.txHash = String(txHash).trim();
-  if (email) order.email = String(email).trim();
-  order.status = "verifying_tx";
-  order.updatedAt = new Date().toISOString();
+  const proto = req.get("x-forwarded-proto") || req.protocol || "https";
+  const host = req.get("host") || "r34hub-five.vercel.app";
+  const origin = `${proto}://${host}`;
+
+  const targetEmail = String(email || (order && order.email) || "").trim() || "buyer@r34hub.app";
+  const targetPlan = (order && order.plan) || "annual";
+  const planLookup = {
+    monthly: { tier: "monthly", name: "30-Day Monthly Pro (€7.00/mo)", priceEur: 7.00, days: 30 },
+    annual: { tier: "annual", name: "365-Day Annual Pro (€59.99/yr)", priceEur: 59.99, days: 365 },
+    lifetime: { tier: "lifetime", name: "Lifetime VIP Master Pass (€199.99)", priceEur: 199.99, days: 36500 }
+  };
+  const chosen = planLookup[targetPlan] || planLookup.annual;
+  const now = new Date();
+  const expiresAt = chosen.tier === "lifetime"
+    ? "2099-12-31T23:59:59.000Z"
+    : new Date(now.getTime() + chosen.days * 86400000).toISOString();
+
+  const licenseKey = (order && order.licenseKey) || generateLicenseKeyString("R34PRO", chosen.tier, orderId || cleanTx);
+  const licenseRecord = {
+    key: licenseKey,
+    prefix: "R34PRO",
+    tier: chosen.tier,
+    planName: chosen.name,
+    priceEur: (order && order.amountEur) || chosen.priceEur,
+    email: targetEmail,
+    status: "active",
+    devicesUsed: 1,
+    maxDevices: 5,
+    createdAt: now.toISOString(),
+    expiresAt,
+    notes: `Crypto TX Verified (${cleanTx.slice(0, 18)})`
+  };
+  if (!monDb.licenses.some(l => l.key === licenseKey)) {
+    monDb.licenses.unshift(licenseRecord);
+  }
+
+  if (order) {
+    order.txHash = cleanTx;
+    order.email = targetEmail;
+    order.licenseKey = licenseKey;
+    order.status = "paid";
+    order.paidAt = now.toISOString();
+  }
   saveMonetizationDb(monDb);
-  res.json({ ok: true, order });
+
+  const mailResult = await sendLicenseEmail({
+    email: targetEmail,
+    licenseKey,
+    planName: chosen.name,
+    priceEur: licenseRecord.priceEur,
+    expiresAt,
+    gateway: "Crypto Direct / NOWPayments",
+    origin
+  });
+
+  res.json({
+    ok: true,
+    status: "paid",
+    orderId: (order && order.orderId) || orderId,
+    licenseKey,
+    plan: chosen.name,
+    tier: chosen.tier,
+    email: targetEmail,
+    expiresAt,
+    magicLink: mailResult.magicLink,
+    emailSent: mailResult.sent,
+    emailReceiptHtml: mailResult.html,
+    order
+  });
 });
 
 // 5. Production SEO Endpoints (/robots.txt, /sitemap.xml & IndexNow verification)
@@ -2635,6 +2733,20 @@ app.get(["/ru/premium", "/en/premium"], (req, res) => {
 
 app.get(["/premium", "/hubcloud"], (req, res) => {
   res.sendFile(path.join(__dirname, "public", "hubcloud.html"));
+});
+
+app.get(["/legal", "/terms", "/privacy", "/dmca", "/2257"], (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "legal.html"));
+});
+
+app.get("/favicon.svg", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "favicon.svg"));
+});
+app.get("/favicon.ico", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "favicon.ico"));
+});
+app.get("/apple-touch-icon.png", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "apple-touch-icon.png"));
 });
 
 function sendIndex(_req, res) {

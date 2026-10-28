@@ -192,6 +192,26 @@
     {
       "source": "/settings",
       "destination": "/index.html"
+    },
+    {
+      "source": "/legal",
+      "destination": "/legal.html"
+    },
+    {
+      "source": "/terms",
+      "destination": "/legal.html"
+    },
+    {
+      "source": "/privacy",
+      "destination": "/legal.html"
+    },
+    {
+      "source": "/dmca",
+      "destination": "/legal.html"
+    },
+    {
+      "source": "/2257",
+      "destination": "/legal.html"
     }
   ]
 }

@@ -1,6 +1,6 @@
 const state = {
   activeTab: 'home',
-  source: 'all',
+  source: 'rule34xxx',
   tags: '',
   rating: 's',
   sort: 'score',
@@ -13,7 +13,8 @@ const state = {
   trendingTags: [],
   adsConfig: null,
   isPro: false,
-  licenseKey: localStorage.getItem('bp_license') || '',
+  licenseKey: localStorage.getItem('bp_license') || localStorage.getItem('r34hub_license_key') || '',
+  proMeta: JSON.parse(localStorage.getItem('r34hub_pro_meta') || 'null'),
   savedPosts: JSON.parse(localStorage.getItem('bp_saved') || '[]'),
   blacklist: JSON.parse(localStorage.getItem('bp_blacklist') || '["lowres","watermark"]'),
   showAdsPreview: true,
@@ -62,7 +63,7 @@ function formatScore(value) {
 }
 
 function sourceLabel() {
-  if (state.source === 'all') return 'All boards';
+  if (state.source === 'all' || state.source === 'rule34xxx' || state.source === 'rule34.xxx') return 'Rule34.xxx';
   const found = state.sources.find(s => s.id === state.source);
   return found ? found.name : state.source;
 }
@@ -98,7 +99,7 @@ function hrefForTab(tabId) {
   if (tabId === 'saved') return '/saved';
   if (tabId === 'settings') return '/settings';
   if (tabId === 'gallery' || tabId === 'reels') {
-    const slug = encodeURIComponent(state.source === 'all' ? 'rule34.xxx' : state.source);
+    const slug = encodeURIComponent((state.source === 'all' || state.source === 'rule34xxx') ? 'rule34.xxx' : state.source);
     const query = feedQuery();
     const base = tabId === 'gallery' ? '/grid/' : '/posts/';
     return base + slug + (query ? `?${query}` : '');
@@ -137,7 +138,7 @@ function syncUrlBarInPlace() {
   if (badge) badge.textContent = sourceLabel();
   renderActiveTagPills();
   if (!browsingPosts()) return;
-  const slug = encodeURIComponent(state.source === 'all' ? 'rule34.xxx' : state.source);
+  const slug = encodeURIComponent((state.source === 'all' || state.source === 'rule34xxx') ? 'rule34.xxx' : state.source);
   const query = feedQuery();
   const base = state.activeTab === 'gallery' ? '/grid/' : '/posts/';
   try {
@@ -151,7 +152,10 @@ function parseTagTokens() {
 
 function readUrlState() {
   const slug = (location.pathname.match(/^\/(?:posts|grid)\/([^/]+)/) || [])[1];
-  if (slug && decodeURIComponent(slug) !== 'rule34.xxx') state.source = decodeURIComponent(slug);
+  if (slug) {
+    const cleanSlug = decodeURIComponent(slug);
+    state.source = (cleanSlug === 'rule34.xxx' || cleanSlug === 'all') ? 'rule34xxx' : cleanSlug;
+  }
   const urlParams = new URLSearchParams(window.location.search);
   const sort = urlParams.get('filter[sort]');
   if (sort) state.sort = sort;
@@ -198,7 +202,7 @@ function renderActiveTagPills() {
   let filters = tokens.length;
   if (state.rating !== 's') filters += 1;
   if (state.sort !== 'score') filters += 1;
-  if (state.source !== 'all') filters += 1;
+  if (state.source !== 'rule34xxx' && state.source !== 'all') filters += 1;
   if (countEl) {
     countEl.textContent = String(filters);
     countEl.classList.toggle('is-zero', filters === 0);
@@ -235,20 +239,70 @@ function syncChrome() {
   topAd.classList.toggle('hidden', !show);
 }
 
+function saveProSession(key, meta = {}) {
+  state.isPro = true;
+  state.licenseKey = key;
+  state.proMeta = Object.assign({ key, plan: meta.plan || 'Pro Membership', tier: meta.tier || 'annual', email: meta.email || '', expiresAt: meta.expiresAt || '' }, meta);
+  localStorage.setItem('bp_license', key);
+  localStorage.setItem('r34hub_license_key', key);
+  localStorage.setItem('r34hub_pro_v1', '1');
+  localStorage.setItem('r34hub_pro_meta', JSON.stringify(state.proMeta));
+}
+
+window.logoutPro = function() {
+  state.isPro = false;
+  state.licenseKey = '';
+  state.proMeta = null;
+  state.showAdsPreview = true;
+  localStorage.removeItem('bp_license');
+  localStorage.removeItem('r34hub_license_key');
+  localStorage.removeItem('r34hub_pro_v1');
+  localStorage.removeItem('r34hub_pro_meta');
+  const licInput = document.getElementById('license-input');
+  if (licInput) licInput.value = '';
+  updateProUI();
+  closeProModal();
+  closeSideMenu();
+  showToast('Logged out of Pro');
+};
+
 function updateProUI() {
   const btn = document.getElementById('pro-cta-btn');
   const txt = document.getElementById('pro-cta-text');
   const topAd = document.getElementById('top-ad-banner');
+  const aadsSlot = document.getElementById('aads-unit-slot');
   const adToggle = document.getElementById('toggle-ads-preview');
+  const navBadge = document.getElementById('nav-pro-badge');
+  const sideAcc = document.getElementById('side-pro-account');
+  const sideKeyLbl = document.getElementById('side-pro-key-label');
+  const activeProPanel = document.getElementById('active-pro-panel');
+  const proPurchaseBlock = document.getElementById('pro-purchase-block');
+  const modalProKey = document.getElementById('modal-pro-key');
+  const modalProPlan = document.getElementById('modal-pro-plan');
+
   if (state.isPro) {
-    const prefix = (state.licenseKey || 'SHOP2').split('-')[0];
-    if (txt) txt.textContent = `Pro on · ${prefix}`;
+    const keyStr = state.licenseKey || 'R34PRO-VIP';
+    const shortKey = keyStr.length > 12 ? `${keyStr.slice(0, 11)}…` : keyStr;
+    if (txt) txt.textContent = `✓ Pro Active · ${shortKey}`;
     if (btn) btn.classList.add('is-vip');
+    if (navBadge) navBadge.classList.remove('hidden');
+    if (sideAcc) sideAcc.classList.remove('hidden');
+    if (sideKeyLbl) sideKeyLbl.textContent = keyStr;
+    if (activeProPanel) activeProPanel.classList.remove('hidden');
+    if (proPurchaseBlock) proPurchaseBlock.classList.add('hidden');
+    if (modalProKey) modalProKey.textContent = keyStr;
+    if (modalProPlan) modalProPlan.textContent = (state.proMeta && state.proMeta.plan) || 'Pro Active';
     state.showAdsPreview = false;
     if (topAd) topAd.classList.add('hidden');
+    if (aadsSlot) aadsSlot.classList.add('hidden');
   } else {
     if (txt) txt.textContent = 'Pro · €4.97';
     if (btn) btn.classList.remove('is-vip');
+    if (navBadge) navBadge.classList.add('hidden');
+    if (sideAcc) sideAcc.classList.add('hidden');
+    if (activeProPanel) activeProPanel.classList.add('hidden');
+    if (proPurchaseBlock) proPurchaseBlock.classList.remove('hidden');
+    if (aadsSlot) aadsSlot.classList.remove('hidden');
   }
   syncChrome();
   if (adToggle) {
@@ -257,6 +311,7 @@ function updateProUI() {
   }
   renderSourcePills();
   if (state.activeTab === 'gallery' && state.posts.length) renderGallery();
+  if (state.activeTab === 'reels' && state.posts.length) renderReels();
 }
 
 function faviconUrl(domain) {
@@ -264,7 +319,10 @@ function faviconUrl(domain) {
 }
 
 function sourceItems() {
-  return [{ id: 'all', name: 'All boards', domain: '', isPremiumSource: false }, ...state.sources];
+  const defaultR34 = { id: 'rule34xxx', name: 'Rule34.xxx', domain: 'rule34.xxx', isPremiumSource: false };
+  if (!state.sources || !state.sources.length) return [defaultR34];
+  const r34 = state.sources.find(s => s.id === 'rule34xxx') || defaultR34;
+  return [r34, ...state.sources.filter(s => s.id !== 'rule34xxx')];
 }
 
 function domainOptionHtml(source) {
@@ -620,7 +678,7 @@ window.setSortInPlace = function(sort) {
 
 window.resetAllFilters = function() {
   state.tags = '';
-  state.source = 'all';
+  state.source = 'rule34xxx';
   state.sort = 'score';
   state.rating = 's';
   state.page = 1;
@@ -1309,12 +1367,21 @@ function buildPostCardHTML(post, idx) {
 }
 
 const AD_INTERVAL = 12;
+function trackAdImpression(placement = 'infeed_native') {
+  if (state.isPro) return;
+  fetch('/api/ads/impression', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ placement, board: state.source || 'rule34xxx' })
+  }).catch(() => {});
+}
+
 
 function cardsHtml(posts, offset) {
   const parts = [];
   posts.forEach((post, i) => {
     const idx = offset + i;
-    if (state.showAdsPreview && !state.isPro && idx > 0 && idx % AD_INTERVAL === 0) parts.push(buildSponsoredCardHTML(idx));
+    if (state.showAdsPreview && !state.isPro && idx > 0 && idx % AD_INTERVAL === 0) { trackAdImpression("grid_native"); parts.push(buildSponsoredCardHTML(idx)); }
     parts.push(buildPostCardHTML(post, idx));
   });
   return parts.join('');
@@ -1558,6 +1625,7 @@ function reelsHtmlWithAds(posts, startOffset) {
   posts.forEach((post, i) => {
     const idx = startOffset + i;
     if (state.showAdsPreview && !state.isPro && idx > 0 && idx % AD_INTERVAL === 0) {
+      trackAdImpression("reels_native");
       parts.push(buildNativeReelAdHtml(idx));
     }
     parts.push(reelSlideHtml(post, idx));
@@ -1769,6 +1837,42 @@ window.openPostModal = function(postId) {
   saveBtn.onclick = () => window.toggleSavePost(post.id);
 
   const charTag = (post.characterTags && post.characterTags[0]) || (post.tags && post.tags[0]) || 'character';
+  const promptBox = document.getElementById('modal-ai-prompt-box');
+  if (promptBox) promptBox.classList.add('hidden');
+  const promptBtn = document.getElementById('modal-ai-prompt-btn');
+  if (promptBtn) {
+    promptBtn.onclick = async () => {
+      const cleanTags = (post.tags || []).slice(0, 18).map(t => String(t).replace(/_/g, ' '));
+      const promptText = ['masterpiece, best quality, ultra-detailed', ...cleanTags].join(', ');
+      if (promptBox) {
+        promptBox.textContent = promptText;
+        promptBox.classList.remove('hidden');
+      }
+      try {
+        await navigator.clipboard.writeText(promptText);
+        showToast('AI Prompt copied to clipboard!');
+      } catch (_) {
+        showToast('AI Prompt generated below');
+      }
+    };
+  }
+  const simBtn = document.getElementById('modal-ai-similar-btn');
+  if (simBtn) {
+    simBtn.onclick = () => {
+      const topTags = [
+        ...(post.characterTags || []).slice(0, 1),
+        ...(post.copyrightTags || []).slice(0, 1),
+        ...(post.tags || []).filter(t => !['1girl', 'solo', 'highres'].includes(t)).slice(0, 2)
+      ].filter(Boolean);
+      const query = [...new Set(topTags)].slice(0, 2).join(' ') || charTag;
+      closePostModal();
+      state.tags = query;
+      const input = document.getElementById('tag-search-input');
+      if (input) input.value = query;
+      showBrowseAndReload();
+      showToast(`Similar posts: ${query}`);
+    };
+  }
   document.getElementById('modal-ai-chat-btn').onclick = () => triggerAdClick('post_chat_ai', 'candy_ai', post.id, charTag, post.fileUrl);
   document.getElementById('modal-ai-video-btn').onclick = () => triggerAdClick('post_video_ai', 'nud3_video', post.id, charTag, post.fileUrl);
 
@@ -1946,14 +2050,30 @@ async function initApp() {
     renderTrendingTags();
     const blacklist = document.getElementById('blacklist-textarea');
     if (blacklist) blacklist.value = state.blacklist.join('\n');
+    const urlParams = new URLSearchParams(window.location.search);
+    const magicKey = urlParams.get('activate_key');
+    if (magicKey) {
+      state.licenseKey = magicKey.trim().toUpperCase();
+      urlParams.delete('activate_key');
+      const cleanQs = urlParams.toString();
+      try {
+        window.history.replaceState({}, '', location.pathname + (cleanQs ? '?' + cleanQs : ''));
+      } catch (_) {}
+    }
     updateProUI();
     if (state.licenseKey) {
       fetch(`/api/licenses/verify?key=${encodeURIComponent(state.licenseKey)}`)
         .then(r => r.json())
         .then(verifyRes => {
           if (verifyRes && verifyRes.valid) {
-            state.isPro = true;
+            saveProSession(verifyRes.key || state.licenseKey, {
+              plan: verifyRes.planName || verifyRes.plan,
+              tier: verifyRes.tier,
+              email: verifyRes.ownerEmail || verifyRes.email,
+              expiresAt: verifyRes.expiresAt
+            });
             updateProUI();
+            if (magicKey) showToast('Pro membership activated!');
           }
         })
         .catch(() => {});
@@ -2193,9 +2313,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     const data = await res.json();
     if (data.ok && data.valid) {
-      state.isPro = true;
-      state.licenseKey = data.licenseKey;
-      localStorage.setItem('bp_license', data.licenseKey);
+      saveProSession(data.licenseKey, {
+        plan: data.plan,
+        tier: data.tier,
+        email: data.email,
+        expiresAt: data.expiresAt
+      });
       closeProModal();
       updateProUI();
       showToast('Pro is on. Ads are hidden.');

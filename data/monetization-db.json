@@ -13,8 +13,6 @@
     "decoyTagline": "Cloud Media Indexing & Discord/Telegram Role Sync Engine",
     "stripeDescriptor": "HUBCLOUD.DEV * CLOUD SYNC",
     "currency": "EUR",
-    "stripeMonthlyUrl": "https://buy.stripe.com/test_5kQdR176w5Od6mLaPadwc00",
-    "stripeAnnualUrl": "https://buy.stripe.com/test_fZucMX62s7Wl8uTcXidwc01",
     "ghostPortalUrl": "https://hubcloud.dev/#/portal/signup/6881f5fb9c83c40001487e13/yearly",
     "sellApp30dUrl": "https://hubcloud.sell.app/product/30-day-cloud-pass-eur",
     "sellAppLifetimeUrl": "https://hubcloud.sell.app/product/lifetime-vip-cloud-pass",
@@ -79,10 +77,7 @@
     },
     "nowPaymentsUrl": "https://nowpayments.io/payment/?iid=r34hub_vip",
     "nowPaymentsIpnSecret": "FZc9/jRJZ+oP57VEs+bG3jhKie+hWPdc",
-    "nowPaymentsStatus": "connected_live",
-    "stripeLifetimeUrl": "https://buy.stripe.com/test_3cI28j0I86Sh5iH7CYdwc02",
-    "stripeAccountId": "acct_1RgipD06KENzvxOj",
-    "stripeStatus": "connected"
+    "nowPaymentsStatus": "connected_live"
   },
   "adsConfig": {
     "adsEnabled": true,
@@ -196,51 +191,13 @@
       }
     },
     "telemetry": {
-      "totalClicks": 150,
-      "estimatedCpaRevenueEur": 415.4,
-      "estimatedBannerRevenueEur": 86.4,
-      "byPlacement": {
-        "post_chat_ai": 69,
-        "post_video_ai": 44,
-        "infeed_native": 26,
-        "reels_cta": 11
-      },
-      "recentClicks": [
-        {
-          "id": "clk_a06844",
-          "placement": "infeed_native",
-          "offerId": "candy_ai",
-          "postId": "reel-ad-12",
-          "tag": "genshin_impact",
-          "targetUrl": "https://candy.ai/?aff=r34hub&subid=reel-ad-12&char=genshin_impact",
-          "timestamp": "2026-10-28T12:54:01.800Z"
-        },
-        {
-          "id": "clk_243409",
-          "placement": "post_chat_ai",
-          "offerId": "candy_ai",
-          "postId": "101",
-          "tag": "frieren",
-          "targetUrl": "https://candy.ai/?aff=r34hub&subid=101&char=frieren",
-          "timestamp": "2026-10-28T07:54:39.353Z"
-        },
-        {
-          "id": "clk_901",
-          "placement": "post_chat_ai",
-          "offerId": "candy_ai",
-          "postId": "danbooru-8492011",
-          "tag": "raiden_shogun",
-          "timestamp": "2026-10-28T07:25:12.000Z"
-        },
-        {
-          "id": "clk_902",
-          "placement": "post_video_ai",
-          "offerId": "nud3_video",
-          "postId": "paheal-6120944",
-          "tag": "frieren",
-          "timestamp": "2026-10-28T07:28:45.000Z"
-        }
-      ]
+      "totalImpressions": 0,
+      "totalClicks": 0,
+      "estimatedCpaRevenueEur": 0,
+      "estimatedBannerRevenueEur": 0,
+      "byPlacement": {},
+      "byBoard": {},
+      "recentClicks": []
     },
     "aads": {
       "enabled": true,
@@ -271,48 +228,6 @@
   },
   "licenses": [
     {
-      "key": "SHOP2-5AEE-EB02-8407",
-      "prefix": "SHOP2",
-      "tier": "annual",
-      "planName": "365-Day Annual Pro (€59.99/yr)",
-      "priceEur": 59.99,
-      "email": "emildv.work@gmail.com",
-      "status": "active",
-      "devicesUsed": 1,
-      "maxDevices": 5,
-      "createdAt": "2026-10-28T13:14:51.807Z",
-      "expiresAt": "2027-10-28T13:14:51.807Z",
-      "notes": "Auto-minted via stripe_checkout (checkout.session.completed)"
-    },
-    {
-      "key": "R34H-8653-FAF9-058A",
-      "prefix": "R34H",
-      "tier": "annual",
-      "planName": "365-Day Annual Pro (€59.99/yr)",
-      "priceEur": 51.99,
-      "email": "emildv.work@gmail.com",
-      "status": "active",
-      "devicesUsed": 1,
-      "maxDevices": 5,
-      "createdAt": "2026-10-28T12:19:50.484Z",
-      "expiresAt": "2027-10-28T12:19:50.484Z",
-      "notes": "Auto-minted via nowpayments_usdttrc20 (payment_status:finished)"
-    },
-    {
-      "key": "SLX-C115-2CA4-1CEB",
-      "prefix": "SLX",
-      "tier": "annual",
-      "planName": "365-Day Annual Pro (€59.99/yr)",
-      "priceEur": 47.99,
-      "email": "emildv.work@gmail.com",
-      "status": "active",
-      "devicesUsed": 1,
-      "maxDevices": 5,
-      "createdAt": "2026-10-28T12:14:58.875Z",
-      "expiresAt": "2027-10-28T12:14:58.875Z",
-      "notes": "Auto-minted via nowpayments_usdt (payment_status:finished)"
-    },
-    {
       "key": "SHOP2-OWNER-VIP-9F4A-8821",
       "prefix": "SHOP2",
       "tier": "lifetime",
@@ -320,355 +235,14 @@
       "priceEur": 0,
       "email": "emildv.work@gmail.com",
       "status": "active",
-      "devicesUsed": 1,
-      "maxDevices": 5,
-      "createdAt": "2026-10-28T07:00:00.000Z",
-      "expiresAt": "2099-12-31T23:59:59.000Z",
-      "notes": "Owner Primary Master Key #1"
-    },
-    {
-      "key": "SHOP2-LIFETIME-PRO-7C2E-4190",
-      "prefix": "SHOP2",
-      "tier": "lifetime",
-      "planName": "Lifetime Owner / VIP Master",
-      "priceEur": 199.99,
-      "email": "emildv.work@gmail.com",
-      "status": "active",
       "devicesUsed": 0,
       "maxDevices": 5,
       "createdAt": "2026-10-28T07:00:00.000Z",
       "expiresAt": "2099-12-31T23:59:59.000Z",
-      "notes": "Owner Master Key #2 (Stripe/Ghost Pool)"
-    },
-    {
-      "key": "PATREON-FOUNDER-VIP-3A8D-5512",
-      "prefix": "PATREON",
-      "tier": "lifetime",
-      "planName": "Lifetime Owner / VIP Master",
-      "priceEur": 199.99,
-      "email": "emildv.work@gmail.com",
-      "status": "active",
-      "devicesUsed": 0,
-      "maxDevices": 5,
-      "createdAt": "2026-10-28T07:00:00.000Z",
-      "expiresAt": "2099-12-31T23:59:59.000Z",
-      "notes": "Owner Master Key #3 (Patreon Bridge)"
-    },
-    {
-      "key": "SLX-CRYPTO-LIFE-6B1F-9043",
-      "prefix": "SLX",
-      "tier": "lifetime",
-      "planName": "Lifetime Owner / VIP Master",
-      "priceEur": 159.99,
-      "email": "emildv.work@gmail.com",
-      "status": "active",
-      "devicesUsed": 0,
-      "maxDevices": 5,
-      "createdAt": "2026-10-28T07:00:00.000Z",
-      "expiresAt": "2099-12-31T23:59:59.000Z",
-      "notes": "Owner Master Key #4 (Sell.app / Crypto Pool)"
-    },
-    {
-      "key": "SHOP2-MASTER-ROOT-0E9D-7777",
-      "prefix": "SHOP2",
-      "tier": "lifetime",
-      "planName": "Lifetime Owner / VIP Master",
-      "priceEur": 0,
-      "email": "emildv.work@gmail.com",
-      "status": "active",
-      "devicesUsed": 0,
-      "maxDevices": 5,
-      "createdAt": "2026-10-28T07:00:00.000Z",
-      "expiresAt": "2099-12-31T23:59:59.000Z",
-      "notes": "Owner Master Key #5 (Root Reserve)"
-    },
-    {
-      "key": "SHOP2-ANNUAL-EUR-4D1A-2026",
-      "prefix": "SHOP2",
-      "tier": "annual",
-      "planName": "365-Day Annual Pro (€59.99/yr)",
-      "priceEur": 59.99,
-      "email": "emildv.work@gmail.com",
-      "status": "active",
-      "devicesUsed": 1,
-      "maxDevices": 5,
-      "createdAt": "2026-10-28T07:05:00.000Z",
-      "expiresAt": "2027-10-28T07:05:00.000Z",
-      "notes": "Pre-seeded Annual Pro Key #1",
-      "lastActivatedAt": "2026-10-28T07:54:39.346Z"
-    },
-    {
-      "key": "SHOP2-ANNUAL-EUR-8E3B-6419",
-      "prefix": "SHOP2",
-      "tier": "annual",
-      "planName": "365-Day Annual Pro (€59.99/yr)",
-      "priceEur": 59.99,
-      "email": "emildv.work@gmail.com",
-      "status": "active",
-      "devicesUsed": 0,
-      "maxDevices": 5,
-      "createdAt": "2026-10-28T07:05:00.000Z",
-      "expiresAt": "2027-10-28T07:05:00.000Z",
-      "notes": "Pre-seeded Annual Pro Key #2"
-    },
-    {
-      "key": "SHOP2-ANNUAL-EUR-1F9C-3820",
-      "prefix": "SHOP2",
-      "tier": "annual",
-      "planName": "365-Day Annual Pro (€59.99/yr)",
-      "priceEur": 59.99,
-      "email": "emildv.work@gmail.com",
-      "status": "active",
-      "devicesUsed": 0,
-      "maxDevices": 5,
-      "createdAt": "2026-10-28T07:05:00.000Z",
-      "expiresAt": "2027-10-28T07:05:00.000Z",
-      "notes": "Pre-seeded Annual Pro Key #3"
-    },
-    {
-      "key": "PATREON-ANNUAL-PRO-5A2D-7104",
-      "prefix": "PATREON",
-      "tier": "annual",
-      "planName": "365-Day Annual Pro (€59.99/yr)",
-      "priceEur": 59.99,
-      "email": "emildv.work@gmail.com",
-      "status": "active",
-      "devicesUsed": 0,
-      "maxDevices": 5,
-      "createdAt": "2026-10-28T07:05:00.000Z",
-      "expiresAt": "2027-10-28T07:05:00.000Z",
-      "notes": "Pre-seeded Annual Pro Key #4"
-    },
-    {
-      "key": "SLX-ANNUAL-XMR-9C4E-8291",
-      "prefix": "SLX",
-      "tier": "annual",
-      "planName": "365-Day Annual Pro (€59.99/yr)",
-      "priceEur": 47.99,
-      "email": "emildv.work@gmail.com",
-      "status": "active",
-      "devicesUsed": 0,
-      "maxDevices": 5,
-      "createdAt": "2026-10-28T07:05:00.000Z",
-      "expiresAt": "2027-10-28T07:05:00.000Z",
-      "notes": "Pre-seeded Annual Pro Key #5 (Crypto -20%)"
-    },
-    {
-      "key": "SHOP2-MONTHLY-EUR-2B7F-1940",
-      "prefix": "SHOP2",
-      "tier": "monthly",
-      "planName": "30-Day Monthly Pro (€7.00/mo)",
-      "priceEur": 7,
-      "email": "emildv.work@gmail.com",
-      "status": "active",
-      "devicesUsed": 0,
-      "maxDevices": 5,
-      "createdAt": "2026-10-28T07:10:00.000Z",
-      "expiresAt": "2026-11-27T07:10:00.000Z",
-      "notes": "Pre-seeded Monthly Pro Key #1"
-    },
-    {
-      "key": "SHOP2-MONTHLY-EUR-6A3C-5082",
-      "prefix": "SHOP2",
-      "tier": "monthly",
-      "planName": "30-Day Monthly Pro (€7.00/mo)",
-      "priceEur": 7,
-      "email": "emildv.work@gmail.com",
-      "status": "active",
-      "devicesUsed": 0,
-      "maxDevices": 5,
-      "createdAt": "2026-10-28T07:10:00.000Z",
-      "expiresAt": "2026-11-27T07:10:00.000Z",
-      "notes": "Pre-seeded Monthly Pro Key #2"
-    },
-    {
-      "key": "SHOP2-MONTHLY-EUR-9E1D-4471",
-      "prefix": "SHOP2",
-      "tier": "monthly",
-      "planName": "30-Day Monthly Pro (€7.00/mo)",
-      "priceEur": 7,
-      "email": "emildv.work@gmail.com",
-      "status": "active",
-      "devicesUsed": 0,
-      "maxDevices": 5,
-      "createdAt": "2026-10-28T07:10:00.000Z",
-      "expiresAt": "2026-11-27T07:10:00.000Z",
-      "notes": "Pre-seeded Monthly Pro Key #3"
-    },
-    {
-      "key": "PATREON-MONTHLY-VIP-3D8A-6129",
-      "prefix": "PATREON",
-      "tier": "monthly",
-      "planName": "30-Day Monthly Pro (€7.00/mo)",
-      "priceEur": 7,
-      "email": "emildv.work@gmail.com",
-      "status": "active",
-      "devicesUsed": 0,
-      "maxDevices": 5,
-      "createdAt": "2026-10-28T07:10:00.000Z",
-      "expiresAt": "2026-11-27T07:10:00.000Z",
-      "notes": "Pre-seeded Monthly Pro Key #4"
-    },
-    {
-      "key": "SLX-30DAYS-USDT-7F5B-3318",
-      "prefix": "SLX",
-      "tier": "monthly",
-      "planName": "30-Day Monthly Pro (€7.00/mo)",
-      "priceEur": 5.6,
-      "email": "emildv.work@gmail.com",
-      "status": "active",
-      "devicesUsed": 0,
-      "maxDevices": 5,
-      "createdAt": "2026-10-28T07:10:00.000Z",
-      "expiresAt": "2026-11-27T07:10:00.000Z",
-      "notes": "Pre-seeded Monthly Pro Key #5 (Crypto -20%)"
-    },
-    {
-      "key": "SHOP2-DEMO-EUR-2026",
-      "prefix": "SHOP2",
-      "tier": "annual",
-      "planName": "365-Day Annual Pro (€59.99/yr)",
-      "priceEur": 59.99,
-      "email": "demo@r34hub.app",
-      "status": "active",
-      "devicesUsed": 1,
-      "maxDevices": 5,
-      "createdAt": "2026-10-28T07:00:00.000Z",
-      "expiresAt": "2027-10-28T07:00:00.000Z",
-      "notes": "Public Demo Test Key"
+      "notes": "Owner Primary Master Key"
     }
   ],
-  "orders": [
-    {
-      "orderId": "ord_stripe_test",
-      "provider": "stripe_checkout",
-      "event": "checkout.session.completed",
-      "email": "emildv.work@gmail.com",
-      "plan": "annual",
-      "planName": "365-Day Annual Pro (€59.99/yr)",
-      "amountEur": 59.99,
-      "currency": "EUR",
-      "licenseKey": "SHOP2-5AEE-EB02-8407",
-      "status": "paid",
-      "createdAt": "2026-10-28T13:14:51.807Z"
-    },
-    {
-      "orderId": "ord_52029e5550",
-      "sessionId": "ord_52029e5550",
-      "provider": "stripe_bridge",
-      "event": "stripe.checkout.created",
-      "email": "emildv.work@gmail.com",
-      "plan": "annual",
-      "tier": "annual",
-      "planName": "HubCloud Annual Pro (365 Days)",
-      "amountEur": 59.99,
-      "amountUsd": 64.99,
-      "currency": "EUR",
-      "walletAddress": "TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX",
-      "licenseKey": null,
-      "status": "pending_payment",
-      "stripeSessionUrl": null,
-      "cardCheckoutUrl": "https://guardarian.com/calculator?from_currency=EUR&to_currency=USDT&to_network=TRX&from_amount=59.99&payout_address=TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX",
-      "cardToCryptoUrls": {
-        "guardarian": "https://guardarian.com/calculator?from_currency=EUR&to_currency=USDT&to_network=TRX&from_amount=59.99&payout_address=TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX",
-        "mercuryo": "https://exchange.mercuryo.io/?fiat_currency=EUR&fiat_amount=59.99&currency=USDT&network=TRON&address=TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX",
-        "changenow": "https://changenow.io/?from=eur&to=usdttrc20&fiatMode=true&amount=59.99&recipient=TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX"
-      },
-      "createdAt": "2026-10-28T13:14:30.407Z"
-    },
-    {
-      "orderId": "ord_9a2f8cdb05",
-      "sessionId": "ord_9a2f8cdb05",
-      "provider": "stripe_hubcloud",
-      "event": "order.created",
-      "email": "emildv.work@gmail.com",
-      "plan": "annual",
-      "tier": "annual",
-      "planName": "Annual Pro (€4.97/mo)",
-      "amountEur": 59.99,
-      "amountUsd": 64.99,
-      "currency": "EUR",
-      "cryptoCurrency": null,
-      "walletAddress": null,
-      "txHash": "CARD_RECEIPT:changenow_test_991",
-      "licenseKey": null,
-      "status": "verifying_tx",
-      "invoice_url": "https://nowpayments.io/payment/?iid=5113014242",
-      "nowPaymentsInvoiceId": "5113014242",
-      "nowPaymentsError": null,
-      "externalCheckoutUrl": "https://changenow.io/?from=eur&to=usdttrc20&fiatMode=true&amount=59.99&recipient=TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX",
-      "createdAt": "2026-10-28T12:54:01.416Z",
-      "updatedAt": "2026-10-28T12:54:01.635Z"
-    },
-    {
-      "orderId": "ord_62166a1686",
-      "sessionId": "ord_62166a1686",
-      "provider": "nowpayments_usdttrc20",
-      "event": "payment_status:finished",
-      "email": "emildv.work@gmail.com",
-      "plan": "annual",
-      "tier": "annual",
-      "planName": "365-Day Annual Pro (€59.99/yr)",
-      "amountEur": 51.99,
-      "amountUsd": 51.99,
-      "currency": "USD (51.99) / EUR (€47.99)",
-      "cryptoCurrency": "USDT_TRC20",
-      "walletAddress": "TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX",
-      "txHash": null,
-      "licenseKey": "R34H-8653-FAF9-058A",
-      "status": "paid",
-      "invoice_url": "https://nowpayments.io/payment/?iid=5784417821",
-      "nowPaymentsInvoiceId": "5784417821",
-      "nowPaymentsError": null,
-      "externalCheckoutUrl": "https://nowpayments.io/payment/?iid=5784417821",
-      "createdAt": "2026-10-28T12:19:50.217Z",
-      "paidAt": "2026-10-28T12:19:50.484Z"
-    },
-    {
-      "orderId": "ord_0121f7de23",
-      "sessionId": "ord_0121f7de23",
-      "provider": "nowpayments_usdt",
-      "event": "payment_status:finished",
-      "email": "emildv.work@gmail.com",
-      "plan": "annual",
-      "tier": "annual",
-      "planName": "365-Day Annual Pro (€59.99/yr)",
-      "amountEur": 47.99,
-      "currency": "EUR (USDT_TRC20)",
-      "cryptoCurrency": "USDT_TRC20",
-      "walletAddress": "TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX",
-      "txHash": null,
-      "licenseKey": "SLX-C115-2CA4-1CEB",
-      "status": "paid",
-      "externalCheckoutUrl": "https://nowpayments.io/payment/?iid=r34hub_vip",
-      "createdAt": "2026-10-28T12:14:58.849Z",
-      "paidAt": "2026-10-28T12:14:58.875Z"
-    },
-    {
-      "orderId": "ord_stripe_98412a",
-      "provider": "stripe_hubcloud",
-      "event": "checkout.session.completed",
-      "email": "alex.m@proton.me",
-      "plan": "annual",
-      "amountEur": 59.99,
-      "currency": "EUR",
-      "licenseKey": "SHOP2-ANNUAL-EUR-4D1A-2026",
-      "status": "paid",
-      "createdAt": "2026-10-28T06:42:10.000Z"
-    },
-    {
-      "orderId": "ord_crypto_77319c",
-      "provider": "nowpayments_xmr",
-      "event": "payment_status:finished",
-      "email": "anon_vault@pm.me",
-      "plan": "lifetime",
-      "amountEur": 159.99,
-      "currency": "EUR (XMR)",
-      "licenseKey": "SLX-CRYPTO-LIFE-6B1F-9043",
-      "status": "paid",
-      "createdAt": "2026-10-28T07:11:04.000Z"
-    }
-  ],
+  "orders": [],
   "gateways": {
     "nowpayments": {
       "accountEmail": "emildv.work@gmail.com",
@@ -679,33 +253,6 @@
       "updatedAt": "2026-10-28T12:30:30.712Z",
       "payoutWallet": "TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX",
       "payoutNetwork": "USDTTRC20"
-    },
-    "stripe": {
-      "accountId": "acct_1RgipD06KENzvxOj",
-      "webhookId": "we_1UVXAe06KENzvxOjp3aHRSDP",
-      "webhookUrl": "https://r34hub-five.vercel.app/api/webhooks/stripe",
-      "status": "connected",
-      "catalog": {
-        "monthly": {
-          "productId": "prod_VWaNkjJrv0AnRV",
-          "priceId": "price_1UVXCX06KENzvxOjC1IDGFZX",
-          "paymentLinkId": "plink_1UVXCX06KENzvxOjV5BOfGhK",
-          "paymentLinkUrl": "https://buy.stripe.com/test_5kQdR176w5Od6mLaPadwc00"
-        },
-        "annual": {
-          "productId": "prod_VWaNNKMj6GVLaM",
-          "priceId": "price_1UVXCY06KENzvxOjR1Qcelxk",
-          "paymentLinkId": "plink_1UVXCY06KENzvxOjqBRsk34L",
-          "paymentLinkUrl": "https://buy.stripe.com/test_fZucMX62s7Wl8uTcXidwc01"
-        },
-        "lifetime": {
-          "productId": "prod_VWaNT2hVowuhln",
-          "priceId": "price_1UVXCY06KENzvxOjOMrLOVYZ",
-          "paymentLinkId": "plink_1UVXCZ06KENzvxOjswylyF9r",
-          "paymentLinkUrl": "https://buy.stripe.com/test_3cI28j0I86Sh5iH7CYdwc02"
-        }
-      },
-      "updatedAt": "2026-10-28T13:48:38.570Z"
     }
   },
   "adNetworks": {
@@ -746,5 +293,6 @@
     "usdt_trc20": "TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX",
     "TRX": "TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX",
     "trx": "TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX"
-  }
+  },
+  "sentEmails": []
 }
