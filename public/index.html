@@ -8,6 +8,18 @@
   <link rel="stylesheet" href="/app.css" />
 </head>
 <body class="mode-home">
+  <script>
+    (function () {
+      var path = location.pathname;
+      var page = 'home';
+      if (path.indexOf('/posts/') === 0) page = 'reels';
+      else if (path === '/grid' || path.indexOf('/grid/') === 0) page = 'gallery';
+      else if (path === '/saved' || path.indexOf('/saved/') === 0) page = 'saved';
+      else if (path === '/settings' || path.indexOf('/settings/') === 0) page = 'settings';
+      document.documentElement.setAttribute('data-page', page);
+      document.body.className = page === 'gallery' ? 'mode-grid' : page === 'reels' ? 'mode-reels' : page === 'saved' ? 'mode-saved' : page === 'home' ? 'mode-home' : '';
+    })();
+  </script>
   <svg class="sprite" aria-hidden="true">
     <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.25" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="M16 16.5 20.5 21" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></symbol>
     <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></symbol>
@@ -44,7 +56,7 @@
       <button id="open-menu-btn" class="icon-btn bare" type="button" aria-label="Open menu" onclick="openSideMenu()">
         <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-menu"/></svg>
       </button>
-      <a class="brand" href="/" onclick="event.preventDefault(); switchTab('home')">
+      <a class="brand" href="/">
         <span class="mark">R34</span>
       </a>
       <div class="nav-actions" id="navbar-actions">
@@ -62,11 +74,27 @@
         <span class="mark">R34</span>
         <strong>Hub</strong>
       </div>
-      <button class="side-link nav-tab is-on" type="button" data-tab="home"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-home"/></svg>Home</button>
-      <button class="side-link nav-tab" type="button" data-tab="reels"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-reels"/></svg>Posts</button>
-      <button class="side-link nav-tab" type="button" data-tab="gallery"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-grid"/></svg>Grid</button>
-      <button class="side-link nav-tab" type="button" data-tab="saved"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-bookmark"/></svg>Saved <span id="saved-count-badge" class="count">0</span></button>
-      <button class="side-link nav-tab" type="button" data-tab="settings"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-settings"/></svg>Settings</button>
+      <a class="side-link nav-tab is-on" href="/" data-tab="home"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-home"/></svg>Home</a>
+      <a class="side-link nav-tab" href="/posts/rule34.xxx" data-tab="reels"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-reels"/></svg>Posts</a>
+      <a class="side-link nav-tab" href="/grid/rule34.xxx" data-tab="gallery"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-grid"/></svg>Grid</a>
+      <a class="side-link nav-tab" href="/saved" data-tab="saved"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-bookmark"/></svg>Saved <span id="saved-count-badge" class="count">0</span></a>
+      <a class="side-link nav-tab" href="/settings" data-tab="settings"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-settings"/></svg>Settings</a>
+      <!-- <div class="side-tune">
+        <span class="row-label">Rating</span>
+        <div class="seg seg-fill" role="group" aria-label="Rating">
+          <button class="rating-btn is-on" type="button" data-rating="s">Safe</button>
+          <button class="rating-btn" type="button" data-rating="q">Questionable</button>
+          <button class="rating-btn" type="button" data-rating="e">Explicit</button>
+          <button class="rating-btn" type="button" data-rating="all">All</button>
+        </div>
+        <span class="row-label">Sort</span>
+        <div class="seg seg-fill" role="group" aria-label="Sort">
+          <button class="sort-btn is-on" type="button" data-sort="score">Popular</button>
+          <button class="sort-btn" type="button" data-sort="latest">New</button>
+          <button class="sort-btn" type="button" data-sort="video">Video</button>
+          <button class="sort-btn" type="button" data-sort="no_ai">No AI</button>
+        </div>
+      </div> -->
       <button id="pro-cta-btn" class="side-link side-pro" type="button" onclick="closeSideMenu(); openProModal()"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-spark"/></svg><span id="pro-cta-text">Pro · €4.97</span></button>
       <div class="side-gap"></div>
       <a class="admin-link" href="/admin">Admin</a>
@@ -81,29 +109,40 @@
       </header>
       <div id="sheet-search-mount"></div>
       <section id="controls-bar" class="controls">
-        <div class="control-row hscroll">
-          <span class="row-label">Rating</span>
-          <div class="seg" role="group" aria-label="Rating">
-            <button class="rating-btn is-on" type="button" data-rating="s">Safe</button>
-            <button class="rating-btn" type="button" data-rating="q">Questionable</button>
-            <button class="rating-btn" type="button" data-rating="e">Explicit</button>
-            <button class="rating-btn" type="button" data-rating="all">All</button>
+        <div class="tune">
+          <div class="tune-block">
+            <span class="row-label">Rating</span>
+            <div class="seg seg-fill" role="group" aria-label="Rating">
+              <button class="rating-btn is-on" type="button" data-rating="s">Safe</button>
+              <button class="rating-btn" type="button" data-rating="q">Questionable</button>
+              <button class="rating-btn" type="button" data-rating="e">Explicit</button>
+              <button class="rating-btn" type="button" data-rating="all">All</button>
+            </div>
+          </div>
+          <div class="tune-block">
+            <span class="row-label">Sort</span>
+            <div class="seg seg-fill" role="group" aria-label="Sort">
+              <button class="sort-btn is-on" type="button" data-sort="score">Popular</button>
+              <button class="sort-btn" type="button" data-sort="latest">New</button>
+              <button class="sort-btn" type="button" data-sort="video">Video</button>
+              <button class="sort-btn" type="button" data-sort="no_ai">No AI</button>
+            </div>
           </div>
         </div>
-        <div class="control-row hscroll">
-          <span class="row-label">Sort</span>
-          <div class="seg" role="group" aria-label="Sort">
-            <button class="sort-btn is-on" type="button" data-sort="score">Popular</button>
-            <button class="sort-btn" type="button" data-sort="latest">New</button>
-            <button class="sort-btn" type="button" data-sort="video">Video</button>
-            <button class="sort-btn" type="button" data-sort="no_ai">No AI</button>
-          </div>
-        </div>
-        <button id="open-filter-drawer-btn" class="btn btn-ghost btn-tiny" type="button">
+        <button id="open-filter-drawer-btn" class="sheet-jump" type="button">
           <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-sliders"/></svg>
-          Filters <span id="active-filter-count" class="count">0</span>
+          <span class="sheet-jump-copy">
+            <span class="sheet-jump-kicker">Board</span>
+            <strong id="sheet-board-name">All boards</strong>
+          </span>
+          <span id="active-filter-count" class="count is-zero">0</span>
+          <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg>
         </button>
-        <div id="active-tag-pills" class="tag-row"></div>
+        <div id="active-tag-pills" class="tag-row is-empty"></div>
+        <div id="sheet-quick" class="quick-tags hidden">
+          <p class="hint quick-hint">Tap a tag to add it. Tap again to remove it.</p>
+          <div id="sheet-trending-tags" class="quick-grid"></div>
+        </div>
       </section>
     </div>
   </div>
@@ -137,7 +176,7 @@
       </div>
       <div class="page-head">
         <div>
-          <h1>Posts</h1>
+          <h1 id="feed-heading">Posts</h1>
           <p id="feed-summary-text" class="fine">Loading posts…</p>
         </div>
         <button id="share-feed-btn" class="icon-btn bare" type="button" aria-label="Share this feed">
@@ -177,7 +216,7 @@
         </button>
       </div>
       <h2 class="section-title">Featured</h2>
-      <p class="fine section-note">Each board, with the posts people open first.</p>
+      <p class="fine section-note">The top post for each sort.</p>
       <div id="home-boards"></div>
     </section>
 
@@ -191,7 +230,7 @@
         <div class="masonry-item skel"></div>
       </div>
       <div id="infinite-scroll-sentinel" class="more">
-        <span id="scroll-spinner" class="dot is-on"></span>
+        <span id="scroll-spinner" class="dot"></span>
         <span id="scroll-status-text">Scroll to load more</span>
         <button id="manual-load-more-btn" class="linkish" type="button">Load more</button>
       </div>
@@ -304,17 +343,21 @@
   </div>
 
   <div id="pro-modal" class="modal-back hidden" onclick="if (event.target === this) closeProModal()">
-    <div class="modal modal-narrow" role="dialog" aria-labelledby="pro-title">
+    <div class="modal modal-narrow pro-dialog" role="dialog" aria-labelledby="pro-title">
       <div class="pro-head">
         <div>
           <div class="kicker">R34Hub Pro</div>
           <h2 id="pro-title">No ads, every board, page download</h2>
-          <p class="fine">Card checkout opens HubCloud. A key works on this device right away.</p>
         </div>
         <button id="close-pro-modal" class="x" type="button" aria-label="Close"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-close"/></svg></button>
       </div>
-      <div class="pro-body stack">
-        <div class="plans">
+      <div class="pro-body">
+        <ul class="pro-perks">
+          <li>Ads stay off</li>
+          <li>Premium boards</li>
+          <li>Download a page</li>
+        </ul>
+        <div class="plans" role="radiogroup" aria-label="Plan">
           <button class="plan" type="button" data-plan="monthly">
             <span>Monthly</span>
             <b>€7</b>
@@ -332,19 +375,18 @@
             <small>once, or crypto</small>
           </button>
         </div>
-        <div class="panel stack">
-          <div class="panel-head">
-            <strong>Have a key?</strong>
-          </div>
+        <div class="pro-pay">
+          <a class="btn btn-primary" href="/hubcloud">Pay by card</a>
+          <button id="sim-crypto-checkout-btn" class="btn btn-ghost" type="button">Pay with crypto, −20%</button>
+          <p class="fine">Card checkout opens HubCloud. Crypto is 20% off. A key signs this device in.</p>
+        </div>
+        <form class="pro-key" onsubmit="return false">
+          <label for="license-input">Sign in with a key</label>
           <div class="license">
-            <input id="license-input" class="field" type="text" placeholder="SHOP2-XXXX-XXXX-XXXX" aria-label="License key" />
-            <button id="verify-license-btn" class="btn btn-primary" type="button">Activate</button>
+            <input id="license-input" class="field" type="text" placeholder="SHOP2-XXXX-XXXX-XXXX" autocomplete="off" spellcheck="false" aria-label="License key" />
+            <button id="verify-license-btn" class="btn btn-primary" type="button">Sign in</button>
           </div>
-        </div>
-        <div class="pair">
-          <a class="btn btn-primary" href="/hubcloud" style="flex:1;text-align:center">Pay by card</a>
-          <button id="sim-crypto-checkout-btn" class="btn btn-ghost" type="button" style="flex:1">Pay with crypto, −20%</button>
-        </div>
+        </form>
       </div>
     </div>
   </div>

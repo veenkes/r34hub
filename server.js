@@ -422,12 +422,19 @@ function getMediaType(url = '', ext = '') {
   return 'image';
 }
 
-function normalizeRating(r) {
-  if (!r) return 'q';
-  const c = String(r).toLowerCase()[0];
-  if (c === 's' || c === 'g') return 's';
-  if (c === 'e') return 'e';
+function normalizeRating(r, sensitiveIsSafe = true) {
+  const v = String(r || '').toLowerCase();
+  if (v === 'g' || v === 'general' || v === 'safe') return 's';
+  if (v === 'e' || v === 'explicit') return 'e';
+  if (v === 'q' || v === 'questionable' || v === 'sensitive') return 'q';
+  if (v === 's') return sensitiveIsSafe ? 's' : 'q';
   return 'q';
+}
+
+function isMotionPost(post) {
+  if (post.mediaType === 'video' || post.mediaType === 'gif') return true;
+  const ext = String(post.fileExt || '').toLowerCase();
+  return ['gif', 'mp4', 'webm', 'mkv', 'mov', 'm4v'].includes(ext);
 }
 
 function makeProxyUrl(url, refererDomain) {
@@ -468,7 +475,7 @@ async function fetchDanbooru2(baseDomain, { tags = '', rating = 'all', sort = 'l
   }
   if (tagParts.length < 2) {
     if (sort === 'score' || sort === 'trending') tagParts.push('order:score');
-    else if (sort === 'video') tagParts.push('filetype:mp4');
+    else if (sort === 'video') tagParts.push('animated');
   }
 
   const q = new URLSearchParams({
@@ -509,7 +516,7 @@ async function fetchDanbooru2(baseDomain, { tags = '', rating = 'all', sort = 'l
         width: p.image_width || 1000,
         height: p.image_height || 1000,
         score: p.score || p.fav_count || 0,
-        rating: normalizeRating(p.rating),
+        rating: normalizeRating(p.rating, false),
         tags: allTags.slice(0, 35),
         artistTags: (p.tag_string_artist || '').split(/\s+/).filter(Boolean),
         characterTags: (p.tag_string_character || '').split(/\s+/).filter(Boolean),
@@ -531,7 +538,7 @@ async function fetchE621({ tags = '', rating = 'all', sort = 'latest', page = 1,
   else if (rating === 'e') tagParts.push('rating:e');
 
   if (sort === 'score' || sort === 'trending') tagParts.push('order:score');
-  else if (sort === 'video') tagParts.push('type:webm');
+  else if (sort === 'video') tagParts.push('animated');
   else if (sort === 'no_ai') tagParts.push('-ai_generated');
 
   const q = new URLSearchParams({
@@ -597,7 +604,7 @@ async function fetchMoebooru(sourceId, baseDomain, sourceName, { tags = '', rati
   else if (rating === 'e') tagParts.push('rating:e');
 
   if (sort === 'score' || sort === 'trending') tagParts.push('order:score');
-  else if (sort === 'video' && sourceId === 'sakugabooru') tagParts.push('mp4');
+  else if (sort === 'video') tagParts.push('animated');
 
   const q = new URLSearchParams({
     limit: String(Math.min(limit, 40)),
@@ -659,6 +666,7 @@ async function fetchGelbooru02(sourceId, baseDomain, sourceName, { tags = '', ra
     else if (rating === 'e') tagParts.push('rating:explicit');
   }
   if (sort === 'score' || sort === 'trending') tagParts.push('sort:score');
+  else if (sort === 'video') tagParts.push('animated');
   else if (sort === 'no_ai') tagParts.push('-ai_generated');
 
   const q = new URLSearchParams({
@@ -746,11 +754,19 @@ async function fetchGelbooru02(sourceId, baseDomain, sourceName, { tags = '', ra
 
 // 5. Rule34 Paheal Shimmie2 XML Adapter (works without any API keys!)
 async function fetchPaheal({ tags = '', rating = 'all', sort = 'latest', page = 1, limit = 24 }) {
-  // If user requests strict Safe mode, Paheal is an explicit Rule34 board so return empty in Safe mode unless explicitly selected
-  const cleanTags = tags.trim().split(/\s+/).filter(Boolean).slice(0, 3).join(' ');
+  if (rating === 's' || rating === 'q') return [];
+  const requested = tags.trim().split(/\s+/).filter(Boolean);
+  if (sort === 'video' && !requested.some(tag => /^(animated|gif|mp4|webm|video)$/i.test(tag))) {
+    requested.unshift('animated');
+  }
+  if ((sort === 'score' || sort === 'trending') && !requested.some(tag => /^order:/i.test(tag))) {
+    requested.unshift('order:score');
+  }
+  const cleanTags = requested.slice(0, 3).join(' ');
+  // Paheal ignores `offset` and repeats page 1. `page` is 1-based and does advance.
   const q = new URLSearchParams({
     limit: String(Math.min(limit, 40)),
-    offset: String(Math.max(0, (page - 1) * limit))
+    page: String(Math.max(1, page))
   });
   if (cleanTags) q.set('tags', cleanTags);
 
@@ -884,11 +900,12 @@ function interleaveLists(lists) {
   return posts;
 }
 
-function finalizePosts(posts, sort, limit) {
-  let next = posts;
+function finalizePosts(posts, sort, limit, rating = 'all') {
+  let next = posts.filter(post => !rating || rating === 'all' || post.rating === rating);
   if (sort === 'no_ai') {
-    next = next.filter(p => !p.tags.some(t => t.includes('ai_generated') || t === 'ai'));
+    next = next.filter(p => !p.tags.some(t => /ai_generated|^ai$/i.test(t)));
   }
+  if (sort === 'video') next = next.filter(isMotionPost);
   if (sort === 'score' || sort === 'trending') {
     next = next.slice().sort((a, b) => (b.score || 0) - (a.score || 0));
   }
@@ -964,7 +981,7 @@ app.get('/api/posts', async (req, res) => {
       if (partial) {
         gathered.allDone.then(() => {
           const fullLists = gathered.lists.map(list => list || []);
-          const fullPosts = finalizePosts(interleaveLists(fullLists), sort, limit);
+          const fullPosts = finalizePosts(interleaveLists(fullLists), sort, limit, rating);
           if (!fullPosts.length) return;
           const breakdown = {};
           targetSources.forEach((id, idx) => {
@@ -989,7 +1006,7 @@ app.get('/api/posts', async (req, res) => {
       sourceBreakdown[source] = posts.length;
     }
 
-    posts = finalizePosts(posts, sort, limit);
+    posts = finalizePosts(posts, sort, limit, rating);
 
     const payload = {
       source,
@@ -1868,9 +1885,12 @@ app.get("/hubcloud", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "hubcloud.html"));
 });
 
-app.get("/posts/:source", (req, res) => {
+function sendIndex(_req, res) {
   res.sendFile(path.join(__dirname, "public", "index.html"));
-});
+}
+
+app.get("/posts/:source", sendIndex);
+app.get(["/grid", "/grid/:source", "/saved", "/settings"], sendIndex);
 
 app.get("/api/health", (req, res) => {
   res.setHeader("Cache-Control", "no-store");

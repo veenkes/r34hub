@@ -50,6 +50,30 @@
       ]
     },
     {
+      "source": "/grid",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/grid/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/saved",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/settings",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
+      ]
+    },
+    {
       "source": "/app.js",
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=300" }
@@ -66,6 +90,10 @@
     { "source": "/api/(.*)", "destination": "/api/index.js" },
     { "source": "/admin", "destination": "/admin.html" },
     { "source": "/hubcloud", "destination": "/hubcloud.html" },
-    { "source": "/posts/(.*)", "destination": "/index.html" }
+    { "source": "/posts/(.*)", "destination": "/index.html" },
+    { "source": "/grid", "destination": "/index.html" },
+    { "source": "/grid/(.*)", "destination": "/index.html" },
+    { "source": "/saved", "destination": "/index.html" },
+    { "source": "/settings", "destination": "/index.html" }
   ]
 }
