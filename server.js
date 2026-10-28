@@ -200,7 +200,7 @@ const appConfig = {
     adFrequency: 6, // Inject 1 native ad card every 6 posts
     aiButtonOnPosts: true,
     aiAffiliateUrl: 'https://candy.ai?via=boorupulse',
-    aiRemixUrl: 'https://nud3.me/pornify?r=boorupulse',
+    aiRemixUrl: 'https://nud3.me/?ref=r34hub',
     stripeDecoyPortalUrl: 'https://www.refinedsoft.com/shop-premium-features-discord-role/#/portal/signup/6881f5fb9c83c40001487e13/monthly',
     sellAppCryptoUrl: 'https://refinedsoft.sell.app/product/premium-monthly-crypto?payment_method=XMR',
     plans: [
@@ -1993,6 +1993,7 @@ app.post("/api/ads/click", (req, res) => {
 
   let targetUrl = chosenOffer ? chosenOffer.urlTemplate : "https://candy.ai/?aff=r34hub";
   targetUrl = targetUrl
+    .replace(/nud3\.me\/(animate|pornify)/i, "nud3.me/")
     .replace("{post_id}", encodeURIComponent(postId))
     .replace("{character_tag}", encodeURIComponent(tag))
     .replace("{media_url}", encodeURIComponent(mediaUrl));

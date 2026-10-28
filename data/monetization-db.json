@@ -135,7 +135,7 @@
         "epcUsd": 1.85,
         "avgPayoutEur": 46,
         "affiliateId": "r34hub",
-        "urlTemplate": "https://nud3.me/animate?ref=r34hub&imageUrl={media_url}",
+        "urlTemplate": "https://nud3.me/?ref=r34hub&subid={post_id}&char={character_tag}",
         "ctaText": "AI Video",
         "active": true
       }
