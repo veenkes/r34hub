@@ -23,7 +23,8 @@ const state = {
   partialFills: 0,
   lastPartial: false,
   reelObserver: null,
-  reelsLoadObserver: null
+  reelsLoadObserver: null,
+  featureObserver: null
 };
 
 const SORT_LABEL = { score: 'Popular', latest: 'New', video: 'Video', no_ai: 'No AI', trending: 'Popular' };
@@ -194,7 +195,7 @@ function syncChrome() {
   const posts = document.getElementById('posts-chrome');
   if (posts) posts.classList.toggle('hidden', !browsingPosts());
   if (!topAd) return;
-  const show = !state.isPro && state.showAdsPreview && state.activeTab !== 'saved' && state.activeTab !== 'settings';
+  const show = !state.isPro && state.showAdsPreview && browsingPosts();
   topAd.classList.toggle('hidden', !show);
 }
 
@@ -222,43 +223,246 @@ function updateProUI() {
   if (state.activeTab === 'gallery' && state.posts.length) renderGallery();
 }
 
-function renderSourcePills() {
-  const container = document.getElementById('source-pills');
-  const drawerList = document.getElementById('drawer-source-list');
-  if (!container) return;
-  const allItems = [{ id: 'all', name: 'All boards', isPremiumSource: false }, ...state.sources];
-  container.innerHTML = allItems.map(s => {
-    const active = state.source === s.id;
-    const locked = Boolean(s.isPremiumSource && !state.isPro);
-    return `
-      <button type="button" data-source="${esc(s.id)}" data-locked="${locked}" class="chip source-pill${active ? ' is-on' : ''}">
-        <span>${esc(s.name)}</span>
-        ${locked ? '<span class="lock">Pro</span>' : ''}
-      </button>
-    `;
-  }).join('');
-  container.querySelectorAll('.source-pill').forEach(btn => {
-    btn.addEventListener('click', () => selectSourceInPlace(btn.dataset.source, btn.dataset.locked === 'true'));
+function faviconUrl(domain) {
+  return domain ? `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64` : '';
+}
+
+function sourceItems() {
+  return [{ id: 'all', name: 'All boards', domain: '', isPremiumSource: false }, ...state.sources];
+}
+
+function domainOptionHtml(source) {
+  const active = state.source === source.id;
+  const locked = Boolean(source.isPremiumSource && !state.isPro);
+  const iconHtml = source.domain
+    ? `<img src="${esc(faviconUrl(source.domain))}" alt="" width="20" height="20" referrerpolicy="no-referrer">`
+    : '<span class="domain-fallback">All</span>';
+  return `
+    <button type="button" data-source="${esc(source.id)}" data-locked="${locked}" class="domain-option${active ? ' is-on' : ''}">
+      ${iconHtml}
+      <span>${esc(source.name)}</span>
+      ${locked ? '<span class="lock">Pro</span>' : ''}
+    </button>`;
+}
+
+function paintDomainButtons() {
+  const current = sourceItems().find(source => source.id === state.source) || sourceItems()[0];
+  document.querySelectorAll('[data-domain-icon]').forEach(img => {
+    if (current.domain) {
+      img.src = faviconUrl(current.domain);
+      img.hidden = false;
+    } else {
+      img.removeAttribute('src');
+      img.hidden = true;
+    }
   });
-  const homeBoards = document.getElementById('home-boards');
-  if (homeBoards) {
-    homeBoards.innerHTML = state.sources.map(s => {
-      const locked = Boolean(s.isPremiumSource && !state.isPro);
-      return `<button type="button" class="menu-row" onclick="selectSourceInPlace('${esc(s.id)}', ${locked})"><span>${esc(s.name)}${locked ? ' · Pro' : ''}</span>${icon('chevron')}</button>`;
-    }).join('');
+  document.querySelectorAll('[data-domain-fallback]').forEach(el => {
+    el.hidden = Boolean(current.domain);
+  });
+  const badge = document.getElementById('feed-status-badge');
+  if (badge) badge.textContent = current.name;
+  const visit = document.getElementById('visit-board');
+  if (visit) {
+    if (current.domain) {
+      visit.href = `https://${current.domain}/`;
+      visit.classList.remove('hidden');
+    } else {
+      visit.classList.add('hidden');
+    }
   }
+}
+
+function closeDomainMenus() {
+  document.querySelectorAll('.domain-menu').forEach(menu => menu.classList.add('hidden'));
+  document.querySelectorAll('.domain-btn').forEach(button => button.setAttribute('aria-expanded', 'false'));
+}
+
+window.toggleDomainMenu = function(menuId, button) {
+  const menu = document.getElementById(menuId);
+  const willOpen = menu && menu.classList.contains('hidden');
+  closeDomainMenus();
+  if (willOpen && menu) {
+    menu.classList.remove('hidden');
+    if (button) button.setAttribute('aria-expanded', 'true');
+  }
+};
+
+function bindDomainMenu(menu) {
+  if (!menu) return;
+  menu.querySelectorAll('[data-source]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      closeDomainMenus();
+      selectSourceInPlace(btn.dataset.source, btn.dataset.locked === 'true');
+    });
+  });
+}
+
+function renderSourcePills() {
+  const allItems = sourceItems();
+  const html = allItems.map(domainOptionHtml).join('');
+  ['source-pills', 'home-domain-menu'].forEach(id => {
+    const menu = document.getElementById(id);
+    if (!menu) return;
+    menu.innerHTML = html;
+    bindDomainMenu(menu);
+  });
+  paintDomainButtons();
+  renderHomeBoards();
+  const drawerList = document.getElementById('drawer-source-list');
   if (drawerList) {
-    drawerList.innerHTML = allItems.map(s => {
-      const active = state.source === s.id;
-      const locked = Boolean(s.isPremiumSource && !state.isPro);
+    drawerList.innerHTML = allItems.map(source => {
+      const active = state.source === source.id;
+      const locked = Boolean(source.isPremiumSource && !state.isPro);
       return `
-        <button type="button" class="choice${active ? ' is-on' : ''}" onclick="selectSourceInPlace('${esc(s.id)}', ${locked})">
-          ${esc(s.name)}${locked ? ' · Pro' : ''}
-        </button>
-      `;
+        <button type="button" class="choice${active ? ' is-on' : ''}" onclick="selectSourceInPlace('${esc(source.id)}', ${locked})">
+          ${esc(source.name)}${locked ? ' · Pro' : ''}
+        </button>`;
     }).join('');
   }
 }
+
+const HOME_ORDER = ['rule34xxx', 'paheal', 'danbooru', 'e621', 'yandere', 'konachan', 'safebooru', 'sakugabooru'];
+const FEATURE_SHORTCUTS = [
+  ['Popular', 'score', ''],
+  ['New', 'latest', ''],
+  ['Video', 'video', ''],
+  ['No AI', 'no_ai', '']
+];
+let homeBoardKey = '';
+const featuredCache = new Map();
+
+function homeSources() {
+  const rank = id => {
+    const index = HOME_ORDER.indexOf(id);
+    return index === -1 ? 50 : index;
+  };
+  return state.sources.slice().sort((a, b) => rank(a.id) - rank(b.id) || a.name.localeCompare(b.name));
+}
+
+function featureCardHtml(sourceId, locked, label, sort, tags, index) {
+  return `
+    <li class="feature-card">
+      <button type="button" data-feature-source="${esc(sourceId)}" data-feature-locked="${locked ? 'true' : 'false'}" data-feature-sort="${esc(sort)}" data-feature-tags="${esc(tags)}">
+        <figure>
+          <span class="feature-media" data-feature-slot="${index}"></span>
+          <figcaption>${esc(label)}</figcaption>
+        </figure>
+      </button>
+    </li>`;
+}
+
+function renderHomeBoards() {
+  const homeBoards = document.getElementById('home-boards');
+  if (!homeBoards) return;
+  const key = homeSources().map(source => `${source.id}:${source.isPremiumSource ? 1 : 0}`).join('|') + (state.isPro ? ':pro' : '');
+  if (key === homeBoardKey) return;
+  homeBoardKey = key;
+  homeBoards.innerHTML = homeSources().map(source => {
+    const locked = Boolean(source.isPremiumSource && !state.isPro);
+    const fav = source.domain
+      ? `<img src="${esc(faviconUrl(source.domain))}" alt="" width="20" height="20" referrerpolicy="no-referrer">`
+      : '';
+    const cards = FEATURE_SHORTCUTS.map(([label, sort, tags], index) => featureCardHtml(source.id, locked, label, sort, tags, index)).join('');
+    return `
+      <section class="board-block">
+        <button type="button" class="board-head" onclick="selectSourceInPlace('${esc(source.id)}', ${locked})">
+          ${fav}<span>${esc(source.domain || source.name)}</span>${locked ? '<span class="lock">Pro</span>' : ''}
+        </button>
+        <ol class="feature-row" data-feature-row="${esc(source.id)}">${cards}</ol>
+      </section>`;
+  }).join('');
+  observeFeaturedRows();
+}
+
+function featuredRating(sourceId) {
+  if (sourceId === 'paheal' || sourceId === 'rule34xxx' || sourceId === 'xbooru') return 'all';
+  return 's';
+}
+
+function paintFeatured(row, posts) {
+  const slots = row.querySelectorAll('[data-feature-slot]');
+  posts.forEach((post, index) => {
+    const slot = slots[index];
+    if (!slot || slot.querySelector('img')) return;
+    const src = stillUrl(post);
+    if (!src) return;
+    const img = document.createElement('img');
+    img.alt = '';
+    img.decoding = 'async';
+    img.loading = 'lazy';
+    img.referrerPolicy = 'no-referrer';
+    if (post.proxiedPreviewUrl) img.dataset.proxy = post.proxiedPreviewUrl;
+    img.addEventListener('error', () => useProxy(img));
+    img.src = src;
+    slot.appendChild(img);
+  });
+}
+
+async function loadFeaturedRow(row) {
+  const sourceId = row.dataset.featureRow;
+  if (!sourceId || row.dataset.featureLoaded === '1') return;
+  row.dataset.featureLoaded = '1';
+  if (featuredCache.has(sourceId)) {
+    paintFeatured(row, featuredCache.get(sourceId));
+    return;
+  }
+  try {
+    const q = new URLSearchParams({
+      source: sourceId,
+      tags: '',
+      rating: featuredRating(sourceId),
+      sort: 'score',
+      page: '1',
+      limit: '8'
+    });
+    const res = await fetch(`/api/posts?${q.toString()}`);
+    const data = await res.json();
+    const posts = (data.posts || []).filter(post => post.mediaType !== 'video' && stillUrl(post)).slice(0, 4);
+    featuredCache.set(sourceId, posts);
+    if (row.isConnected) paintFeatured(row, posts);
+  } catch (_) {
+    row.dataset.featureLoaded = '';
+  }
+}
+
+function observeFeaturedRows() {
+  const rows = [...document.querySelectorAll('[data-feature-row]')];
+  if (!rows.length || !('IntersectionObserver' in window)) {
+    rows.forEach(loadFeaturedRow);
+    return;
+  }
+  if (state.featureObserver) state.featureObserver.disconnect();
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (!entry.isIntersecting) return;
+      observer.unobserve(entry.target);
+      loadFeaturedRow(entry.target);
+    });
+  }, { rootMargin: '240px' });
+  state.featureObserver = observer;
+  rows.forEach(row => observer.observe(row));
+}
+
+window.openBoard = function(id, locked, sort) {
+  if (sort) {
+    state.sort = sort;
+    paintChoice('.sort-btn', 'sort', sort);
+  }
+  selectSourceInPlace(id, locked);
+};
+
+window.openFeature = function(id, locked, sort, tags) {
+  state.tags = tags || '';
+  const input = document.getElementById('tag-search-input');
+  if (input) input.value = state.tags;
+  const clearBtn = document.getElementById('clear-search-btn');
+  if (clearBtn) clearBtn.classList.toggle('hidden', !state.tags);
+  if (sort) {
+    state.sort = sort;
+    paintChoice('.sort-btn', 'sort', sort);
+  }
+  selectSourceInPlace(id, locked);
+};
 
 window.selectSourceInPlace = function(src, locked) {
   if (locked) {
@@ -799,27 +1003,21 @@ function frameStyle(post) {
   return ratio || 'aspect-ratio:3 / 4';
 }
 
-function tallPost(post) {
-  const w = Number(post.width) || 0;
-  const h = Number(post.height) || 0;
-  return w > 1 && h / w > 1.35;
-}
-
 function reelSlideHtml(post, index) {
   const isVideo = post.mediaType === 'video';
   const still = stillUrl(post);
   const sharp = sharpUrl(post);
   const eager = index < 2;
   const saved = state.savedPosts.some(s => s.id === post.id);
-  const tags = post.tags || [];
-  const charTag = (post.characterTags && post.characterTags[0]) || tags[0] || 'character';
+  const charTag = (post.characterTags && post.characterTags[0]) || (post.tags || [])[0] || 'character';
   const imageProxy = eager ? (sharpProxy(post) || post.proxiedPreviewUrl || '') : (post.proxiedPreviewUrl || '');
+  const ratio = frameStyle(post);
   const media = isVideo
     ? `<div class="player">${playerInner(eager ? (sharp || still) : still, eager ? (sharpProxy(post) || post.proxiedPreviewUrl || '') : (post.proxiedPreviewUrl || ''))}</div>`
-    : `<img class="reel-still" src="${esc(eager ? (sharp || still) : still)}" data-proxy="${esc(imageProxy)}" alt="" referrerpolicy="no-referrer" onerror="useProxy(this)" />`;
+    : `<img class="reel-still" style="${ratio}" src="${esc(eager ? (sharp || still) : still)}" data-proxy="${esc(imageProxy)}" alt="" referrerpolicy="no-referrer" onerror="useProxy(this)" />`;
   return `
-    <article class="reel${tallPost(post) ? ' is-tall' : ''}" data-id="${esc(post.id)}" data-kind="${isVideo ? 'video' : 'image'}" data-file="${esc(post.fileUrl || '')}" data-proxy-file="${esc(post.proxiedFileUrl || '')}" data-full="${esc(sharp)}" data-proxy-full="${esc(sharpProxy(post))}" data-still="${esc(still)}" data-proxy-still="${esc(post.proxiedPreviewUrl || '')}">
-      <div class="reel-stage" style="${frameStyle(post)}"${isVideo ? '' : ` data-open="${esc(post.id)}"`}>
+    <article class="reel" data-id="${esc(post.id)}" data-kind="${isVideo ? 'video' : 'image'}" data-file="${esc(post.fileUrl || '')}" data-proxy-file="${esc(post.proxiedFileUrl || '')}" data-full="${esc(sharp)}" data-proxy-full="${esc(sharpProxy(post))}" data-still="${esc(still)}" data-proxy-still="${esc(post.proxiedPreviewUrl || '')}">
+      <div class="reel-stage${isVideo ? '' : ' is-still'}"${isVideo ? ` style="${ratio}"` : ''}${isVideo ? '' : ` data-open="${esc(post.id)}"`}>
         ${media}
       </div>
       <div class="reel-bar">
@@ -828,8 +1026,7 @@ function reelSlideHtml(post, index) {
         <a class="icon-btn" href="${esc(post.originalPostUrl || '#')}" target="_blank" rel="noopener" aria-label="Source">${icon('external')}</a>
         <button type="button" class="icon-btn" data-share="${esc(post.id)}" aria-label="Share">${icon('share')}</button>
         <button type="button" class="icon-btn accent" aria-label="AI chat" onclick="triggerAdClick('reels_cta','candy_ai','${esc(post.id)}','${esc(charTag)}')">${icon('spark')}</button>
-        <span class="reel-meta">${icon('star')}<span>${esc(formatScore(post.score))}</span><span class="src">${esc(post.sourceName || '')}</span></span>
-        <button type="button" class="tags-toggle" data-tag-sheet="${esc(post.id)}">${icon('tag')}<span>${tags.length}</span></button>
+        <button type="button" class="tags-toggle" data-tag-sheet="${esc(post.id)}">Tags ${icon('chevron')}</button>
       </div>
     </article>`;
 }
@@ -941,6 +1138,7 @@ window.addEventListener('scroll', onReelsPageScroll, { passive: true });
 
 let reelScrollRaf = 0;
 function onReelsPageScroll() {
+  document.body.classList.toggle('nav-scrolled', state.activeTab === 'reels' && window.scrollY > 0);
   if (state.activeTab !== 'reels') return;
   if (reelScrollRaf) return;
   reelScrollRaf = requestAnimationFrame(() => {
@@ -1213,7 +1411,9 @@ window.sharePost = async function(postId) {
 window.switchTab = function(tabId) {
   if (!['home', 'gallery', 'reels', 'saved', 'settings'].includes(tabId)) tabId = 'home';
   state.activeTab = tabId;
+  document.body.classList.toggle('mode-home', tabId === 'home');
   document.body.classList.toggle('mode-reels', tabId === 'reels');
+  document.body.classList.toggle('nav-scrolled', tabId === 'reels' && window.scrollY > 0);
   document.body.classList.toggle('mode-grid', tabId === 'gallery');
   document.body.classList.toggle('mode-saved', tabId === 'saved');
   ['home', 'gallery', 'reels', 'saved', 'settings'].forEach(t => {
@@ -1295,6 +1495,17 @@ async function initApp() {
 }
 
 document.addEventListener('click', event => {
+  if (!event.target.closest('.domain-wrap')) closeDomainMenus();
+  const featureBtn = event.target.closest('[data-feature-source]');
+  if (featureBtn) {
+    openFeature(
+      featureBtn.dataset.featureSource,
+      featureBtn.dataset.featureLocked === 'true',
+      featureBtn.dataset.featureSort,
+      featureBtn.dataset.featureTags || ''
+    );
+    return;
+  }
   const save = event.target.closest('[data-save]');
   if (save) {
     toggleSavePost(save.dataset.save);
@@ -1428,6 +1639,26 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.key === 'Enter') runSearch();
   });
   document.getElementById('run-search-btn').addEventListener('click', runSearch);
+  const homeGo = document.getElementById('home-go-btn');
+  if (homeGo) homeGo.addEventListener('click', runSearch);
+  const shareFeed = document.getElementById('share-feed-btn');
+  if (shareFeed) {
+    shareFeed.addEventListener('click', async () => {
+      const url = location.href;
+      if (navigator.share) {
+        try {
+          await navigator.share({ title: 'Posts', url });
+          return;
+        } catch (_) {}
+      }
+      try {
+        await navigator.clipboard.writeText(url);
+        showToast('Link copied');
+      } catch (_) {
+        showToast(url);
+      }
+    });
+  }
   document.getElementById('clear-search-btn').addEventListener('click', () => {
     searchInput.value = '';
     document.getElementById('clear-search-btn').classList.add('hidden');
