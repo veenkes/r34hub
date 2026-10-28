@@ -751,8 +751,13 @@ async function loadPosts(append = false, silent = false) {
       limit: '24'
     });
     const res = await fetch(`/api/posts?${q.toString()}`);
-    data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'The boards did not answer');
+    const rawText = await res.text();
+    try {
+      data = JSON.parse(rawText);
+    } catch (_) {
+      throw new Error('The boards are busy — please try again');
+    }
+    if (!res.ok) throw new Error((data && data.error) || 'The boards did not answer');
     const blocked = new Set(state.blacklist.map(t => t.toLowerCase()));
     const rawPosts = (data.posts || []).filter(p => !(p.tags || []).some(t => blocked.has(String(t).toLowerCase())));
 

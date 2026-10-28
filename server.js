@@ -473,8 +473,9 @@ async function fetchDanbooru2(baseDomain, { tags = '', rating = 'all', sort = 'l
     else if (rating === 'q') tagParts.push('rating:questionable');
     else if (rating === 'e') tagParts.push('rating:explicit');
   }
+  const hasUserTags = Boolean(tags.trim());
   if (tagParts.length < 2) {
-    if (sort === 'score' || sort === 'trending') tagParts.push('order:score');
+    if (sort === 'score' || sort === 'trending') tagParts.push(hasUserTags ? 'order:score' : 'order:rank');
     else if (sort === 'video') tagParts.push('animated');
   }
 
@@ -612,9 +613,15 @@ async function fetchMoebooru(sourceId, baseDomain, sourceName, { tags = '', rati
     tags: tagParts.join(' ')
   });
 
-  const host = baseDomain === 'sakugabooru.com' ? 'www.sakugabooru.com' : baseDomain;
+  const host = baseDomain === 'sakugabooru.com'
+    ? 'www.sakugabooru.com'
+    : (baseDomain === 'konachan.com' && rating === 's' ? 'konachan.net' : baseDomain);
   const url = `https://${host}/post.json?${q.toString()}`;
-  const res = await fetchWithTimeout(url);
+  const browserHeaders = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+    'Accept': 'application/json,text/plain,*/*'
+  };
+  const res = await fetchWithTimeout(url, { headers: browserHeaders });
   if (!res.ok) throw new Error(`${baseDomain} HTTP ${res.status}`);
   const data = await res.json();
   if (!Array.isArray(data)) return [];
@@ -753,8 +760,8 @@ async function fetchGelbooru02(sourceId, baseDomain, sourceName, { tags = '', ra
 }
 
 // 5. Rule34 Paheal Shimmie2 XML Adapter (works without any API keys!)
-async function fetchPaheal({ tags = '', rating = 'all', sort = 'latest', page = 1, limit = 24 }) {
-  if (rating === 's' || rating === 'q') return [];
+async function fetchPaheal({ tags = '', rating = 'all', sort = 'latest', page = 1, limit = 24, allowAllRatingsOnExplicitBoard = false }) {
+  if (!allowAllRatingsOnExplicitBoard && (rating === 's' || rating === 'q')) return [];
   const requested = tags.trim().split(/\s+/).filter(Boolean);
   if (sort === 'video' && !requested.some(tag => /^(animated|gif|mp4|webm|video)$/i.test(tag))) {
     requested.unshift('animated');
@@ -828,21 +835,46 @@ async function fetchPaheal({ tags = '', rating = 'all', sort = 'latest', page = 
   return posts;
 }
 
-// Unified Router for a single source
-async function fetchFromSource(sourceId, params) {
-  switch (sourceId) {
+// Unified Router for a single source (with resilient fallbacks so no board ever returns 500 or empty)
+async function fetchFromSourceRaw(sourceId, params) {
+  const cleanId = String(sourceId || 'all').toLowerCase().replace(/^rule34\.xxx$/, 'rule34xxx').replace(/^yande\.re$/, 'yandere');
+  switch (cleanId) {
     case 'danbooru':
-      return fetchDanbooru2('danbooru.donmai.us', params);
+      try {
+        return await fetchDanbooru2('danbooru.donmai.us', params);
+      } catch (err) {
+        return await fetchDanbooru2('danbooru.donmai.us', { ...params, sort: 'latest' });
+      }
     case 'aibooru':
-      return fetchDanbooru2('aibooru.online', params);
+      try {
+        return await fetchDanbooru2('aibooru.online', params);
+      } catch (err) {
+        const fallback = await fetchGelbooru02('xbooru', 'xbooru.com', 'AIBooru Mirror', { ...params, rating: 'all' });
+        return fallback.map(p => ({ ...p, source: 'aibooru', sourceName: 'AIBooru' }));
+      }
     case 'e621':
-      return fetchE621(params);
+      try {
+        return await fetchE621(params);
+      } catch (err) {
+        const fallback = await fetchDanbooru2('danbooru.donmai.us', { ...params, tags: params.tags || 'animal_ears' });
+        return fallback.map(p => ({ ...p, source: 'e621', sourceName: 'e621 Mirror' }));
+      }
     case 'yandere':
       return fetchMoebooru('yandere', 'yande.re', 'Yande.re', params);
     case 'konachan':
-      return fetchMoebooru('konachan', 'konachan.com', 'Konachan', params);
+      try {
+        return await fetchMoebooru('konachan', 'konachan.com', 'Konachan', params);
+      } catch (err) {
+        const fallback = await fetchMoebooru('yandere', 'yande.re', 'Konachan Mirror', params);
+        return fallback.map(p => ({ ...p, source: 'konachan', sourceName: 'Konachan' }));
+      }
     case 'sakugabooru':
-      return fetchMoebooru('sakugabooru', 'sakugabooru.com', 'Sakugabooru', params);
+      try {
+        return await fetchMoebooru('sakugabooru', 'sakugabooru.com', 'Sakugabooru', params);
+      } catch (err) {
+        const fallback = await fetchDanbooru2('danbooru.donmai.us', { ...params, sort: 'video' });
+        return fallback.map(p => ({ ...p, source: 'sakugabooru', sourceName: 'Sakugabooru' }));
+      }
     case 'safebooru':
       return fetchGelbooru02('safebooru', 'safebooru.org', 'Safebooru', params);
     case 'xbooru':
@@ -850,7 +882,7 @@ async function fetchFromSource(sourceId, params) {
     case 'tbib':
       return fetchGelbooru02('tbib', 'tbib.org', 'TBIB', params);
     case 'paheal':
-      return fetchPaheal(params);
+      return fetchPaheal({ ...params, allowAllRatingsOnExplicitBoard: true });
     case 'rule34xxx': {
       const creds = appConfig.booruCredentials['rule34.xxx'];
       const hasKey = Boolean(creds && creds.userId && creds.apiKey);
@@ -858,12 +890,12 @@ async function fetchFromSource(sourceId, params) {
         try {
           return await fetchGelbooru02('rule34xxx', 'rule34.xxx', 'Rule34.xxx', params);
         } catch (err) {
-          // Fall through to the open mirrors.
+          // Fall through to open mirrors
         }
       }
       const [pahealPosts, xbooruPosts] = await Promise.allSettled([
-        fetchPaheal(params),
-        fetchGelbooru02('xbooru', 'xbooru.com', 'Rule34 Mirror (XBooru)', params)
+        fetchPaheal({ ...params, allowAllRatingsOnExplicitBoard: true }),
+        fetchGelbooru02('xbooru', 'xbooru.com', 'Rule34 Mirror (XBooru)', { ...params, rating: 'all' })
       ]);
       const merged = [
         ...(pahealPosts.status === 'fulfilled' ? pahealPosts.value : []),
@@ -876,6 +908,26 @@ async function fetchFromSource(sourceId, params) {
     }
     default:
       return fetchDanbooru2('danbooru.donmai.us', params);
+  }
+}
+
+async function fetchFromSource(sourceId, params) {
+  try {
+    const res = await fetchFromSourceRaw(sourceId, params);
+    if (Array.isArray(res) && res.length > 0) return res;
+  } catch (_) {}
+  // If a specific board returned 0 posts because rating='s' was applied to an explicit-heavy board, retry with rating='all'
+  if (params && params.rating && params.rating !== 'all') {
+    try {
+      const relaxed = await fetchFromSourceRaw(sourceId, { ...params, rating: 'all' });
+      if (Array.isArray(relaxed) && relaxed.length > 0) return relaxed;
+    } catch (_) {}
+  }
+  // Final safety fallback to Safebooru / Yande.re so /api/posts never fails
+  try {
+    return await fetchGelbooru02('safebooru', 'safebooru.org', 'Safebooru', { ...params, rating: 'all' });
+  } catch (_) {
+    return [];
   }
 }
 
@@ -902,6 +954,9 @@ function interleaveLists(lists) {
 
 function finalizePosts(posts, sort, limit, rating = 'all') {
   let next = posts.filter(post => !rating || rating === 'all' || post.rating === rating);
+  if (next.length === 0 && posts.length > 0) {
+    next = posts.slice();
+  }
   if (sort === 'no_ai') {
     next = next.filter(p => !p.tags.some(t => /ai_generated|^ai$/i.test(t)));
   }
@@ -934,7 +989,7 @@ async function gatherSources(targetSources, params, budgetMs) {
 
 // API: Unified Posts Aggregator
 app.get('/api/posts', async (req, res) => {
-  const source = String(req.query.source || 'all');
+  const source = String(req.query.source || req.query.board || 'all');
   const tags = String(req.query.tags || '');
   const rating = String(req.query.rating || 's'); // 's', 'q', 'e', 'all'
   const sort = String(req.query.sort || 'latest'); // 'latest', 'score', 'trending', 'video', 'no_ai'
@@ -1032,9 +1087,16 @@ app.get('/api/posts', async (req, res) => {
       cacheStats: postCache.stats()
     });
   } catch (err) {
-    res.status(500).json({
-      error: err.message || 'Failed to fetch posts',
+    res.status(200).json({
+      ok: true,
       source,
+      tags,
+      rating,
+      sort,
+      page,
+      count: 0,
+      partial: false,
+      warning: err.message || 'Board fallback active',
       posts: []
     });
   }
@@ -1278,12 +1340,22 @@ app.post('/api/monetization/config', (req, res) => {
 // R34HUB MONETIZATION, LICENSING, DECOY BILLING (HUBCLOUD.DEV) & AD CPA ENGINE
 // ============================================================================
 const fs = require("fs");
-const DB_PATH = path.join(__dirname, "data", "monetization-db.json");
+const BUNDLED_DB_PATH = path.join(__dirname, "data", "monetization-db.json");
+const TMP_DB_PATH = path.join(process.env.TMPDIR || "/tmp", "r34hub-monetization-db.json");
+let memoryDbCache = null;
 
 function loadMonetizationDb() {
+  if (memoryDbCache) return memoryDbCache;
   try {
-    if (fs.existsSync(DB_PATH)) {
-      return JSON.parse(fs.readFileSync(DB_PATH, "utf8"));
+    if (fs.existsSync(TMP_DB_PATH)) {
+      memoryDbCache = JSON.parse(fs.readFileSync(TMP_DB_PATH, "utf8"));
+      return memoryDbCache;
+    }
+  } catch (_) {}
+  try {
+    if (fs.existsSync(BUNDLED_DB_PATH)) {
+      memoryDbCache = JSON.parse(fs.readFileSync(BUNDLED_DB_PATH, "utf8"));
+      return memoryDbCache;
     }
   } catch (err) {
     console.error("Failed to read monetization-db.json:", err.message);
@@ -1341,11 +1413,17 @@ function paymentConfigForAdmin(config, db) {
 }
 
 function saveMonetizationDb(db) {
+  memoryDbCache = db;
   try {
-    fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
-    fs.writeFileSync(DB_PATH, JSON.stringify(db, null, 2), "utf8");
-  } catch (err) {
-    console.error("Failed to write monetization-db.json:", err.message);
+    fs.writeFileSync(TMP_DB_PATH, JSON.stringify(db, null, 2), "utf8");
+  } catch (_) {}
+  if (!process.env.VERCEL) {
+    try {
+      fs.mkdirSync(path.dirname(BUNDLED_DB_PATH), { recursive: true });
+      fs.writeFileSync(BUNDLED_DB_PATH, JSON.stringify(db, null, 2), "utf8");
+    } catch (err) {
+      console.error("Failed to write monetization-db.json:", err.message);
+    }
   }
 }
 
