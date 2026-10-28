@@ -1026,6 +1026,7 @@ async function gatherSources(targetSources, params, budgetMs) {
 
 // API: Unified Posts Aggregator
 app.get('/api/posts', async (req, res) => {
+  if (String(req.query.page || "1") === "1") trackVisitorHit(req, "feed");
   const source = String(req.query.source || req.query.board || 'all');
   const tags = String(req.query.tags || '');
   const rating = String(req.query.rating || 's'); // 's', 'q', 'e', 'all'
@@ -1493,6 +1494,28 @@ function secretMatches(sent, expected) {
   const b = Buffer.from(String(expected || ''));
   if (!b.length || a.length !== b.length) return false;
   return crypto.timingSafeEqual(a, b);
+}
+
+
+function trackVisitorHit(req, pageType = "page") {
+  try {
+    const ua = String(req.get("user-agent") || "");
+    if (/bot|spider|crawl|slurp|curl|wget|headless|lighthouse|vercel/i.test(ua)) return;
+    monDb = loadMonetizationDb();
+    const tel = (monDb.adsConfig && monDb.adsConfig.telemetry) || {};
+    tel.pageViews = (tel.pageViews || 0) + 1;
+    tel.visitorHashes = Array.isArray(tel.visitorHashes) ? tel.visitorHashes : [];
+    const ip = String(req.headers["x-forwarded-for"] || req.ip || "0.0.0.0").split(",")[0].trim();
+    const visitorId = crypto.createHash("sha256").update(`${ip}:${ua.slice(0, 64)}`).digest("hex").slice(0, 12);
+    if (!tel.visitorHashes.includes(visitorId)) {
+      tel.visitorHashes.push(visitorId);
+      if (tel.visitorHashes.length > 5000) tel.visitorHashes = tel.visitorHashes.slice(-5000);
+    }
+    tel.uniqueVisitors = tel.visitorHashes.length;
+    tel.lastVisitAt = new Date().toISOString();
+    monDb.adsConfig.telemetry = tel;
+    saveMonetizationDb(monDb);
+  } catch (_) {}
 }
 
 function requireAdmin(req, res) {
@@ -2346,6 +2369,8 @@ app.get("/api/admin/stats", (req, res) => {
       monthlyCount: (monDb.licenses || []).filter(l => l.tier === "monthly").length,
       totalOrders: (monDb.orders || []).length,
       paidOrders: paidOrders.length,
+      uniqueVisitors: Number(tel.uniqueVisitors || (Array.isArray(tel.visitorHashes) ? tel.visitorHashes.length : 0)),
+      pageViews: Number(tel.pageViews || 0),
       totalImpressions: Number(tel.totalImpressions || 0),
       totalClicks: Number(tel.totalClicks || 0),
       subscriptionRevenueEur: Number(subRevenue.toFixed(2)),
@@ -2767,6 +2792,7 @@ app.get(["/ru/premium", "/en/premium"], (req, res) => {
 });
 
 app.get(["/premium", "/hubcloud"], (req, res) => {
+  trackVisitorHit(req, "premium");
   res.sendFile(path.join(__dirname, "public", "hubcloud.html"));
 });
 

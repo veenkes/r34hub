@@ -265,7 +265,7 @@ function syncChrome() {
   const posts = document.getElementById('posts-chrome');
   if (posts) posts.classList.toggle('hidden', !browsingPosts());
   if (!topAd) return;
-  const show = !state.isPro && state.showAdsPreview && browsingPosts();
+  const show = !state.isPro && state.showAdsPreview;
   topAd.classList.toggle('hidden', !show);
 }
 
@@ -323,6 +323,7 @@ function updateProUI() {
   const aadsSlot = document.getElementById('aads-unit-slot');
   const adToggle = document.getElementById('toggle-ads-preview');
   const navBadge = document.getElementById('nav-pro-badge');
+  const navLogout = document.getElementById('nav-logout-btn');
   const sideAcc = document.getElementById('side-pro-account');
   const sideKeyLbl = document.getElementById('side-pro-key-label');
   const activeProPanel = document.getElementById('active-pro-panel');
@@ -335,6 +336,7 @@ function updateProUI() {
     const keyStr = state.licenseKey || 'R34PRO-ACTIVE';
     if (btn) btn.classList.add('hidden');
     if (navBadge) navBadge.classList.remove('hidden');
+    if (navLogout) navLogout.classList.remove('hidden');
     if (sideAcc) sideAcc.classList.remove('hidden');
     if (sideKeyLbl) sideKeyLbl.textContent = keyStr;
     if (activeProPanel) activeProPanel.classList.remove('hidden');
@@ -352,6 +354,7 @@ function updateProUI() {
       btn.classList.remove('is-vip');
     }
     if (navBadge) navBadge.classList.add('hidden');
+    if (navLogout) navLogout.classList.add('hidden');
     if (sideAcc) sideAcc.classList.add('hidden');
     if (activeProPanel) activeProPanel.classList.add('hidden');
     if (proPurchaseBlock) proPurchaseBlock.classList.remove('hidden');
@@ -1259,7 +1262,8 @@ function stopAllCardVideos(except) {
 }
 
 function playCardVideo(media) {
-  if (!media || media.dataset.kind !== 'video') return;
+  // Grid mode never autoplays inline video; videos only play inside the post modal or Reels view
+  return;
   const existing = media.querySelector('video.card-video');
   if (media.classList.contains('is-playing') && existing) {
     existing.play().catch(() => {});
@@ -1375,13 +1379,15 @@ function pickAdultAdArtwork(idx = 0) {
 }
 
 function buildSponsoredCardHTML(idx = 12) {
+  const aadsId = String((state.adsConfig && state.adsConfig.aads && state.adsConfig.aads.unitId) || '2460259');
   const art = pickAdultAdArtwork(idx);
   const offers = [
     { id: 'candy_ai', name: 'Candy.ai 18+', title: 'Uncensored 18+ NSFW AI Waifu Sex Chat', cta: 'Chat 18+' },
     { id: 'nud3_video', name: 'Nud3.me 18+', title: 'AI Undress & 18+ Hentai Video Animator', cta: 'Animate 18+' },
     { id: 'spicychat_ai', name: 'SpicyChat 18+', title: 'No-Filter 18+ Adult Roleplay & Voice AI', cta: 'Roleplay 18+' }
   ];
-  const offer = offers[Math.floor(idx / 12) % offers.length];
+  const slotNum = idx <= 4 ? 0 : Math.floor((idx - 4) / 10) + 1;
+  const offer = offers[slotNum % offers.length];
   return `
     <article class="masonry-item card is-in sponsored-card" style="--d:${idx % 8}">
       <div class="card-media" onclick="triggerAdClick('infeed_native','${esc(offer.id)}','grid-ad-${idx}','${esc(art.tag)}')">
@@ -1399,12 +1405,15 @@ function buildSponsoredCardHTML(idx = 12) {
           <span class="pill" style="background:rgba(225,29,72,0.92);color:#fff;font-weight:700;">🔞 18+ AD</span>
           <span class="pill">${esc(offer.name)}</span>
         </div>
-        <div style="position:absolute;left:0;right:0;bottom:0;padding:24px 10px 10px;background:linear-gradient(180deg,transparent,rgba(0,0,0,0.92));color:#fff;font-size:12px;font-weight:650;line-height:1.3;pointer-events:none;">
-          ${esc(offer.title)}
+        <div style="position:absolute;left:0;right:0;bottom:0;padding:20px 8px 8px;background:linear-gradient(180deg,transparent,rgba(9,9,11,0.95) 45%,#09090b 100%);display:flex;flex-direction:column;gap:6px;">
+          <div style="color:#fff;font-size:12px;font-weight:700;line-height:1.25;pointer-events:none;">${esc(offer.title)}</div>
+          <div style="width:100%;height:50px;overflow:hidden;border-radius:6px;background:rgba(0,0,0,0.75);border:1px solid rgba(255,255,255,0.12);" onclick="event.stopPropagation()">
+            <iframe data-aa="${esc(aadsId)}" src="//acceptable.a-ads.com/${esc(aadsId)}" style="border:0px;padding:0;width:100%;height:50px;overflow:hidden;background-color:transparent;" loading="lazy" title="Sponsored 18+ Banner"></iframe>
+          </div>
         </div>
       </div>
       <div class="card-body">
-        <button type="button" class="btn btn-tiny btn-primary" onclick="triggerAdClick('infeed_native','${esc(offer.id)}','grid-ad-${idx}','${esc(art.tag)}')">
+        <button type="button" class="btn btn-tiny btn-primary" style="background:#e11d48;color:#fff;" onclick="triggerAdClick('infeed_native','${esc(offer.id)}','grid-ad-${idx}','${esc(art.tag)}')">
           ${icon('spark')}<span class="btn-label">${esc(offer.cta)}</span>
         </button>
         <button type="button" class="btn btn-tiny btn-ghost" onclick="openProModal()">
@@ -1456,7 +1465,7 @@ function buildPostCardHTML(post, idx) {
 
   return `
     <article class="masonry-item card is-in" style="--d:${idx % 8}">
-      <div class="card-media" data-open="${esc(post.id)}"${isVideo ? ` data-kind="video" data-file="${esc(post.fileUrl || '')}" data-proxy-file="${esc(post.proxiedFileUrl || '')}"` : ''}>
+      <div class="card-media" data-open="${esc(post.id)}">
         <img
           src="${esc(shown.src)}"
           data-proxy="${esc(shown.proxy)}"
@@ -1486,7 +1495,11 @@ function buildPostCardHTML(post, idx) {
   `;
 }
 
-const AD_INTERVAL = 12;
+const AD_INTERVAL = 10;
+function shouldInsertAdAt(idx) {
+  if (!state.showAdsPreview || state.isPro) return false;
+  return idx === 4 || (idx > 4 && (idx - 4) % AD_INTERVAL === 0);
+}
 function trackAdImpression(placement = 'infeed_native') {
   if (state.isPro) return;
   fetch('/api/ads/impression', {
@@ -1501,7 +1514,7 @@ function cardsHtml(posts, offset) {
   const parts = [];
   posts.forEach((post, i) => {
     const idx = offset + i;
-    if (state.showAdsPreview && !state.isPro && idx > 0 && idx % AD_INTERVAL === 0) { trackAdImpression("grid_native"); parts.push(buildSponsoredCardHTML(idx)); }
+    if (shouldInsertAdAt(idx)) { trackAdImpression("grid_native"); parts.push(buildSponsoredCardHTML(idx)); }
     parts.push(buildPostCardHTML(post, idx));
   });
   return parts.join('');
@@ -1669,6 +1682,8 @@ function bindReelsLoader() {
 }
 
 function buildNativeReelAdHtml(idx) {
+  const aadsId = String((state.adsConfig && state.adsConfig.aads && state.adsConfig.aads.unitId) || '2460259');
+  const exoZoneId = String((state.adsConfig && state.adsConfig.exoclick && state.adsConfig.exoclick.zoneId) || '6068261');
   const art = pickAdultAdArtwork(idx);
   const activeTag = parseTagTokens()[0] || art.tag || 'hentai';
   const offers = [
@@ -1697,11 +1712,12 @@ function buildNativeReelAdHtml(idx) {
       tags: ['18+_roleplay', 'no_filter', 'hentai_chat', 'explicit']
     }
   ];
-  const offer = offers[Math.floor(idx / AD_INTERVAL) % offers.length];
+  const slotNum = idx <= 4 ? 0 : Math.floor((idx - 4) / AD_INTERVAL) + 1;
+  const offer = offers[slotNum % offers.length];
   return `
     <article class="reel post-card is-ad" data-kind="ad" data-ad-slot="${idx}">
       <div class="reel-stage is-still" style="position:relative;background:#09090b;overflow:hidden;">
-        <div style="position:relative;aspect-ratio:4 / 5;max-height:540px;width:100%;overflow:hidden;cursor:pointer;" onclick="triggerAdClick('infeed_native','${esc(offer.id)}','reel-ad-${idx}','${esc(activeTag)}')">
+        <div style="position:relative;aspect-ratio:4 / 5;max-height:520px;width:100%;overflow:hidden;cursor:pointer;" onclick="triggerAdClick('infeed_native','${esc(offer.id)}','reel-ad-${idx}','${esc(activeTag)}')">
           <img
             class="reel-still"
             style="width:100%;height:100%;object-fit:cover;display:block;filter:contrast(1.05);"
@@ -1728,6 +1744,10 @@ function buildNativeReelAdHtml(idx) {
             </div>
           </div>
         </div>
+        <div style="width:100%;padding:10px 0;background:#09090b;border-top:1px solid var(--line);display:flex;flex-direction:column;align-items:center;gap:8px;">
+          <iframe src="https://syndication.exdynsrv.com/ads-iframe-display.php?idzone=${esc(exoZoneId)}&output=noscript&type=300x250" width="300" height="250" scrolling="no" marginwidth="0" marginheight="0" frameborder="0" loading="lazy" title="ExoClick 18+ Ad"></iframe>
+          <iframe data-aa="${esc(aadsId)}" src="//acceptable.a-ads.com/${esc(aadsId)}" style="border:0px;padding:0;width:100%;max-width:468px;height:60px;overflow:hidden;background-color:transparent;" loading="lazy" title="A-ADS 18+"></iframe>
+        </div>
       </div>
       <div class="reel-bar">
         <button type="button" class="icon-btn accent" aria-label="18+ AI chat" onclick="triggerAdClick('reels_cta','${esc(offer.id)}','reel-ad-${idx}','${esc(activeTag)}')">${icon('spark')}</button>
@@ -1742,7 +1762,7 @@ function reelsHtmlWithAds(posts, startOffset) {
   const parts = [];
   posts.forEach((post, i) => {
     const idx = startOffset + i;
-    if (state.showAdsPreview && !state.isPro && idx > 0 && idx % AD_INTERVAL === 0) {
+    if (shouldInsertAdAt(idx)) {
       trackAdImpression("reels_native");
       parts.push(buildNativeReelAdHtml(idx));
     }
@@ -2526,22 +2546,6 @@ document.addEventListener('DOMContentLoaded', () => {
 function eventTargetIsField(target) {
   return target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA');
 }
-
-document.addEventListener('pointerover', event => {
-  const media = event.target.closest && event.target.closest('.card-media[data-kind="video"]');
-  if (!media || event.pointerType === 'touch' || prefersReducedMotion()) return;
-  const from = event.relatedTarget && event.relatedTarget.closest && event.relatedTarget.closest('.card-media');
-  if (from === media) return;
-  playCardVideo(media);
-}, true);
-
-document.addEventListener('pointerout', event => {
-  const media = event.target.closest && event.target.closest('.card-media[data-kind="video"]');
-  if (!media || event.pointerType === 'touch') return;
-  const to = event.relatedTarget && event.relatedTarget.closest && event.relatedTarget.closest('.card-media');
-  if (to === media) return;
-  stopCardVideo(media);
-}, true);
 
 document.addEventListener('scroll', () => {
   document.querySelectorAll('.card-media.is-playing').forEach(media => {

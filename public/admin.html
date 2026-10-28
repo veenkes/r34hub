@@ -367,7 +367,7 @@
       document.getElementById('kpi-orders-sub').textContent = `${data.summary.paidOrders || 0} Paid Orders (${data.summary.totalOrders || 0} Total)`;
       const cpaPlusBanner = Number(data.summary.estimatedCpaRevenueEur || 0) + Number(data.summary.estimatedBannerRevenueEur || 0);
       document.getElementById('kpi-cpa-rev').textContent = `€${cpaPlusBanner.toFixed(2)}`;
-      document.getElementById('kpi-clicks-sub').textContent = `${data.summary.totalImpressions || 0} Impressions • ${data.summary.totalClicks || 0} Clicks`;
+      document.getElementById('kpi-clicks-sub').textContent = `${data.summary.uniqueVisitors || 0} Visitors • ${data.summary.pageViews || 0} Views • ${data.summary.totalImpressions || 0} Ad Impr • ${data.summary.totalClicks || 0} Clicks`;
       document.getElementById('kpi-total-rev').textContent = `€${Number(data.summary.totalRevenueEur || 0).toFixed(2)}`;
 
       // Render Licenses Table

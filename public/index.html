@@ -64,7 +64,8 @@
         <span class="mark">R34</span>
       </a>
       <div class="nav-actions" id="navbar-actions">
-        <button id="nav-pro-badge" class="btn btn-tiny hidden" type="button" onclick="location.assign('/premium')" style="background:rgba(16,185,129,0.16);border:1px solid rgba(16,185,129,0.4);color:#34d399;font-weight:700;padding:5px 10px;border-radius:999px;">● PRO ACTIVE</button>
+        <button id="nav-pro-badge" class="btn btn-tiny hidden" type="button" onclick="location.assign('/premium')" style="background:rgba(16,185,129,0.16);border:1px solid rgba(16,185,129,0.4);color:#34d399;font-weight:700;padding:5px 10px;border-radius:999px;">● PRO (Ads Off)</button>
+        <button id="nav-logout-btn" class="btn btn-tiny hidden" type="button" onclick="logoutPro()" style="background:rgba(225,29,72,0.18);border:1px solid rgba(225,29,72,0.45);color:#fda4af;font-weight:700;padding:5px 10px;border-radius:999px;">Log Out</button>
         <button id="open-search-btn" class="icon-btn bare nav-search" type="button" aria-label="Search posts" onclick="openSearchMenu()">
           <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-search"/></svg>
           <span id="search-dot" class="dot-mark hidden"></span>
@@ -161,10 +162,16 @@
 
   <main class="wrap">
     <div id="top-ad-banner" class="adbar">
-      <div class="adbar-inner">
-        <p><strong>Sponsored.</strong> Turn a character tag into a chat companion.</p>
+      <div class="adbar-inner" style="flex-wrap:wrap;gap:10px;">
+        <div style="display:flex;align-items:center;gap:8px;min-width:220px;flex:1;">
+          <span class="pill" style="background:rgba(225,29,72,0.9);color:#fff;font-weight:700;padding:3px 8px;border-radius:999px;font-size:10px;">18+ AD</span>
+          <p style="margin:0;"><strong>Uncensored 18+ AI Waifu Chat &amp; Video.</strong> Roleplay or animate any character tag.</p>
+        </div>
+        <div style="width:320px;max-width:100%;height:50px;overflow:hidden;border-radius:8px;background:#09090b;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;">
+          <iframe data-aa='2460259' src='//acceptable.a-ads.com/2460259' style='border:0px;padding:0;width:100%;height:50px;overflow:hidden;background-color:transparent;' loading="lazy" title="Sponsored Banner"></iframe>
+        </div>
         <div class="ad-actions">
-          <button class="btn btn-tiny btn-primary" type="button" onclick="triggerAdClick('top_banner','candy_ai','header','anime')">Try it</button>
+          <button class="btn btn-tiny btn-primary" type="button" style="background:#e11d48;color:#fff;" onclick="triggerAdClick('top_banner','candy_ai','header','anime')">🔞 Open 18+ AI</button>
           <button class="btn btn-tiny btn-ghost" type="button" onclick="openProModal()">Remove ads</button>
         </div>
       </div>
@@ -434,7 +441,14 @@
 
 
   <div id="toast" class="toast hidden" role="status"></div>
-  <div id="aads-unit-slot" style="width:100%;max-width:728px;height:90px;margin:16px auto;text-align:center;"><iframe data-aa='2460259' src='//acceptable.a-ads.com/2460259' style='border:0px; padding:0; width:100%; height:100%; overflow:hidden; background-color: transparent;'></iframe></div>
+  <div id="aads-unit-slot" style="width:100%;max-width:960px;margin:20px auto;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:14px;padding:0 12px;">
+    <div style="width:300px;height:250px;overflow:hidden;border-radius:12px;border:1px solid var(--line);background:#09090b;">
+      <iframe src="https://syndication.exdynsrv.com/ads-iframe-display.php?idzone=6068261&output=noscript&type=300x250" width="300" height="250" scrolling="no" marginwidth="0" marginheight="0" frameborder="0" loading="lazy" title="ExoClick 18+ Banner"></iframe>
+    </div>
+    <div style="flex:1;min-width:280px;max-width:600px;height:90px;overflow:hidden;border-radius:12px;border:1px solid var(--line);background:#09090b;">
+      <iframe data-aa='2460259' src='//acceptable.a-ads.com/2460259' style='border:0px; padding:0; width:100%; height:90px; overflow:hidden; background-color: transparent;' loading="lazy" title="A-ADS Banner"></iframe>
+    </div>
+  </div>
   <script src="/app.js"></script>
 </body>
 </html>
