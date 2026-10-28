@@ -1,5 +1,5 @@
 const state = {
-  activeTab: 'gallery',
+  activeTab: 'home',
   source: 'all',
   tags: '',
   rating: 's',
@@ -22,7 +22,8 @@ const state = {
   queryToken: 0,
   partialFills: 0,
   lastPartial: false,
-  reelObserver: null
+  reelObserver: null,
+  reelsLoadObserver: null
 };
 
 const SORT_LABEL = { score: 'Popular', latest: 'New', video: 'Video', no_ai: 'No AI', trending: 'Popular' };
@@ -63,19 +64,48 @@ function paintChoice(selector, key, value) {
   });
 }
 
+function browsingPosts() {
+  return state.activeTab === 'gallery' || state.activeTab === 'reels';
+}
+
+function paintSearchDot() {
+  const dot = document.getElementById('search-dot');
+  const countEl = document.getElementById('active-filter-count');
+  if (!dot || !countEl) return;
+  dot.classList.toggle('hidden', countEl.textContent === '0');
+}
+
+function placeSearch(where) {
+  const block = document.getElementById('search-block');
+  const mount = document.getElementById(where === 'sheet' ? 'sheet-search-mount' : 'home-search-mount');
+  if (block && mount && block.parentElement !== mount) mount.appendChild(block);
+}
+
+function showBrowseAndReload() {
+  state.page = 1;
+  if (!browsingPosts()) switchTab('reels');
+  syncUrlBarInPlace();
+  if (!state.isLoading) loadPosts(false);
+}
+
 function syncUrlBarInPlace() {
+  const badge = document.getElementById('feed-status-badge');
+  if (badge) badge.textContent = sourceLabel();
+  renderActiveTagPills();
+  if (!browsingPosts()) {
+    if (state.activeTab === 'home') {
+      try { window.history.replaceState({}, '', '/'); } catch (_) {}
+    }
+    return;
+  }
   const srcSlug = state.source === 'all' ? 'rule34.xxx' : state.source;
   const params = new URLSearchParams();
   params.set('filter[sort]', state.sort);
   if (state.tags.trim()) params.set('tags', state.tags.trim());
   if (state.rating !== 'all') params.set('rating', state.rating);
-  const pathStr = `/posts/${srcSlug}?${params.toString()}`;
-  const badge = document.getElementById('feed-status-badge');
-  if (badge) badge.textContent = sourceLabel();
   try {
-    window.history.replaceState({}, '', pathStr);
+    window.history.replaceState({}, '', `/posts/${srcSlug}?${params.toString()}`);
   } catch (_) {}
-  renderActiveTagPills();
 }
 
 function parseTagTokens() {
@@ -109,8 +139,8 @@ window.toggleTagInPlace = function(tag, mode = 'include') {
   const clearBtn = document.getElementById('clear-search-btn');
   if (clearBtn) clearBtn.classList.toggle('hidden', !state.tags);
   state.page = 1;
-  syncUrlBarInPlace();
-  loadPosts(false);
+  showBrowseAndReload();
+  closeTagSheet();
   showToast(mode === 'exclude' ? `Hiding ${clean}` : `Showing ${clean}`);
 };
 
@@ -121,8 +151,7 @@ window.removeTagToken = function(rawToken) {
   const clearBtn = document.getElementById('clear-search-btn');
   if (clearBtn) clearBtn.classList.toggle('hidden', !state.tags);
   state.page = 1;
-  syncUrlBarInPlace();
-  loadPosts(false);
+  showBrowseAndReload();
 };
 
 function renderActiveTagPills() {
@@ -150,6 +179,16 @@ function renderActiveTagPills() {
       </span>
     `;
   }).join('');
+  paintSearchDot();
+}
+
+function syncChrome() {
+  const topAd = document.getElementById('top-ad-banner');
+  const posts = document.getElementById('posts-chrome');
+  if (posts) posts.classList.toggle('hidden', !browsingPosts());
+  if (!topAd) return;
+  const show = !state.isPro && state.showAdsPreview && state.activeTab !== 'saved' && state.activeTab !== 'settings';
+  topAd.classList.toggle('hidden', !show);
 }
 
 function updateProUI() {
@@ -166,8 +205,8 @@ function updateProUI() {
   } else {
     if (txt) txt.textContent = 'Pro · €4.97';
     if (btn) btn.classList.remove('is-vip');
-    if (topAd) topAd.classList.toggle('hidden', !state.showAdsPreview);
   }
+  syncChrome();
   if (adToggle) {
     adToggle.checked = state.showAdsPreview;
     adToggle.disabled = state.isPro;
@@ -194,6 +233,13 @@ function renderSourcePills() {
   container.querySelectorAll('.source-pill').forEach(btn => {
     btn.addEventListener('click', () => selectSourceInPlace(btn.dataset.source, btn.dataset.locked === 'true'));
   });
+  const homeBoards = document.getElementById('home-boards');
+  if (homeBoards) {
+    homeBoards.innerHTML = state.sources.map(s => {
+      const locked = Boolean(s.isPremiumSource && !state.isPro);
+      return `<button type="button" class="chip" onclick="selectSourceInPlace('${esc(s.id)}', ${locked})">${esc(s.name)}${locked ? ' · Pro' : ''}</button>`;
+    }).join('');
+  }
   if (drawerList) {
     drawerList.innerHTML = allItems.map(s => {
       const active = state.source === s.id;
@@ -219,24 +265,22 @@ window.selectSourceInPlace = function(src, locked) {
     setRating('all', false);
   }
   renderSourcePills();
-  syncUrlBarInPlace();
-  loadPosts(false);
+  showBrowseAndReload();
 };
 
 function setRating(rating, reload = true) {
   state.rating = rating;
   state.page = 1;
   paintChoice('.rating-btn', 'rating', rating);
-  syncUrlBarInPlace();
-  if (reload) loadPosts(false);
+  if (reload) showBrowseAndReload();
+  else syncUrlBarInPlace();
 }
 
 window.setSortInPlace = function(sort) {
   state.sort = sort;
   state.page = 1;
   paintChoice('.sort-btn', 'sort', sort);
-  syncUrlBarInPlace();
-  loadPosts(false);
+  showBrowseAndReload();
 };
 
 window.resetAllFilters = function() {
@@ -252,9 +296,27 @@ window.resetAllFilters = function() {
   paintChoice('.rating-btn', 'rating', 's');
   paintChoice('.sort-btn', 'sort', 'score');
   renderSourcePills();
-  syncUrlBarInPlace();
-  loadPosts(false);
+  showBrowseAndReload();
   closeFilterDrawer();
+};
+
+window.openHomeFeed = function(opts = {}) {
+  if (opts.sort) {
+    state.sort = opts.sort;
+    paintChoice('.sort-btn', 'sort', opts.sort);
+  }
+  if (opts.rating) {
+    state.rating = opts.rating;
+    paintChoice('.rating-btn', 'rating', opts.rating);
+  }
+  if (opts.tags != null) {
+    state.tags = opts.tags;
+    const input = document.getElementById('tag-search-input');
+    if (input) input.value = opts.tags;
+  }
+  closeSideMenu();
+  closeSearchMenu();
+  showBrowseAndReload();
 };
 
 window.triggerAdClick = async function(placement, offerId, postId, tag, mediaUrl = '') {
@@ -356,15 +418,21 @@ async function loadPosts(append = false, silent = false) {
       state.posts = state.posts.concat(fresh);
       if (fresh.length === 0 && !data.partial) state.hasMore = false;
       renderGallery({ appendFrom: previousCount });
+      if (state.activeTab === 'reels' && fresh.length) appendReels(fresh);
     } else {
       const same = silent
         && state.posts.length === rawPosts.length
         && state.posts.every((post, index) => post.id === rawPosts[index].id);
+      const slides = [...document.querySelectorAll('#reels-feed .reel')];
+      const prefix = slides.length > 0 && slides.every((slide, index) => rawPosts[index] && slide.dataset.id === String(rawPosts[index].id));
       state.posts = rawPosts;
       if (!rawPosts.length && !data.partial) state.hasMore = false;
       if (!same) renderGallery();
+      if (state.activeTab === 'reels') {
+        if (silent && prefix) appendReels(rawPosts.slice(slides.length));
+        else if (!same) renderReels();
+      }
     }
-    if (state.activeTab === 'reels') renderReels();
 
     if (summaryEl) {
       const bits = [`${state.posts.length} posts`, SORT_LABEL[state.sort] || state.sort, RATING_LABEL[state.rating] || state.rating];
@@ -377,6 +445,7 @@ async function loadPosts(append = false, silent = false) {
     if (scrollText) {
       scrollText.textContent = state.hasMore ? 'Scroll to load more' : `End of this feed · ${state.posts.length} posts`;
     }
+    paintReelsStatus();
   } catch (err) {
     if (!append && !silent && feedEl) {
       feedEl.innerHTML = `<div class="empty"><h2>The boards did not answer</h2><p>${esc(err.message)}</p><button class="btn btn-primary" type="button" onclick="loadPosts(false)">Try again</button></div>`;
@@ -385,6 +454,7 @@ async function loadPosts(append = false, silent = false) {
   } finally {
     state.isLoading = false;
     if (spinner) spinner.classList.remove('is-on');
+    paintReelsStatus();
   }
 
   if (data && data.partial && !append && state.partialFills < 2 && token === state.queryToken) {
@@ -392,6 +462,8 @@ async function loadPosts(append = false, silent = false) {
     setTimeout(() => {
       if (token === state.queryToken) loadPosts(false, true);
     }, 1400);
+  } else if (state.activeTab === 'reels') {
+    pumpReels();
   }
 }
 
@@ -619,15 +691,38 @@ function tagDot(post, tag) {
   return '';
 }
 
+function tagGroups(post) {
+  const artist = post.artistTags || [];
+  const character = post.characterTags || [];
+  const copyright = post.copyrightTags || [];
+  const known = new Set([...artist, ...character, ...copyright]);
+  const general = (post.tags || []).filter(tag => !known.has(tag));
+  return [
+    ['Artist', artist],
+    ['Character', character],
+    ['Copyright', copyright],
+    ['General', general]
+  ].filter(([, list]) => list.length);
+}
+
+function tagGroupsHtml(post) {
+  const groups = tagGroups(post);
+  if (!groups.length) return '<p class="hint">No tags on this post.</p>';
+  return groups.map(([label, list]) => `
+    <section class="tag-group">
+      <h3>${esc(label)}</h3>
+      <div class="tag-well">${list.map(tag => tagChip(tag, post)).join('')}</div>
+    </section>
+  `).join('');
+}
+
 function buildPostCardHTML(post, idx) {
   const isSaved = state.savedPosts.some(s => s.id === post.id);
   const isVideo = post.mediaType === 'video';
-  const expanded = state.expandedTagCards.has(post.id);
   const preview = stillUrl(post);
   const proxy = post.proxiedPreviewUrl || '';
   const eager = idx < 4;
   const tags = post.tags || [];
-  const tagsHtml = tags.map(t => tagChip(t, post)).join('');
 
   return `
     <article class="masonry-item card">
@@ -654,11 +749,10 @@ function buildPostCardHTML(post, idx) {
           <span class="ico-slot">${icon(isSaved ? 'heart-fill' : 'heart')}</span>
           <span class="btn-label">${isSaved ? 'Saved' : 'Save'}</span>
         </button>
-        <button type="button" class="btn btn-tiny btn-ghost${expanded ? ' is-on' : ''}" data-tags="${esc(post.id)}" aria-expanded="${expanded ? 'true' : 'false'}">
+        <button type="button" class="btn btn-tiny btn-ghost" data-tag-sheet="${esc(post.id)}">
           ${icon('tag')}<span class="btn-label">Tags ${tags.length}</span>
         </button>
       </div>
-      <div id="tags-drawer-${cssId(post.id)}" class="tags${expanded ? '' : ' hidden'}"><div class="tag-well">${tagsHtml}</div></div>
     </article>
   `;
 }
@@ -690,41 +784,69 @@ function renderGallery(options = {}) {
   feedEl.innerHTML = cardsHtml(state.posts, 0);
 }
 
+function frameStyle(post) {
+  const ratio = ratioStyle(post);
+  return ratio || 'aspect-ratio:3 / 4';
+}
+
 function reelSlideHtml(post, index) {
   const isVideo = post.mediaType === 'video';
   const still = stillUrl(post);
   const sharp = sharpUrl(post);
-  const active = index === 0;
+  const eager = index < 2;
   const saved = state.savedPosts.some(s => s.id === post.id);
   const tags = post.tags || [];
-  const shown = tags.slice(0, 4);
+  const shown = tags.slice(0, 8);
   const charTag = (post.characterTags && post.characterTags[0]) || tags[0] || 'character';
-  const imageProxy = active ? (sharpProxy(post) || post.proxiedPreviewUrl || '') : (post.proxiedPreviewUrl || '');
+  const imageProxy = eager ? (sharpProxy(post) || post.proxiedPreviewUrl || '') : (post.proxiedPreviewUrl || '');
   const media = isVideo
-    ? `<div class="player">${playerInner(active ? (sharp || still) : still, active ? (sharpProxy(post) || post.proxiedPreviewUrl || '') : (post.proxiedPreviewUrl || ''))}</div>`
-    : `<img class="reel-still" src="${esc(active ? (sharp || still) : still)}" data-proxy="${esc(imageProxy)}" alt="" referrerpolicy="no-referrer" onerror="useProxy(this)" />`;
+    ? `<div class="player">${playerInner(eager ? (sharp || still) : still, eager ? (sharpProxy(post) || post.proxiedPreviewUrl || '') : (post.proxiedPreviewUrl || ''))}</div>`
+    : `<img class="reel-still" src="${esc(eager ? (sharp || still) : still)}" data-proxy="${esc(imageProxy)}" alt="" referrerpolicy="no-referrer" onerror="useProxy(this)" />`;
   const extra = tags.length > shown.length
-    ? `<button type="button" class="reel-tag" data-open="${esc(post.id)}">+${tags.length - shown.length}</button>`
+    ? `<button type="button" class="reel-tag" data-tag-sheet="${esc(post.id)}">+${tags.length - shown.length}</button>`
     : '';
   return `
-    <article class="reel${active ? ' is-active' : ''}" data-kind="${isVideo ? 'video' : 'image'}" data-file="${esc(post.fileUrl || '')}" data-proxy-file="${esc(post.proxiedFileUrl || '')}" data-full="${esc(sharp)}" data-proxy-full="${esc(sharpProxy(post))}" data-still="${esc(still)}" data-proxy-still="${esc(post.proxiedPreviewUrl || '')}">
-      <div class="reel-stage"${isVideo ? '' : ` data-open="${esc(post.id)}"`}>
+    <article class="reel" data-id="${esc(post.id)}" data-kind="${isVideo ? 'video' : 'image'}" data-file="${esc(post.fileUrl || '')}" data-proxy-file="${esc(post.proxiedFileUrl || '')}" data-full="${esc(sharp)}" data-proxy-full="${esc(sharpProxy(post))}" data-still="${esc(still)}" data-proxy-still="${esc(post.proxiedPreviewUrl || '')}">
+      <div class="reel-stage" style="${frameStyle(post)}"${isVideo ? '' : ` data-open="${esc(post.id)}"`}>
         ${media}
       </div>
-      <div class="reel-meta">
-        <div class="pill">${icon('star')} ${esc(post.score || 0)} · ${esc(post.sourceName || '')}</div>
-        <div class="reel-tags">
-          ${shown.map(t => `<button type="button" class="reel-tag" data-include="${esc(t)}">${esc(t)}</button>`).join('')}
-          ${extra}
-        </div>
-      </div>
-      <div class="reel-actions">
+      <div class="reel-bar">
         <button type="button" class="icon-btn${saved ? ' is-on' : ''}" data-save="${esc(post.id)}" aria-label="${saved ? 'Saved' : 'Save'}">${icon(saved ? 'heart-fill' : 'heart')}</button>
-        <button type="button" class="icon-btn" data-open="${esc(post.id)}" aria-label="Tags ${tags.length}">${icon('tag')}</button>
-        <button type="button" class="icon-btn accent" aria-label="AI chat" onclick="triggerAdClick('reels_cta','candy_ai','${esc(post.id)}','${esc(charTag)}')">${icon('spark')}</button>
         <a class="icon-btn" href="${esc(post.proxiedFileUrl || post.fileUrl || '#')}" download aria-label="Download">${icon('download')}</a>
+        <a class="icon-btn" href="${esc(post.originalPostUrl || '#')}" target="_blank" rel="noopener" aria-label="Source">${icon('external')}</a>
+        <button type="button" class="icon-btn" data-share="${esc(post.id)}" aria-label="Share">${icon('share')}</button>
+        <button type="button" class="icon-btn accent" aria-label="AI chat" onclick="triggerAdClick('reels_cta','candy_ai','${esc(post.id)}','${esc(charTag)}')">${icon('spark')}</button>
+        <span class="pill">${icon('star')} ${esc(post.score || 0)}</span>
+        <button type="button" class="btn btn-tiny btn-ghost grow" data-tag-sheet="${esc(post.id)}">${icon('tag')}<span class="btn-label">Tags ${tags.length}</span></button>
+      </div>
+      <div class="reel-tags">
+        ${shown.map(t => `<button type="button" class="reel-tag" data-include="${esc(t)}">${esc(t)}</button>`).join('')}
+        ${extra}
       </div>
     </article>`;
+}
+
+function paintReelsStatus() {
+  const counter = document.getElementById('reels-counter');
+  const status = document.getElementById('reels-status');
+  const spinner = document.getElementById('reels-spinner');
+  if (counter) counter.textContent = `${state.posts.length} posts`;
+  if (spinner) spinner.classList.toggle('is-on', state.isLoading && state.activeTab === 'reels');
+  if (!status) return;
+  if (state.isLoading && state.activeTab === 'reels' && state.posts.length) status.textContent = 'Loading more…';
+  else if (!state.hasMore) status.textContent = 'End of this feed';
+  else status.textContent = 'Scroll to load more';
+}
+
+let reelsPumpQueued = false;
+function pumpReels() {
+  if (reelsPumpQueued || state.activeTab !== 'reels' || state.isLoading || !state.hasMore || state.lastPartial || !state.posts.length) return;
+  const sentinel = document.getElementById('reels-sentinel');
+  if (!sentinel) return;
+  if (sentinel.getBoundingClientRect().top > window.innerHeight + 900) return;
+  reelsPumpQueued = true;
+  state.page += 1;
+  Promise.resolve(loadPosts(true)).finally(() => { reelsPumpQueued = false; });
 }
 
 function mountReelStill(slide, sharp) {
@@ -754,36 +876,86 @@ function warmReelNeighbors(slide) {
   });
 }
 
+function observeReelSlides(slides) {
+  if (!state.reelObserver) {
+    state.reelObserver = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (!entry.isIntersecting) return;
+        const slide = entry.target;
+        if (slide.dataset.kind === 'video') mountReelPoster(slide, true);
+        else mountReelStill(slide, true);
+      });
+    }, { rootMargin: '700px 0px' });
+  }
+  slides.forEach(slide => state.reelObserver.observe(slide));
+}
+
+function bindReelsLoader() {
+  const sentinel = document.getElementById('reels-sentinel');
+  if (!sentinel) return;
+  if (state.reelsLoadObserver) state.reelsLoadObserver.disconnect();
+  const observer = new IntersectionObserver(entries => {
+    if (entries.some(entry => entry.isIntersecting)) pumpReels();
+  }, { rootMargin: '900px' });
+  observer.observe(sentinel);
+  state.reelsLoadObserver = observer;
+}
+
+function appendReels(posts) {
+  const container = document.getElementById('reels-feed');
+  if (!container || !posts.length) return;
+  const start = container.querySelectorAll('.reel').length;
+  container.insertAdjacentHTML('beforeend', posts.map((post, index) => reelSlideHtml(post, start + index)).join(''));
+  observeReelSlides([...container.querySelectorAll('.reel')].slice(start));
+  paintReelsStatus();
+}
+
 function renderReels() {
   const container = document.getElementById('reels-feed');
   if (!container) return;
-  if (state.reelObserver) state.reelObserver.disconnect();
   if (!state.posts.length) {
     container.innerHTML = '<div class="empty"><h2>No posts yet</h2></div>';
-    const counter = document.getElementById('reels-counter');
-    if (counter) counter.textContent = '0 / 0';
+    paintReelsStatus();
+    bindReelsLoader();
     return;
   }
   container.innerHTML = state.posts.map((post, index) => reelSlideHtml(post, index)).join('');
+  observeReelSlides([...container.querySelectorAll('.reel')]);
+  bindReelsLoader();
+  paintReelsStatus();
+  requestAnimationFrame(() => {
+    syncActiveReel();
+    pumpReels();
+  });
+}
 
-  const counter = document.getElementById('reels-counter');
-  if (counter) counter.textContent = `1 / ${state.posts.length}`;
-  container.onscroll = () => {
-    const height = container.clientHeight || 1;
-    const idx = Math.round(container.scrollTop / height);
-    if (counter) counter.textContent = `${Math.min(state.posts.length, idx + 1)} / ${state.posts.length}`;
-  };
+window.addEventListener('scroll', onReelsPageScroll, { passive: true });
 
-  const observer = new IntersectionObserver(entries => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting && entry.intersectionRatio >= 0.6) activateReel(entry.target);
-      else deactivateReel(entry.target);
-    });
-  }, { root: container, threshold: [0.6] });
-  container.querySelectorAll('.reel').forEach(slide => observer.observe(slide));
-  state.reelObserver = observer;
-  const first = container.querySelector('.reel');
-  if (first) activateReel(first);
+let reelScrollRaf = 0;
+function onReelsPageScroll() {
+  if (state.activeTab !== 'reels') return;
+  if (reelScrollRaf) return;
+  reelScrollRaf = requestAnimationFrame(() => {
+    reelScrollRaf = 0;
+    syncActiveReel();
+    pumpReels();
+  });
+}
+
+function syncActiveReel() {
+  const slides = document.querySelectorAll('#reels-feed .reel');
+  if (!slides.length) return;
+  const focus = window.innerHeight * 0.42;
+  let current = null;
+  slides.forEach(slide => {
+    const box = slide.getBoundingClientRect();
+    if (box.top <= focus && box.bottom >= focus) current = slide;
+  });
+  if (!current) current = slides[0].getBoundingClientRect().top > focus ? slides[0] : slides[slides.length - 1];
+  if (current.classList.contains('is-active')) {
+    if (current.dataset.kind !== 'video' || current.querySelector('video')?.getAttribute('src')) return;
+  }
+  activateReel(current);
 }
 
 function activateReel(slide) {
@@ -944,7 +1116,7 @@ window.openPostModal = function(postId) {
   const tags = post.tags || [];
   const tagCount = document.getElementById('modal-tag-count');
   if (tagCount) tagCount.textContent = String(tags.length);
-  document.getElementById('modal-tags-list').innerHTML = tags.map(t => tagChip(t, post)).join('');
+  document.getElementById('modal-tags-list').innerHTML = tagGroupsHtml(post);
   document.getElementById('post-modal').classList.remove('hidden');
 };
 
@@ -975,22 +1147,88 @@ window.closeFilterDrawer = function() {
   document.getElementById('filter-drawer-backdrop').classList.add('hidden');
 };
 
+window.openSideMenu = function() {
+  document.getElementById('side-menu').classList.remove('hidden');
+};
+
+window.closeSideMenu = function() {
+  const menu = document.getElementById('side-menu');
+  if (menu) menu.classList.add('hidden');
+};
+
+window.openSearchMenu = function() {
+  placeSearch('sheet');
+  document.getElementById('search-sheet').classList.remove('hidden');
+  const input = document.getElementById('tag-search-input');
+  if (input) input.focus();
+};
+
+window.closeSearchMenu = function() {
+  const sheet = document.getElementById('search-sheet');
+  if (sheet) sheet.classList.add('hidden');
+  if (state.activeTab === 'home') placeSearch('home');
+};
+
+window.openTagSheet = function(postId) {
+  const post = state.posts.find(p => p.id === postId) || state.savedPosts.find(p => p.id === postId);
+  const body = document.getElementById('tag-sheet-body');
+  const sheet = document.getElementById('tag-sheet');
+  if (!post || !body || !sheet) return;
+  body.innerHTML = tagGroupsHtml(post);
+  sheet.classList.remove('hidden');
+};
+
+window.closeTagSheet = function() {
+  const sheet = document.getElementById('tag-sheet');
+  if (sheet) sheet.classList.add('hidden');
+};
+
+window.sharePost = async function(postId) {
+  const post = state.posts.find(p => p.id === postId) || state.savedPosts.find(p => p.id === postId);
+  if (!post) return;
+  const url = post.originalPostUrl || location.href;
+  const title = `${post.sourceName || 'Post'} ${post.id}`;
+  if (navigator.share) {
+    try {
+      await navigator.share({ title, url });
+      return;
+    } catch (_) {}
+  }
+  try {
+    await navigator.clipboard.writeText(url);
+    showToast('Link copied');
+  } catch (_) {
+    showToast(url);
+  }
+};
+
 window.switchTab = function(tabId) {
+  if (!['home', 'gallery', 'reels', 'saved', 'settings'].includes(tabId)) tabId = 'home';
   state.activeTab = tabId;
   document.body.classList.toggle('mode-reels', tabId === 'reels');
+  document.body.classList.toggle('mode-grid', tabId === 'gallery');
   document.body.classList.toggle('mode-saved', tabId === 'saved');
-  ['gallery', 'reels', 'saved'].forEach(t => {
+  ['home', 'gallery', 'reels', 'saved', 'settings'].forEach(t => {
     const sec = document.getElementById(`tab-${t}`);
     if (sec) sec.classList.toggle('hidden', t !== tabId);
   });
-  const controls = document.getElementById('controls-bar');
-  if (controls) controls.classList.toggle('hidden', tabId === 'saved');
   document.querySelectorAll('.nav-tab').forEach(btn => btn.classList.toggle('is-on', btn.dataset.tab === tabId));
   document.querySelectorAll('.mob-nav-btn').forEach(btn => btn.classList.toggle('is-on', btn.dataset.mob === tabId));
+  closeSideMenu();
+  closeSearchMenu();
+  closeTagSheet();
+  syncChrome();
+  if (tabId === 'home') placeSearch('home');
   if (tabId !== 'reels') document.querySelectorAll('#reels-feed .reel').forEach(deactivateReel);
   stopAllCardVideos();
   if (tabId === 'saved') renderSavedPosts();
-  if (tabId === 'reels') renderReels();
+  if (tabId === 'reels' && state.posts.length) renderReels();
+  if (browsingPosts()) {
+    syncUrlBarInPlace();
+    if (!state.posts.length && !state.isLoading) loadPosts(false);
+  } else if (tabId === 'home') {
+    try { window.history.replaceState({}, '', '/'); } catch (_) {}
+  }
 };
 
 function renderTrendingTags() {
@@ -1001,9 +1239,10 @@ function renderTrendingTags() {
 
 async function initApp() {
   readUrlState();
+  const deepLink = /^\/posts\//.test(location.pathname);
+  switchTab(deepLink ? 'reels' : 'home');
   renderSourcePills();
-  syncUrlBarInPlace();
-  const postsReady = loadPosts(false);
+  const postsReady = deepLink ? loadPosts(false) : Promise.resolve();
   try {
     const [srcRes, adsRes, tagRes] = await Promise.all([
       fetch('/api/sources').then(r => r.json()),
@@ -1052,6 +1291,16 @@ document.addEventListener('click', event => {
     toggleSavePost(save.dataset.save);
     return;
   }
+  const tagSheetBtn = event.target.closest('[data-tag-sheet]');
+  if (tagSheetBtn) {
+    openTagSheet(tagSheetBtn.dataset.tagSheet);
+    return;
+  }
+  const shareBtn = event.target.closest('[data-share]');
+  if (shareBtn) {
+    sharePost(shareBtn.dataset.share);
+    return;
+  }
   const tagsBtn = event.target.closest('[data-tags]');
   if (tagsBtn) {
     toggleCardTags(tagsBtn.dataset.tags, tagsBtn);
@@ -1064,6 +1313,7 @@ document.addEventListener('click', event => {
     const box = document.getElementById('tag-autocomplete');
     if (box) box.classList.add('hidden');
     if (inModal) closePostModal();
+    if (include.closest('#tag-sheet, #search-sheet')) closeSearchMenu();
     return;
   }
   const exclude = event.target.closest('[data-exclude]');
@@ -1073,6 +1323,7 @@ document.addEventListener('click', event => {
     const box = document.getElementById('tag-autocomplete');
     if (box) box.classList.add('hidden');
     if (inModal) closePostModal();
+    if (exclude.closest('#tag-sheet, #search-sheet')) closeSearchMenu();
     return;
   }
   const remove = event.target.closest('[data-remove-tag]');
@@ -1161,8 +1412,8 @@ document.addEventListener('DOMContentLoaded', () => {
     autoBox.classList.add('hidden');
     state.tags = searchInput.value.trim();
     state.page = 1;
-    syncUrlBarInPlace();
-    loadPosts(false);
+    closeSearchMenu();
+    showBrowseAndReload();
   }
   searchInput.addEventListener('keydown', e => {
     if (e.key === 'Enter') runSearch();
@@ -1274,21 +1525,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
+      const side = document.getElementById('side-menu');
+      const search = document.getElementById('search-sheet');
+      const tags = document.getElementById('tag-sheet');
+      if (side && !side.classList.contains('hidden')) { closeSideMenu(); return; }
+      if (search && !search.classList.contains('hidden')) { closeSearchMenu(); return; }
+      if (tags && !tags.classList.contains('hidden')) { closeTagSheet(); return; }
       closePostModal();
       closeProModal();
       closeFilterDrawer();
       return;
     }
-    if (state.activeTab !== 'reels') return;
-    const container = document.getElementById('reels-feed');
-    if (!container || eventTargetIsField(e.target)) return;
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      container.scrollBy({ top: container.clientHeight, behavior: 'smooth' });
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      container.scrollBy({ top: -container.clientHeight, behavior: 'smooth' });
-    }
+    if (state.activeTab !== 'reels' || eventTargetIsField(e.target)) return;
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+    const slides = [...document.querySelectorAll('#reels-feed .reel')];
+    if (!slides.length) return;
+    const focus = window.innerHeight * 0.42;
+    let index = slides.findIndex(slide => {
+      const box = slide.getBoundingClientRect();
+      return box.top <= focus && box.bottom >= focus;
+    });
+    if (index < 0) index = 0;
+    const next = slides[index + (e.key === 'ArrowDown' ? 1 : -1)];
+    if (!next) return;
+    e.preventDefault();
+    next.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
 });
 

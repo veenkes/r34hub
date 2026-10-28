@@ -29,62 +29,84 @@
     <symbol id="i-external" viewBox="0 0 24 24"><path d="M10 6H6.5A1.5 1.5 0 0 0 5 7.5v10A1.5 1.5 0 0 0 6.5 19h10a1.5 1.5 0 0 0 1.5-1.5V14M13 5h6v6M19 5l-8 8" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></symbol>
     <symbol id="i-block" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7.25" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="M8 12h8" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></symbol>
     <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 4 1.9 4.6L19 9.2l-3.6 3.2.9 4.9L12 15.2 7.7 17.3l.9-4.9L5 9.2l5.1-.6L12 4z" fill="currentColor"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="M4.5 11.5 12 5l7.5 6.5V19a1 1 0 0 1-1 1h-4.2v-5.2H9.7V20H5.5a1 1 0 0 1-1-1v-7.5z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="M12 3.8v2.1M12 18.1v2.1M3.8 12h2.1M18.1 12h2.1M6.1 6.1l1.5 1.5M16.4 16.4l1.5 1.5M17.9 6.1l-1.5 1.5M7.6 16.4l-1.5 1.5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></symbol>
+    <symbol id="i-share" viewBox="0 0 24 24"><circle cx="6.5" cy="12" r="2.1" fill="none" stroke="currentColor" stroke-width="1.75"/><circle cx="17" cy="6.5" r="2.1" fill="none" stroke="currentColor" stroke-width="1.75"/><circle cx="17" cy="17.5" r="2.1" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="m8.4 11.1 6.7-3.6M8.4 12.9l6.7 3.6" fill="none" stroke="currentColor" stroke-width="1.75"/></symbol>
   </svg>
-  <div class="sticky-stack">
-    <header class="topbar">
-      <a class="brand" href="/" onclick="event.preventDefault(); switchTab('gallery')">
-        <span class="mark">R34</span>
-        <span class="brand-name">R34Hub <span>.app</span></span>
-      </a>
 
-      <form class="search" role="search" onsubmit="return false">
-        <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-search"/></svg>
-        <input id="tag-search-input" type="search" enterkeyhint="search" autocomplete="off" placeholder="Search tags. Example: blue_archive -ai_generated" aria-label="Search tags" />
-        <button id="clear-search-btn" class="btn btn-tiny btn-ghost hidden" type="button">Clear</button>
-        <button id="run-search-btn" class="btn btn-tiny btn-primary" type="button">Search</button>
-        <div id="tag-autocomplete" class="suggest hidden"></div>
-      </form>
-
-      <nav class="desktop-tabs seg" aria-label="Sections">
-        <button class="nav-tab is-on" type="button" data-tab="gallery"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-grid"/></svg>Feed</button>
-        <button class="nav-tab" type="button" data-tab="reels"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-reels"/></svg>Reels</button>
-        <button class="nav-tab" type="button" data-tab="saved"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-bookmark"/></svg>Saved <span id="saved-count-badge" class="count">0</span></button>
-      </nav>
-
-      <button id="pro-cta-btn" class="btn btn-pro" type="button" onclick="openProModal()">
-        <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-spark"/></svg>
-        <span id="pro-cta-text">Pro · €4.97</span>
+  <header class="topnav">
+    <div class="topnav-inner">
+      <button id="open-menu-btn" class="icon-btn bare" type="button" aria-label="Open menu" onclick="openSideMenu()">
+        <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-menu"/></svg>
       </button>
-      <a class="admin-link" href="/admin">Admin</a>
-    </header>
+      <a class="brand" href="/" onclick="event.preventDefault(); switchTab('home')">
+        <span class="mark">R34</span>
+        <span class="brand-name">R34Hub</span>
+      </a>
+      <div class="nav-actions">
+        <button id="open-search-btn" class="icon-btn bare nav-search" type="button" aria-label="Search posts" onclick="openSearchMenu()">
+          <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-search"/></svg>
+          <span id="search-dot" class="dot-mark hidden"></span>
+        </button>
+        <button id="pro-cta-btn" class="btn btn-pro" type="button" onclick="openProModal()">
+          <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-spark"/></svg>
+          <span id="pro-cta-text">Pro · €4.97</span>
+        </button>
+      </div>
+    </div>
+  </header>
 
-    <section id="controls-bar" class="controls">
-      <div class="control-row hscroll">
-        <span class="row-label">Rating</span>
-        <div class="seg" role="group" aria-label="Rating">
-          <button class="rating-btn is-on" type="button" data-rating="s">Safe</button>
-          <button class="rating-btn" type="button" data-rating="q">Questionable</button>
-          <button class="rating-btn" type="button" data-rating="e">Explicit</button>
-          <button class="rating-btn" type="button" data-rating="all">All</button>
+  <div id="side-menu" class="side hidden" onclick="if (event.target === this) closeSideMenu()">
+    <div class="side-panel" role="dialog" aria-label="Menu">
+      <div class="side-brand">
+        <span class="mark">R34</span>
+        <strong>R34Hub</strong>
+      </div>
+      <button class="side-link nav-tab is-on" type="button" data-tab="home"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-home"/></svg>Home</button>
+      <button class="side-link nav-tab" type="button" data-tab="reels"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-reels"/></svg>Posts</button>
+      <button class="side-link nav-tab" type="button" data-tab="gallery"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-grid"/></svg>Grid</button>
+      <button class="side-link nav-tab" type="button" data-tab="saved"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-bookmark"/></svg>Saved <span id="saved-count-badge" class="count">0</span></button>
+      <button class="side-link nav-tab" type="button" data-tab="settings"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-settings"/></svg>Settings</button>
+      <button class="side-link" type="button" onclick="closeSideMenu(); openProModal()"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-spark"/></svg>Pro</button>
+      <div class="side-gap"></div>
+      <a class="admin-link" href="/admin">Admin</a>
+    </div>
+  </div>
+
+  <div id="search-sheet" class="sheet hidden" onclick="if (event.target === this) closeSearchMenu()">
+    <div class="sheet-panel" role="dialog" aria-label="Search">
+      <header class="sheet-head">
+        <h2>Search</h2>
+        <button class="x" type="button" aria-label="Close search" onclick="closeSearchMenu()"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-close"/></svg></button>
+      </header>
+      <div id="sheet-search-mount"></div>
+      <section id="controls-bar" class="controls">
+        <div class="control-row hscroll">
+          <span class="row-label">Rating</span>
+          <div class="seg" role="group" aria-label="Rating">
+            <button class="rating-btn is-on" type="button" data-rating="s">Safe</button>
+            <button class="rating-btn" type="button" data-rating="q">Questionable</button>
+            <button class="rating-btn" type="button" data-rating="e">Explicit</button>
+            <button class="rating-btn" type="button" data-rating="all">All</button>
+          </div>
         </div>
-        <span class="row-label">Sort</span>
-        <div class="seg" role="group" aria-label="Sort">
-          <button class="sort-btn is-on" type="button" data-sort="score">Popular</button>
-          <button class="sort-btn" type="button" data-sort="latest">New</button>
-          <button class="sort-btn" type="button" data-sort="video">Video</button>
-          <button class="sort-btn" type="button" data-sort="no_ai">No AI</button>
+        <div class="control-row hscroll">
+          <span class="row-label">Sort</span>
+          <div class="seg" role="group" aria-label="Sort">
+            <button class="sort-btn is-on" type="button" data-sort="score">Popular</button>
+            <button class="sort-btn" type="button" data-sort="latest">New</button>
+            <button class="sort-btn" type="button" data-sort="video">Video</button>
+            <button class="sort-btn" type="button" data-sort="no_ai">No AI</button>
+          </div>
         </div>
         <button id="open-filter-drawer-btn" class="btn btn-ghost btn-tiny" type="button">
           <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-sliders"/></svg>
           Filters <span id="active-filter-count" class="count">0</span>
         </button>
-      </div>
-      <div class="control-row">
-        <span class="row-label">Boards</span>
-        <div id="source-pills" class="board-scroller"></div>
-      </div>
-      <div id="active-tag-pills" class="tag-row"></div>
-    </section>
+        <div id="active-tag-pills" class="tag-row"></div>
+      </section>
+    </div>
   </div>
 
   <div id="top-ad-banner" class="adbar">
@@ -98,14 +120,57 @@
   </div>
 
   <main class="wrap">
-    <section id="tab-gallery">
-      <div class="feed-meta">
+    <div id="posts-chrome" class="posts-chrome hidden">
+      <div class="posts-head">
         <div>
-          <span id="feed-status-badge" class="meta-badge">All boards</span>
-          <span id="feed-summary-text">Loading posts…</span>
+          <h1>Posts</h1>
+          <p class="fine"><span id="feed-status-badge" class="meta-badge">All boards</span> <span id="feed-summary-text">Loading posts…</span></p>
         </div>
-        <button id="batch-download-btn" class="btn btn-ghost btn-tiny" type="button"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-download"/></svg>Download page</button>
+        <div class="seg" aria-label="Layout">
+          <button class="nav-tab is-on" type="button" data-tab="reels">List</button>
+          <button class="nav-tab" type="button" data-tab="gallery">Grid</button>
+        </div>
       </div>
+      <div id="source-pills" class="board-scroller"></div>
+      <div class="posts-tools">
+        <button id="batch-download-btn" class="btn btn-ghost btn-tiny" type="button"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-download"/></svg>Download page</button>
+        <span id="reels-counter">0 posts</span>
+      </div>
+    </div>
+
+    <section id="tab-home">
+      <div class="home-hero">
+        <h1>R34Hub</h1>
+        <p>Search the boards from one place. Posts keep their real shape.</p>
+      </div>
+      <div id="home-search-mount">
+        <div id="search-block">
+          <form class="search" role="search" onsubmit="return false">
+            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-search"/></svg>
+            <input id="tag-search-input" type="search" enterkeyhint="search" autocomplete="off" placeholder="Search tags. Example: blue_archive -ai_generated" aria-label="Search tags" />
+            <button id="clear-search-btn" class="btn btn-tiny btn-ghost hidden" type="button">Clear</button>
+            <button id="run-search-btn" class="btn btn-tiny btn-primary" type="button">Search</button>
+            <div id="tag-autocomplete" class="suggest hidden"></div>
+          </form>
+        </div>
+      </div>
+      <section class="home-block">
+        <h2>Browse</h2>
+        <div class="home-actions">
+          <button class="chip" type="button" onclick="openHomeFeed({sort:'score'})">Popular</button>
+          <button class="chip" type="button" onclick="openHomeFeed({sort:'latest'})">New</button>
+          <button class="chip" type="button" onclick="openHomeFeed({sort:'video'})">Video</button>
+          <button class="chip" type="button" onclick="openHomeFeed({sort:'no_ai'})">No AI</button>
+          <button class="chip" type="button" onclick="openHomeFeed({rating:'all'})">All ratings</button>
+        </div>
+      </section>
+      <section class="home-block">
+        <h2>Boards</h2>
+        <div id="home-boards" class="home-actions"></div>
+      </section>
+    </section>
+
+    <section id="tab-gallery" class="hidden">
       <div id="masonry-feed" class="masonry-grid" aria-live="polite">
         <div class="masonry-item skel"></div>
         <div class="masonry-item skel"></div>
@@ -123,32 +188,31 @@
 
     <section id="tab-reels" class="hidden">
       <div class="reels-wrap">
-        <div class="reels-head">
-          <span>Scroll, or use the arrow keys</span>
-          <span id="reels-counter">1 / 1</span>
-        </div>
         <div id="reels-feed" class="reels-container"></div>
+        <div id="reels-sentinel" class="more">
+          <span id="reels-spinner" class="dot"></span>
+          <span id="reels-status">Scroll to load more</span>
+        </div>
       </div>
     </section>
 
     <section id="tab-saved" class="hidden">
-      <div class="saved-layout">
+      <div class="panel panel-head">
         <div>
-          <div class="panel panel-head">
-            <div>
-              <h2>Saved</h2>
-              <p>Kept in this browser. A Pro key does not upload them.</p>
-            </div>
-            <button id="clear-saved-btn" class="linkish" type="button">Clear saved</button>
-          </div>
-          <div id="saved-grid" class="masonry-grid"></div>
+          <h2>Saved</h2>
+          <p>Kept in this browser. A Pro key does not upload them.</p>
         </div>
-        <div class="panel">
-          <h3>Blocked tags</h3>
-          <p>Posts with these tags stay out of the feed. One tag per line.</p>
-          <textarea id="blacklist-textarea" aria-label="Blocked tags"></textarea>
-          <button id="save-blacklist-btn" class="btn btn-primary btn-block" type="button">Save blocklist</button>
-        </div>
+        <button id="clear-saved-btn" class="linkish" type="button">Clear saved</button>
+      </div>
+      <div id="saved-grid" class="masonry-grid"></div>
+    </section>
+
+    <section id="tab-settings" class="hidden">
+      <div class="panel">
+        <h2>Blocked tags</h2>
+        <p>Posts with these tags stay out of the feed. One tag per line.</p>
+        <textarea id="blacklist-textarea" aria-label="Blocked tags"></textarea>
+        <button id="save-blacklist-btn" class="btn btn-primary btn-block" type="button">Save blocklist</button>
       </div>
     </section>
   </main>
@@ -275,12 +339,21 @@
     </div>
   </div>
 
+  <div id="tag-sheet" class="sheet sheet-bottom hidden" onclick="if (event.target === this) closeTagSheet()">
+    <div class="sheet-panel" role="dialog" aria-labelledby="tag-sheet-title">
+      <header class="sheet-head">
+        <h2 id="tag-sheet-title">Tags</h2>
+        <button class="x" type="button" aria-label="Close tags" onclick="closeTagSheet()"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-close"/></svg></button>
+      </header>
+      <div id="tag-sheet-body"></div>
+    </div>
+  </div>
+
   <nav class="tabbar" aria-label="Mobile">
-    <button class="mob-nav-btn is-on" type="button" data-mob="gallery" onclick="switchTab('gallery')"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-grid"/></svg><span>Feed</span></button>
-    <button class="mob-nav-btn" type="button" data-mob="search" onclick="openFilterDrawer()"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-sliders"/></svg><span>Filters</span></button>
-    <button class="mob-nav-btn" type="button" data-mob="reels" onclick="switchTab('reels')"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-reels"/></svg><span>Reels</span></button>
+    <button class="mob-nav-btn is-on" type="button" data-mob="home" onclick="switchTab('home')"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-home"/></svg><span>Home</span></button>
+    <button class="mob-nav-btn" type="button" data-mob="reels" onclick="switchTab('reels')"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-reels"/></svg><span>Posts</span></button>
+    <button class="mob-nav-btn" type="button" data-mob="gallery" onclick="switchTab('gallery')"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-grid"/></svg><span>Grid</span></button>
     <button class="mob-nav-btn" type="button" data-mob="saved" onclick="switchTab('saved')"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-bookmark"/></svg><span>Saved</span></button>
-    <button class="mob-nav-btn" type="button" data-mob="pro" onclick="openProModal()"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-spark"/></svg><span>Pro</span></button>
   </nav>
 
   <div id="toast" class="toast hidden" role="status"></div>
