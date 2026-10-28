@@ -1,448 +1,264 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>R34Hub.app — Unified Booru Feed & Reels Engine</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          colors: {
-            bg: '#09090B',
-            surface: '#121215',
-            surface2: '#18181C',
-            surface3: '#222228',
-            border: 'rgba(255,255,255,0.07)',
-            accent: '#6366F1'
-          }
-        }
-      }
-    }
-  </script>
-  <style>
-    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-    body {
-      background-color: #09090B;
-      color: #F4F4F5;
-      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
-      overflow-x: hidden;
-    }
-    .subtle-border { border-color: rgba(255, 255, 255, 0.07); }
-    .masonry-grid {
-      column-count: 1;
-      column-gap: 14px;
-    }
-    @media (min-width: 560px) { .masonry-grid { column-count: 2; } }
-    @media (min-width: 1024px) { .masonry-grid { column-count: 3; } }
-    @media (min-width: 1360px) { .masonry-grid { column-count: 4; } }
-    .masonry-item {
-      break-inside: avoid;
-      margin-bottom: 14px;
-    }
-    .no-scrollbar::-webkit-scrollbar { display: none; }
-    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-    .reels-container {
-      height: calc(100vh - 120px);
-      scroll-snap-type: y mandatory;
-      overflow-y: scroll;
-    }
-    .reels-slide {
-      height: calc(100vh - 120px);
-      scroll-snap-align: start;
-      scroll-snap-stop: always;
-    }
-  </style>
+  <meta name="theme-color" content="#0c0c0f" />
+  <title>R34Hub — Search every board in one feed</title>
+  <link rel="stylesheet" href="/app.css" />
 </head>
-<body class="min-h-screen flex flex-col pb-16 md:pb-0 selection:bg-indigo-500 selection:text-white">
+<body>
+  <div class="sticky-stack">
+    <header class="topbar">
+      <a class="brand" href="/" onclick="event.preventDefault(); switchTab('gallery')">
+        <span class="mark">R34</span>
+        <span class="brand-name">R34Hub <span>.app</span></span>
+      </a>
 
-  <!-- TOP DESKTOP LEADERBOARD AD ZONE (Auto-hidden when Pro is active) -->
-  <div id="top-ad-banner" class="bg-[#0D0D10] border-b subtle-border py-1.5 px-4 text-[11px] text-zinc-400">
-    <div class="max-w-[1600px] mx-auto flex items-center justify-between gap-3">
-      <div class="flex items-center gap-2 truncate">
-        <span class="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 font-mono text-[10px]">AD • ZONE 5489210</span>
-        <span class="text-zinc-300 font-medium truncate">Interactive AI Character Studio — Turn any Booru tag into a live voice & video companion</span>
+      <form class="search" role="search" onsubmit="return false">
+        <input id="tag-search-input" type="search" enterkeyhint="search" autocomplete="off" placeholder="Search tags. Example: blue_archive -ai_generated" aria-label="Search tags" />
+        <button id="clear-search-btn" class="btn btn-tiny btn-ghost hidden" type="button">Clear</button>
+        <button id="run-search-btn" class="btn btn-tiny btn-primary" type="button">Search</button>
+        <div id="tag-autocomplete" class="suggest hidden"></div>
+      </form>
+
+      <nav class="desktop-tabs seg" aria-label="Sections">
+        <button class="nav-tab is-on" type="button" data-tab="gallery">Feed</button>
+        <button class="nav-tab" type="button" data-tab="reels">Reels</button>
+        <button class="nav-tab" type="button" data-tab="saved">Saved <span id="saved-count-badge" class="count">0</span></button>
+      </nav>
+
+      <button id="pro-cta-btn" class="btn btn-pro" type="button" onclick="openProModal()">
+        <span id="pro-cta-text">Pro · €4.97</span>
+      </button>
+      <a class="admin-link" href="/admin">Admin</a>
+    </header>
+
+    <section id="controls-bar" class="controls">
+      <div class="control-row">
+        <span class="row-label">Rating</span>
+        <div class="seg" role="group" aria-label="Rating">
+          <button class="rating-btn is-on" type="button" data-rating="s">Safe</button>
+          <button class="rating-btn" type="button" data-rating="q">Questionable</button>
+          <button class="rating-btn" type="button" data-rating="e">Explicit</button>
+          <button class="rating-btn" type="button" data-rating="all">All</button>
+        </div>
+        <span class="row-label">Sort</span>
+        <div class="seg" role="group" aria-label="Sort">
+          <button class="sort-btn is-on" type="button" data-sort="score">Popular</button>
+          <button class="sort-btn" type="button" data-sort="latest">New</button>
+          <button class="sort-btn" type="button" data-sort="video">Video</button>
+          <button class="sort-btn" type="button" data-sort="no_ai">No AI</button>
+        </div>
+        <button id="open-filter-drawer-btn" class="btn btn-ghost btn-tiny" type="button">
+          Filters <span id="active-filter-count" class="count">0</span>
+        </button>
       </div>
-      <div class="flex items-center gap-2 shrink-0">
-        <button onclick="triggerAdClick('top_banner','candy_ai','header','anime')" class="px-2.5 py-0.5 rounded bg-indigo-600/90 hover:bg-indigo-500 text-white font-semibold">Try AI Companion →</button>
-        <button onclick="openProModal()" class="text-zinc-500 hover:text-zinc-300">Hide Ads (Pro)</button>
+      <div class="control-row">
+        <span class="row-label">Boards</span>
+        <div id="source-pills" class="board-scroller"></div>
+      </div>
+      <div id="active-tag-pills" class="tag-row"></div>
+    </section>
+  </div>
+
+  <div id="top-ad-banner" class="adbar">
+    <div class="adbar-inner">
+      <p><strong>Sponsored.</strong> Turn a character tag into a chat companion.</p>
+      <div class="ad-actions">
+        <button class="btn btn-tiny btn-primary" type="button" onclick="triggerAdClick('top_banner','candy_ai','header','anime')">Try it</button>
+        <button class="btn btn-tiny btn-ghost" type="button" onclick="openProModal()">Remove ads</button>
       </div>
     </div>
   </div>
 
-  <!-- STICKY UNIFIED HEADER -->
-  <header class="sticky top-0 z-40 backdrop-blur-xl bg-[#09090B]/90 border-b subtle-border">
-    <div class="max-w-[1600px] mx-auto px-4 h-14 flex items-center justify-between gap-3">
-      <!-- Left: Brand + Live URL State Pill -->
-      <div class="flex items-center gap-3 min-w-0">
-        <a href="/" onclick="event.preventDefault(); switchTab('gallery')" class="flex items-center gap-2.5 shrink-0">
-          <div class="w-8 h-8 rounded-lg bg-[#18181C] border subtle-border flex items-center justify-center font-bold text-sm text-white tracking-tight">
-            R34
-          </div>
-          <div class="flex items-baseline gap-1">
-            <span class="font-bold text-base tracking-tight text-white">R34Hub</span>
-            <span class="text-xs font-mono text-zinc-400">.app</span>
-          </div>
-        </a>
-
-        <!-- Live In-Place Route Pill (Figma Screen 03 spec) -->
-        <div class="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#121215] border subtle-border text-[11px] font-mono text-zinc-400 truncate max-w-md">
-          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0"></span>
-          <span id="live-route-indicator" class="truncate">r34hub.app/posts/all?filter[sort]=score</span>
+  <main class="wrap">
+    <section id="tab-gallery">
+      <div class="feed-meta">
+        <div>
+          <span id="feed-status-badge" class="meta-badge">All boards</span>
+          <span id="feed-summary-text">Loading posts…</span>
         </div>
+        <button id="batch-download-btn" class="btn btn-ghost btn-tiny" type="button">Download page</button>
       </div>
-
-      <!-- Center: Desktop Mode Switcher -->
-      <nav class="hidden md:flex items-center bg-[#121215] p-1 rounded-xl border subtle-border">
-        <button data-tab="gallery" class="nav-tab px-3 py-1 rounded-lg text-xs font-medium transition bg-[#222228] text-white">
-          Feed
-        </button>
-        <button data-tab="reels" class="nav-tab px-3 py-1 rounded-lg text-xs font-medium transition text-zinc-400 hover:text-white flex items-center gap-1">
-          <span>Reels</span>
-          <span class="text-[10px] px-1 rounded bg-indigo-500/20 text-indigo-300">60fps</span>
-        </button>
-        <button data-tab="saved" class="nav-tab px-3 py-1 rounded-lg text-xs font-medium transition text-zinc-400 hover:text-white flex items-center gap-1">
-          <span>Saved</span>
-          <span id="saved-count-badge" class="px-1.5 py-0.2 text-[10px] rounded bg-zinc-800 text-zinc-300">0</span>
-        </button>
-      </nav>
-
-      <!-- Right: Filter Drawer Button + Pro VIP + Admin Link -->
-      <div class="flex items-center gap-2 shrink-0">
-        <span id="api-latency-text" class="hidden xl:inline-block text-[11px] font-mono text-zinc-500">Ready</span>
-
-        <button id="open-filter-drawer-btn" class="px-3 py-1.5 rounded-lg bg-[#121215] hover:bg-[#18181C] border subtle-border text-xs font-medium text-zinc-200 flex items-center gap-1.5 transition">
-          <span>⚡ Filters</span>
-          <span id="active-filter-count" class="px-1.5 py-0.2 rounded bg-zinc-800 text-[10px] text-zinc-300 font-mono">0</span>
-        </button>
-
-        <button id="pro-cta-btn" onclick="openProModal()" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition flex items-center gap-1.5">
-          <span id="pro-cta-text">Pro VIP • €4.97</span>
-        </button>
-
-        <a href="/admin" class="hidden sm:inline-flex px-2.5 py-1.5 rounded-lg bg-[#121215] hover:bg-[#18181C] border subtle-border text-xs text-zinc-400 hover:text-white transition" title="Owner Control Center">
-          Admin
-        </a>
+      <div id="masonry-feed" class="masonry-grid" aria-live="polite">
+        <div class="masonry-item skel"></div>
+        <div class="masonry-item skel"></div>
+        <div class="masonry-item skel"></div>
+        <div class="masonry-item skel"></div>
+        <div class="masonry-item skel"></div>
+        <div class="masonry-item skel"></div>
       </div>
-    </div>
-  </header>
-
-  <!-- STICKY IN-PLACE FEED TOOLBAR -->
-  <section id="controls-bar" class="bg-[#0D0D10]/95 border-b subtle-border backdrop-blur-md z-30">
-    <div class="max-w-[1600px] mx-auto px-4 py-2.5 space-y-2">
-      <!-- Row 1: Search Input + Sort + Rating + No-AI Toggle -->
-      <div class="flex flex-wrap items-center gap-2">
-        <div class="relative flex-1 min-w-[220px]">
-          <div class="flex items-center bg-[#121215] border subtle-border rounded-lg px-3 py-1.5 focus-within:border-indigo-500/70 transition">
-            <span class="text-zinc-500 text-xs mr-2">⌕</span>
-            <input
-              id="tag-search-input"
-              type="text"
-              placeholder="Filter tags in-place (e.g. genshin_impact -ai_generated)..."
-              class="w-full bg-transparent text-xs text-white placeholder-zinc-500 focus:outline-none"
-              autocomplete="off"
-            />
-            <button id="clear-search-btn" class="hidden text-xs text-zinc-500 hover:text-white px-1.5">✕</button>
-            <button id="run-search-btn" class="ml-1.5 px-2.5 py-1 rounded bg-[#222228] hover:bg-zinc-700 text-[11px] font-medium text-zinc-200 transition">
-              Apply
-            </button>
-          </div>
-          <div id="tag-autocomplete" class="hidden absolute left-0 right-0 mt-1 bg-[#121215] border subtle-border rounded-xl shadow-2xl overflow-hidden z-50 max-h-72 overflow-y-auto"></div>
-        </div>
-
-        <!-- Rating Filter -->
-        <div class="flex items-center bg-[#121215] p-0.5 rounded-lg border subtle-border text-[11px]">
-          <button data-rating="s" class="rating-btn px-2.5 py-1 rounded-md font-medium bg-[#222228] text-white">Safe</button>
-          <button data-rating="q" class="rating-btn px-2.5 py-1 rounded-md font-medium text-zinc-400 hover:text-white">Questionable</button>
-          <button data-rating="e" class="rating-btn px-2.5 py-1 rounded-md font-medium text-zinc-400 hover:text-white">18+ Explicit</button>
-          <button data-rating="all" class="rating-btn px-2.5 py-1 rounded-md font-medium text-zinc-400 hover:text-white">All</button>
-        </div>
-
-        <!-- Sort Filter -->
-        <div class="flex items-center bg-[#121215] p-0.5 rounded-lg border subtle-border text-[11px]">
-          <button data-sort="score" class="sort-btn px-2.5 py-1 rounded-md font-medium bg-[#222228] text-white">Top Score</button>
-          <button data-sort="latest" class="sort-btn px-2.5 py-1 rounded-md font-medium text-zinc-400 hover:text-white">Latest</button>
-          <button data-sort="video" class="sort-btn px-2.5 py-1 rounded-md font-medium text-zinc-400 hover:text-white">Video/WebM</button>
-          <button data-sort="no_ai" class="sort-btn px-2.5 py-1 rounded-md font-medium text-zinc-400 hover:text-white">No AI</button>
-        </div>
-      </div>
-
-      <!-- Row 2: Booru Engine Pills + Active Split-Tag Pills (+ tag | ⊘) -->
-      <div class="flex items-center justify-between gap-3 overflow-x-auto no-scrollbar pt-0.5">
-        <div id="source-pills" class="flex items-center gap-1 shrink-0"></div>
-        <div id="active-tag-pills" class="flex items-center gap-1.5 shrink-0"></div>
-      </div>
-    </div>
-  </section>
-
-  <!-- MAIN CONTENT AREA -->
-  <main class="flex-1 max-w-[1600px] w-full mx-auto px-4 py-4">
-
-    <!-- TAB 1: IN-PLACE MASONRY FEED -->
-    <section id="tab-gallery" class="space-y-4">
-      <!-- Subtle Status Bar -->
-      <div class="flex flex-wrap items-center justify-between gap-2 bg-[#121215] border subtle-border rounded-xl px-3.5 py-2 text-xs">
-        <div class="flex items-center gap-2">
-          <span class="px-2 py-0.5 rounded bg-[#18181C] border subtle-border text-zinc-300 font-mono text-[11px]" id="feed-status-badge">posts/all</span>
-          <span class="text-zinc-400" id="feed-summary-text">Loading live Booru feed...</span>
-        </div>
-        <div class="flex items-center gap-3">
-          <label class="flex items-center gap-1.5 text-zinc-400 cursor-pointer text-[11px]">
-            <input type="checkbox" id="toggle-ads-preview" checked class="rounded bg-[#09090B] border-zinc-700 text-indigo-500 focus:ring-0" />
-            <span>Free Tier Ad Preview</span>
-          </label>
-          <button id="batch-download-btn" class="px-2.5 py-1 rounded-lg bg-[#18181C] hover:bg-[#222228] border subtle-border text-zinc-300 text-[11px] font-medium transition">
-            Batch ZIP (Pro)
-          </button>
-        </div>
-      </div>
-
-      <!-- Masonry Feed Grid -->
-      <div id="masonry-feed" class="masonry-grid"></div>
-
-      <!-- IntersectionObserver Infinite Scroll Sentinel -->
-      <div id="infinite-scroll-sentinel" class="py-8 flex flex-col items-center justify-center gap-2 text-xs text-zinc-500">
-        <div class="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#121215] border subtle-border">
-          <span id="scroll-spinner" class="w-2 h-2 rounded-full bg-indigo-400 animate-ping"></span>
-          <span id="scroll-status-text">Auto-loading next 24 posts on scroll...</span>
-        </div>
-        <button id="manual-load-more-btn" class="text-[11px] text-zinc-400 hover:text-white underline">
-          Load more manually →
-        </button>
+      <div id="infinite-scroll-sentinel" class="more">
+        <span id="scroll-spinner" class="dot is-on"></span>
+        <span id="scroll-status-text">Scroll to load more</span>
+        <button id="manual-load-more-btn" class="linkish" type="button">Load more</button>
       </div>
     </section>
 
-    <!-- TAB 2: 60FPS FULLSCREEN VERTICAL REELS -->
     <section id="tab-reels" class="hidden">
-      <div class="max-w-md mx-auto">
-        <div class="flex items-center justify-between mb-2 text-xs text-zinc-400 px-1">
-          <span>Swipe Reels Mode (Scroll or ↑ / ↓ Keys)</span>
-          <span id="reels-counter" class="text-zinc-200 font-mono">1 / 24</span>
+      <div class="reels-wrap">
+        <div class="reels-head">
+          <span>Scroll, or use the arrow keys</span>
+          <span id="reels-counter">1 / 1</span>
         </div>
-        <div id="reels-feed" class="reels-container rounded-2xl border subtle-border bg-black shadow-2xl no-scrollbar"></div>
+        <div id="reels-feed" class="reels-container"></div>
       </div>
     </section>
 
-    <!-- TAB 3: SAVED FAVORITES & TAG BLACKLIST -->
-    <section id="tab-saved" class="hidden space-y-6">
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div class="lg:col-span-2 space-y-4">
-          <div class="flex items-center justify-between bg-[#121215] border subtle-border rounded-xl p-4">
+    <section id="tab-saved" class="hidden">
+      <div class="saved-layout">
+        <div>
+          <div class="panel panel-head">
             <div>
-              <h2 class="text-sm font-semibold text-white">Saved Cloud Favorites</h2>
-              <p class="text-xs text-zinc-400">Synced locally and via Pro License Key.</p>
+              <h2>Saved</h2>
+              <p>Kept in this browser. A Pro key does not upload them.</p>
             </div>
-            <button id="clear-saved-btn" class="text-xs text-rose-400 hover:underline">Clear All</button>
+            <button id="clear-saved-btn" class="linkish" type="button">Clear saved</button>
           </div>
           <div id="saved-grid" class="masonry-grid"></div>
         </div>
-        <div class="space-y-4">
-          <div class="bg-[#121215] border subtle-border rounded-xl p-4 space-y-3">
-            <div class="flex items-center justify-between">
-              <h3 class="text-xs font-semibold text-white uppercase tracking-wider">Tag Blocklist (Excluded Tags)</h3>
-              <span class="px-2 py-0.5 text-[10px] rounded bg-indigo-500/15 text-indigo-300 font-medium">Active</span>
-            </div>
-            <p class="text-xs text-zinc-400">Any post containing these tags is filtered out in real time. Clicking ⊘ on any tag also adds it here.</p>
-            <textarea id="blacklist-textarea" rows="5" class="w-full bg-[#09090B] border subtle-border rounded-lg p-2.5 text-xs text-white font-mono focus:outline-none focus:border-indigo-500"></textarea>
-            <button id="save-blacklist-btn" class="w-full py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white transition">
-              Update Blocklist In-Place
-            </button>
-          </div>
+        <div class="panel">
+          <h3>Blocked tags</h3>
+          <p>Posts with these tags stay out of the feed. One tag per line.</p>
+          <textarea id="blacklist-textarea" aria-label="Blocked tags"></textarea>
+          <button id="save-blacklist-btn" class="btn btn-primary btn-block" type="button">Save blocklist</button>
         </div>
       </div>
     </section>
   </main>
 
-  <!-- SLIDE-OVER IN-PLACE FILTER & SEARCH DRAWER (Desktop Right / Mobile Bottom Sheet) -->
-  <div id="filter-drawer-backdrop" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex justify-end items-end sm:items-stretch">
-    <div class="bg-[#121215] border-t sm:border-t-0 sm:border-l subtle-border w-full sm:max-w-md rounded-t-2xl sm:rounded-none p-5 flex flex-col justify-between max-h-[88vh] sm:max-h-full overflow-y-auto">
-      <div class="space-y-5">
-        <div class="flex items-center justify-between border-b subtle-border pb-3">
-          <div>
-            <h3 class="text-sm font-bold text-white">In-Place Search & Filter Sheet</h3>
-            <p class="text-[11px] text-zinc-400">Updates <code class="text-zinc-300">/posts</code> feed without page reload</p>
-          </div>
-          <button id="close-filter-drawer-btn" class="w-7 h-7 rounded-lg bg-[#18181C] text-zinc-400 hover:text-white text-xs">✕</button>
-        </div>
-
-        <!-- Quick Tag Include / Exclude Builder -->
-        <div class="space-y-2">
-          <label class="text-xs font-semibold text-zinc-300">Quick Include (+) or Exclude (⊘) Tags</label>
-          <div id="drawer-trending-tags" class="flex flex-wrap gap-1.5"></div>
-        </div>
-
-        <!-- Booru Engine Selector -->
-        <div class="space-y-2">
-          <label class="text-xs font-semibold text-zinc-300">Booru Source Engine</label>
-          <div id="drawer-source-list" class="grid grid-cols-2 gap-1.5 text-xs"></div>
-        </div>
-
-        <!-- Sort & AI Filter -->
-        <div class="space-y-2">
-          <label class="text-xs font-semibold text-zinc-300">Sort Order (`filter[sort]`)</label>
-          <div class="grid grid-cols-2 gap-1.5 text-xs">
-            <button onclick="setSortInPlace('score')" class="py-2 px-3 rounded-lg bg-[#18181C] hover:bg-[#222228] border subtle-border text-left text-zinc-200">★ Top Score</button>
-            <button onclick="setSortInPlace('latest')" class="py-2 px-3 rounded-lg bg-[#18181C] hover:bg-[#222228] border subtle-border text-left text-zinc-200">⚡ Newest First</button>
-            <button onclick="setSortInPlace('video')" class="py-2 px-3 rounded-lg bg-[#18181C] hover:bg-[#222228] border subtle-border text-left text-zinc-200">🎬 Video / WebM Only</button>
-            <button onclick="setSortInPlace('no_ai')" class="py-2 px-3 rounded-lg bg-[#18181C] hover:bg-[#222228] border subtle-border text-left text-zinc-200">🚫 Hide AI Generated</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="pt-4 border-t subtle-border mt-6 flex items-center gap-2">
-        <button onclick="resetAllFilters()" class="px-3 py-2.5 rounded-lg bg-[#18181C] hover:bg-[#222228] text-xs font-medium text-zinc-300">
-          Reset
-        </button>
-        <button id="apply-drawer-btn" class="flex-1 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white">
-          Update Feed In-Place (No Reload) →
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- POST LIGHTBOX MODAL -->
-  <div id="post-modal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
-    <div class="bg-[#121215] border subtle-border rounded-2xl max-w-5xl w-full max-h-[92vh] overflow-hidden grid grid-cols-1 lg:grid-cols-3 shadow-2xl">
-      <div class="lg:col-span-2 bg-black flex items-center justify-center relative min-h-[320px] max-h-[82vh] overflow-hidden" id="modal-media-container"></div>
-      <div class="p-4 sm:p-5 flex flex-col justify-between overflow-y-auto max-h-[85vh] space-y-4">
-        <div class="space-y-4">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <span id="modal-source-badge" class="px-2.5 py-1 rounded-md bg-[#18181C] border subtle-border text-zinc-200 text-xs font-semibold">Danbooru</span>
-              <span id="modal-score-badge" class="px-2 py-1 rounded-md bg-[#18181C] text-zinc-300 text-xs font-mono">★ 120</span>
-            </div>
-            <button id="close-post-modal" class="w-7 h-7 rounded-lg bg-[#18181C] text-zinc-400 hover:text-white text-xs">✕</button>
-          </div>
-
-          <div class="grid grid-cols-2 gap-2">
-            <button id="modal-save-btn" class="py-2 px-3 rounded-lg bg-[#18181C] hover:bg-[#222228] border subtle-border text-xs font-medium text-white">
-              ☆ Save Favorite
-            </button>
-            <a id="modal-download-btn" href="#" target="_blank" download class="py-2 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white text-center">
-              ↓ HD Download
-            </a>
-          </div>
-
-          <!-- PostChatWithAi CPA Box -->
-          <div class="p-3 rounded-xl bg-[#18181C] border subtle-border space-y-2">
-            <div class="flex items-center justify-between text-[10px] font-mono text-zinc-400 uppercase">
-              <span>AI Companion & Video Studio</span>
-              <span>Partner</span>
-            </div>
-            <div class="grid grid-cols-2 gap-2">
-              <button id="modal-ai-chat-btn" class="py-1.5 px-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-[11px] font-semibold text-white">
-                💬 Chat with AI
-              </button>
-              <button id="modal-ai-video-btn" class="py-1.5 px-2.5 rounded-lg bg-[#222228] hover:bg-zinc-700 border subtle-border text-[11px] font-semibold text-zinc-200">
-                🎥 AI Video
-              </button>
-            </div>
-          </div>
-
-          <div class="space-y-1.5">
-            <div class="text-[11px] font-semibold text-zinc-400">Reverse Source Lookup</div>
-            <div id="modal-source-links" class="flex flex-wrap gap-1.5 text-[11px]"></div>
-          </div>
-
-          <div class="space-y-1.5">
-            <div class="text-[11px] font-semibold text-zinc-400">Categorized Tags (+ Include / ⊘ Exclude)</div>
-            <div id="modal-tags-list" class="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto pr-1"></div>
-          </div>
-        </div>
-
-        <div class="pt-3 border-t subtle-border flex items-center justify-between text-[11px] text-zinc-500">
-          <span id="modal-dimensions">1920 × 1080</span>
-          <a id="modal-original-url" href="#" target="_blank" class="text-indigo-400 hover:underline">Original Post ↗</a>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- R34HUB PRO VIP & LICENSE KEY MODAL -->
-  <div id="pro-modal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
-    <div class="bg-[#121215] border subtle-border rounded-2xl max-w-2xl w-full overflow-hidden shadow-2xl">
-      <div class="p-5 bg-[#18181C] border-b subtle-border flex items-center justify-between">
+  <div id="filter-drawer-backdrop" class="drawer-back hidden" onclick="if (event.target === this) closeFilterDrawer()">
+    <div class="drawer" role="dialog" aria-labelledby="filter-title">
+      <header>
         <div>
-          <span class="px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 text-[10px] font-mono uppercase">R34Hub Pro VIP • HubCloud.dev Billing</span>
-          <h2 class="text-lg font-bold text-white mt-1">Unlock Ad-Free Feed, All 11 Boorus & Batch Downloads</h2>
+          <h2 id="filter-title">Filters</h2>
+          <p>The feed updates as soon as you pick a board or a tag.</p>
         </div>
-        <button id="close-pro-modal" class="w-7 h-7 rounded-lg bg-[#222228] text-zinc-400 hover:text-white text-xs">✕</button>
+        <button id="close-filter-drawer-btn" class="x" type="button" aria-label="Close">✕</button>
+      </header>
+      <div>
+        <div class="kicker">Quick tags</div>
+        <div id="drawer-trending-tags" class="tag-row" style="margin-top:8px"></div>
       </div>
+      <div>
+        <div class="kicker">Boards</div>
+        <div id="drawer-source-list" class="choice-grid" style="margin-top:8px"></div>
+      </div>
+      <div>
+        <div class="kicker">Sort</div>
+        <div class="choice-grid" style="margin-top:8px">
+          <button class="choice sort-btn is-on" type="button" data-sort="score" onclick="setSortInPlace('score')">Popular</button>
+          <button class="choice sort-btn" type="button" data-sort="latest" onclick="setSortInPlace('latest')">New</button>
+          <button class="choice sort-btn" type="button" data-sort="video" onclick="setSortInPlace('video')">Video</button>
+          <button class="choice sort-btn" type="button" data-sort="no_ai" onclick="setSortInPlace('no_ai')">No AI</button>
+        </div>
+      </div>
+      <label class="check">
+        <input id="toggle-ads-preview" type="checkbox" checked />
+        Show sponsored cards
+      </label>
+      <footer>
+        <button class="btn btn-ghost" type="button" onclick="resetAllFilters()">Reset</button>
+        <button id="apply-drawer-btn" class="btn btn-primary" type="button" style="flex:1">Done</button>
+      </footer>
+    </div>
+  </div>
 
-      <div class="p-5 space-y-5 max-h-[82vh] overflow-y-auto">
-        <!-- Pricing Cards -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div data-plan="monthly" class="plan-card cursor-pointer p-3.5 rounded-xl bg-[#09090B] border subtle-border hover:border-indigo-500/60 transition">
-            <div class="text-xs font-medium text-zinc-400">Monthly Pro</div>
-            <div class="text-xl font-bold text-white mt-1">€7.00<span class="text-xs font-normal text-zinc-500">/mo</span></div>
-            <div class="text-[11px] text-zinc-500 mt-1">Stripe EUR via HubCloud.dev</div>
+  <div id="post-modal" class="modal-back hidden" onclick="if (event.target === this) closePostModal()">
+    <div class="modal" role="dialog" aria-label="Post">
+      <div id="modal-media-container" class="modal-stage"></div>
+      <div class="modal-side">
+        <header>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <span id="modal-source-badge" class="meta-badge">Board</span>
+            <span id="modal-score-badge" class="meta-badge">Score 0</span>
           </div>
-          <div data-plan="annual" class="plan-card cursor-pointer p-3.5 rounded-xl bg-[#18181C] border border-indigo-500 transition relative">
-            <span class="absolute -top-2 right-2.5 px-1.5 py-0.5 rounded bg-indigo-600 text-[9px] font-bold text-white">SAVE 29%</span>
-            <div class="text-xs font-medium text-indigo-300">Yearly Pro</div>
-            <div class="text-xl font-bold text-white mt-1">€4.97<span class="text-xs font-normal text-zinc-400">/mo</span></div>
-            <div class="text-[11px] text-zinc-400 mt-1">€59.99/yr • 5 Devices</div>
-          </div>
-          <div data-plan="lifetime" class="plan-card cursor-pointer p-3.5 rounded-xl bg-[#09090B] border subtle-border hover:border-indigo-500/60 transition">
-            <div class="text-xs font-medium text-emerald-400">Lifetime VIP</div>
-            <div class="text-xl font-bold text-white mt-1">€199.99</div>
-            <div class="text-[11px] text-zinc-500 mt-1">One-Time or Crypto (-20%)</div>
+          <button id="close-post-modal" class="x" type="button" aria-label="Close">✕</button>
+        </header>
+        <div class="pair">
+          <button id="modal-save-btn" class="btn btn-ghost" type="button" style="flex:1">Save</button>
+          <a id="modal-download-btn" class="btn btn-primary" href="#" download style="flex:1;text-align:center">Download</a>
+        </div>
+        <div class="panel" style="padding:12px">
+          <div class="kicker">AI tools</div>
+          <div class="pair" style="margin-top:8px">
+            <button id="modal-ai-chat-btn" class="btn btn-primary btn-tiny" type="button" style="flex:1">Chat</button>
+            <button id="modal-ai-video-btn" class="btn btn-ghost btn-tiny" type="button" style="flex:1">Animate</button>
           </div>
         </div>
-
-        <!-- Instant License Key Activation Box -->
-        <div class="p-4 rounded-xl bg-[#09090B] border subtle-border space-y-2.5">
-          <div class="flex items-center justify-between text-xs">
-            <span class="font-semibold text-zinc-200">Activate License Key (<code class="text-indigo-400">SHOP2-</code>, <code class="text-indigo-400">PATREON-</code>, <code class="text-indigo-400">SLX-</code>)</span>
-            <button onclick="document.getElementById('license-input').value='SHOP2-OWNER-VIP-9F4A-8821'" class="text-[11px] text-indigo-400 hover:underline">Fill Owner VIP Key</button>
-          </div>
-          <div class="flex gap-2">
-            <input id="license-input" type="text" placeholder="Enter SHOP2-XXXX-XXXX-XXXX key..." class="flex-1 bg-[#121215] border subtle-border rounded-lg px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-indigo-500" />
-            <button id="verify-license-btn" class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white shrink-0">
-              Activate Key
-            </button>
-          </div>
+        <div>
+          <div class="kicker">Find the artist</div>
+          <div id="modal-source-links" class="tag-row" style="margin-top:8px"></div>
         </div>
+        <div>
+          <div class="kicker">Tags</div>
+          <div id="modal-tags-list" class="tag-row" style="margin-top:8px"></div>
+        </div>
+        <div class="panel-head fine">
+          <span id="modal-dimensions"></span>
+          <a id="modal-original-url" href="#" target="_blank" rel="noopener">Original post</a>
+        </div>
+      </div>
+    </div>
+  </div>
 
-        <!-- Storefront Checkout Buttons -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-          <a href="/hubcloud" class="py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white text-center flex flex-col items-center justify-center">
-            <span>Open HubCloud.dev Storefront (EUR Card) →</span>
-            <span class="text-[10px] text-indigo-200 font-normal">Compliant SFW Billing Portal • Instant Key Delivery</span>
-          </a>
-          <button id="sim-crypto-checkout-btn" class="py-2.5 px-4 rounded-xl bg-[#18181C] hover:bg-[#222228] border subtle-border text-xs font-semibold text-zinc-200 flex flex-col items-center justify-center">
-            <span>Instant Crypto Checkout (XMR / USDT • -20%)</span>
-            <span class="text-[10px] text-zinc-400 font-normal">Mints SLX-XXXX-XXXX Key Immediately</span>
+  <div id="pro-modal" class="modal-back hidden" onclick="if (event.target === this) closeProModal()">
+    <div class="modal modal-narrow" role="dialog" aria-labelledby="pro-title">
+      <div class="pro-head">
+        <div>
+          <div class="kicker">R34Hub Pro</div>
+          <h2 id="pro-title">No ads, every board, page download</h2>
+          <p class="fine">Card checkout opens HubCloud. A key works on this device right away.</p>
+        </div>
+        <button id="close-pro-modal" class="x" type="button" aria-label="Close">✕</button>
+      </div>
+      <div class="pro-body stack">
+        <div class="plans">
+          <button class="plan" type="button" data-plan="monthly">
+            <span>Monthly</span>
+            <b>€7</b>
+            <small>per month</small>
+          </button>
+          <button class="plan is-on" type="button" data-plan="annual">
+            <span class="save-flag">Save 29%</span>
+            <span>Yearly</span>
+            <b>€4.97</b>
+            <small>€59.99 / year</small>
+          </button>
+          <button class="plan" type="button" data-plan="lifetime">
+            <span>Lifetime</span>
+            <b>€199.99</b>
+            <small>once, or crypto</small>
           </button>
         </div>
+        <div class="panel stack">
+          <div class="panel-head">
+            <strong>Have a key?</strong>
+            <button class="linkish" type="button" onclick="document.getElementById('license-input').value='SHOP2-OWNER-VIP-9F4A-8821'">Insert owner key</button>
+          </div>
+          <div class="license">
+            <input id="license-input" class="field" type="text" placeholder="SHOP2-XXXX-XXXX-XXXX" aria-label="License key" />
+            <button id="verify-license-btn" class="btn btn-primary" type="button">Activate</button>
+          </div>
+        </div>
+        <div class="pair">
+          <a class="btn btn-primary" href="/hubcloud" style="flex:1;text-align:center">Pay by card</a>
+          <button id="sim-crypto-checkout-btn" class="btn btn-ghost" type="button" style="flex:1">Pay with crypto, −20%</button>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- MOBILE 5-TAB GLASS BOTTOM NAVIGATION BAR (iPhone 16 Pro Adaptive) -->
-  <nav class="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#09090B]/95 backdrop-blur-xl border-t subtle-border h-14 px-2 flex items-center justify-around text-[11px]">
-    <button onclick="switchTab('gallery')" class="mob-nav-btn flex flex-col items-center justify-center gap-0.5 text-white font-medium" data-mob="gallery">
-      <span>⊞</span><span>Feed</span>
-    </button>
-    <button onclick="openFilterDrawer()" class="mob-nav-btn flex flex-col items-center justify-center gap-0.5 text-zinc-400" data-mob="search">
-      <span>⌕</span><span>Filters</span>
-    </button>
-    <button onclick="switchTab('reels')" class="mob-nav-btn flex flex-col items-center justify-center gap-0.5 text-zinc-400" data-mob="reels">
-      <span>▶</span><span>Reels</span>
-    </button>
-    <button onclick="switchTab('saved')" class="mob-nav-btn flex flex-col items-center justify-center gap-0.5 text-zinc-400" data-mob="saved">
-      <span>★</span><span>Saved</span>
-    </button>
-    <button onclick="openProModal()" class="mob-nav-btn flex flex-col items-center justify-center gap-0.5 text-indigo-400 font-medium" data-mob="pro">
-      <span>👑</span><span>Pro VIP</span>
-    </button>
+  <nav class="tabbar" aria-label="Mobile">
+    <button class="mob-nav-btn is-on" type="button" data-mob="gallery" onclick="switchTab('gallery')"><span>Feed</span></button>
+    <button class="mob-nav-btn" type="button" data-mob="search" onclick="openFilterDrawer()"><span>Filters</span></button>
+    <button class="mob-nav-btn" type="button" data-mob="reels" onclick="switchTab('reels')"><span>Reels</span></button>
+    <button class="mob-nav-btn" type="button" data-mob="saved" onclick="switchTab('saved')"><span>Saved</span></button>
+    <button class="mob-nav-btn" type="button" data-mob="pro" onclick="openProModal()"><span>Pro</span></button>
   </nav>
 
-  <!-- TOAST -->
-  <div id="toast" class="fixed bottom-16 md:bottom-5 right-4 z-50 hidden px-4 py-2.5 rounded-xl bg-[#18181C] border subtle-border text-xs font-medium text-white shadow-2xl"></div>
-
+  <div id="toast" class="toast hidden" role="status"></div>
   <script src="/app.js"></script>
 </body>
 </html>

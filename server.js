@@ -3,6 +3,7 @@ const cors = require('cors');
 const compression = require('compression');
 const path = require('path');
 const crypto = require('crypto');
+const { Readable } = require('stream');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -10,7 +11,13 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(compression());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'), {
+  etag: true,
+  maxAge: '10m',
+  setHeaders(res, filePath) {
+    if (filePath.endsWith('.html')) res.setHeader('Cache-Control', 'no-cache');
+  }
+}));
 
 const USER_AGENT = 'BooruPulse/1.0 (https://boorupulse.app; contact@boorupulse.app)';
 
@@ -53,6 +60,56 @@ class SimpleCache {
 
 const postCache = new SimpleCache(5 * 60 * 1000); // 5 min
 const tagCache = new SimpleCache(10 * 60 * 1000); // 10 min
+
+// Small previews only. Full images stay on the upstream CDN.
+const MEDIA_CACHE_BYTES = 48 * 1024 * 1024;
+const MEDIA_CACHE_ITEM = 350 * 1024;
+const mediaCache = new Map();
+let mediaCacheBytes = 0;
+
+function takeMediaCache(url) {
+  const hit = mediaCache.get(url);
+  if (!hit) return null;
+  if (Date.now() > hit.expiresAt) {
+    mediaCache.delete(url);
+    mediaCacheBytes -= hit.buf.length;
+    return null;
+  }
+  mediaCache.delete(url);
+  mediaCache.set(url, hit);
+  return hit;
+}
+
+function putMediaCache(url, buf, contentType) {
+  if (!buf || buf.length === 0 || buf.length > MEDIA_CACHE_ITEM) return;
+  while (mediaCacheBytes + buf.length > MEDIA_CACHE_BYTES && mediaCache.size) {
+    const oldest = mediaCache.keys().next().value;
+    const old = mediaCache.get(oldest);
+    mediaCache.delete(oldest);
+    mediaCacheBytes -= old.buf.length;
+  }
+  mediaCache.set(url, {
+    buf,
+    contentType,
+    expiresAt: Date.now() + 6 * 60 * 60 * 1000
+  });
+  mediaCacheBytes += buf.length;
+}
+
+function isBlockedMediaHost(hostname) {
+  const host = String(hostname || '').toLowerCase().replace(/^\[|\]$/g, '');
+  if (!host || host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local')) return true;
+  if (host === '::1' || host === '0.0.0.0') return true;
+  const ipv4 = host.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
+  if (!ipv4) return false;
+  const a = Number(ipv4[1]);
+  const b = Number(ipv4[2]);
+  if (a === 10 || a === 127 || a === 0) return true;
+  if (a === 169 && b === 254) return true;
+  if (a === 192 && b === 168) return true;
+  if (a === 172 && b >= 16 && b <= 31) return true;
+  return false;
+}
 
 // Runtime Config & Monetization State
 const appConfig = {
@@ -354,7 +411,7 @@ function makeProxyUrl(url, refererDomain) {
   return `/api/media?url=${encodeURIComponent(url)}&referer=${encodeURIComponent('https://' + refererDomain + '/')}`;
 }
 
-async function fetchWithTimeout(url, options = {}, timeoutMs = 8000) {
+async function fetchWithTimeout(url, options = {}, timeoutMs = 6000) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -755,23 +812,27 @@ async function fetchFromSource(sourceId, params) {
     case 'paheal':
       return fetchPaheal(params);
     case 'rule34xxx': {
-      try {
-        return await fetchGelbooru02('rule34xxx', 'rule34.xxx', 'Rule34.xxx', params);
-      } catch (err) {
-        // Automatic seamless fallback to Paheal + XBooru when no rule34.xxx API key is configured
-        const [pahealPosts, xbooruPosts] = await Promise.allSettled([
-          fetchPaheal(params),
-          fetchGelbooru02('xbooru', 'xbooru.com', 'Rule34 Mirror (XBooru)', params)
-        ]);
-        const merged = [
-          ...(pahealPosts.status === 'fulfilled' ? pahealPosts.value : []),
-          ...(xbooruPosts.status === 'fulfilled' ? xbooruPosts.value : [])
-        ];
-        return merged.map(p => ({
-          ...p,
-          sourceName: `${p.sourceName} (R34 Pool)`
-        }));
+      const creds = appConfig.booruCredentials['rule34.xxx'];
+      const hasKey = Boolean(creds && creds.userId && creds.apiKey);
+      if (hasKey) {
+        try {
+          return await fetchGelbooru02('rule34xxx', 'rule34.xxx', 'Rule34.xxx', params);
+        } catch (err) {
+          // Fall through to the open mirrors.
+        }
       }
+      const [pahealPosts, xbooruPosts] = await Promise.allSettled([
+        fetchPaheal(params),
+        fetchGelbooru02('xbooru', 'xbooru.com', 'Rule34 Mirror (XBooru)', params)
+      ]);
+      const merged = [
+        ...(pahealPosts.status === 'fulfilled' ? pahealPosts.value : []),
+        ...(xbooruPosts.status === 'fulfilled' ? xbooruPosts.value : [])
+      ];
+      return merged.map(p => ({
+        ...p,
+        sourceName: `${p.sourceName} (R34 Pool)`
+      }));
     }
     default:
       return fetchDanbooru2('danbooru.donmai.us', params);
@@ -788,6 +849,48 @@ app.get('/api/sources', (req, res) => {
   });
 });
 
+function interleaveLists(lists) {
+  const posts = [];
+  const maxLen = lists.reduce((n, list) => Math.max(n, list.length), 0);
+  for (let i = 0; i < maxLen; i++) {
+    for (const list of lists) {
+      if (list[i]) posts.push(list[i]);
+    }
+  }
+  return posts;
+}
+
+function finalizePosts(posts, sort, limit) {
+  let next = posts;
+  if (sort === 'no_ai') {
+    next = next.filter(p => !p.tags.some(t => t.includes('ai_generated') || t === 'ai'));
+  }
+  if (sort === 'score' || sort === 'trending') {
+    next = next.slice().sort((a, b) => (b.score || 0) - (a.score || 0));
+  }
+  return next.slice(0, limit);
+}
+
+// One slow board must not hold the whole feed. Return what answered inside the budget.
+async function gatherSources(targetSources, params, budgetMs) {
+  const lists = targetSources.map(() => null);
+  const jobs = targetSources.map((sourceId, index) =>
+    fetchFromSource(sourceId, params)
+      .then(value => {
+        lists[index] = Array.isArray(value) ? value : [];
+      })
+      .catch(() => {
+        lists[index] = [];
+      })
+  );
+  const allDone = Promise.all(jobs);
+  const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+  await Promise.race([allDone, wait(budgetMs)]);
+  const readyPosts = lists.reduce((n, list) => n + (list ? list.length : 0), 0);
+  if (readyPosts < 8) await Promise.race([allDone, wait(1800)]);
+  return { lists, allDone };
+}
+
 // API: Unified Posts Aggregator
 app.get('/api/posts', async (req, res) => {
   const source = String(req.query.source || 'all');
@@ -800,6 +903,7 @@ app.get('/api/posts', async (req, res) => {
   const cacheKey = `posts:${source}:${tags}:${rating}:${sort}:${page}:${limit}`;
   const cached = postCache.get(cacheKey);
   if (cached) {
+    res.setHeader('Cache-Control', cached.partial ? 'no-store' : 'public, max-age=60, stale-while-revalidate=120');
     return res.json({
       ...cached,
       cached: true,
@@ -811,55 +915,57 @@ app.get('/api/posts', async (req, res) => {
   try {
     let posts = [];
     const sourceBreakdown = {};
+    let partial = false;
 
     if (source === 'all') {
-      // Choose fast multi-board mix based on rating & sort
-      let targetSources = ['danbooru', 'yandere', 'konachan', 'safebooru', 'e621'];
+      let targetSources = ['safebooru', 'danbooru', 'konachan', 'yandere', 'e621'];
       if (sort === 'video') {
         targetSources = ['sakugabooru', 'danbooru', 'e621', 'paheal'];
       } else if (rating === 'e' || rating === 'all') {
-        targetSources = ['danbooru', 'paheal', 'e621', 'yandere', 'xbooru'];
+        targetSources = ['danbooru', 'xbooru', 'e621', 'yandere', 'paheal'];
       }
 
-      const perSourceLimit = Math.ceil(limit / targetSources.length) + 4;
-      const results = await Promise.allSettled(
-        targetSources.map(s => fetchFromSource(s, { tags, rating, sort, page, limit: perSourceLimit }))
+      const perSourceLimit = Math.min(20, Math.max(8, Math.ceil(limit / 2)));
+      const gathered = await gatherSources(
+        targetSources,
+        { tags, rating, sort, page, limit: perSourceLimit },
+        2200
       );
-
-      const lists = [];
-      results.forEach((r, idx) => {
-        const sId = targetSources[idx];
-        if (r.status === 'fulfilled' && Array.isArray(r.value)) {
-          sourceBreakdown[sId] = r.value.length;
-          lists.push(r.value);
-        } else {
-          sourceBreakdown[sId] = 0;
-        }
+      const settled = gathered.lists.map(list => list || []);
+      settled.forEach((list, idx) => {
+        sourceBreakdown[targetSources[idx]] = list.length;
       });
-
-      // Round-robin interleave so every Booru is represented in the feed
-      const maxLen = Math.max(0, ...lists.map(l => l.length));
-      for (let i = 0; i < maxLen; i++) {
-        for (const list of lists) {
-          if (list[i]) posts.push(list[i]);
-        }
+      posts = interleaveLists(settled);
+      partial = gathered.lists.some(list => list === null);
+      if (partial) {
+        gathered.allDone.then(() => {
+          const fullLists = gathered.lists.map(list => list || []);
+          const fullPosts = finalizePosts(interleaveLists(fullLists), sort, limit);
+          if (!fullPosts.length) return;
+          const breakdown = {};
+          targetSources.forEach((id, idx) => {
+            breakdown[id] = fullLists[idx].length;
+          });
+          postCache.set(cacheKey, {
+            source,
+            tags,
+            rating,
+            sort,
+            page,
+            count: fullPosts.length,
+            tookMs: Date.now() - startTime,
+            sourceBreakdown: breakdown,
+            partial: false,
+            posts: fullPosts
+          });
+        }).catch(() => {});
       }
     } else {
       posts = await fetchFromSource(source, { tags, rating, sort, page, limit });
       sourceBreakdown[source] = posts.length;
     }
 
-    // Post-filter by no_ai if requested
-    if (sort === 'no_ai') {
-      posts = posts.filter(p => !p.tags.some(t => t.includes('ai_generated') || t === 'ai'));
-    }
-
-    // Sort by score if requested on aggregated feed
-    if (sort === 'score' || sort === 'trending') {
-      posts.sort((a, b) => (b.score || 0) - (a.score || 0));
-    }
-
-    posts = posts.slice(0, limit);
+    posts = finalizePosts(posts, sort, limit);
 
     const payload = {
       source,
@@ -870,13 +976,15 @@ app.get('/api/posts', async (req, res) => {
       count: posts.length,
       tookMs: Date.now() - startTime,
       sourceBreakdown,
+      partial,
       posts
     };
 
     if (posts.length > 0) {
-      postCache.set(cacheKey, payload);
+      postCache.set(cacheKey, payload, partial ? 12000 : undefined);
     }
 
+    res.setHeader('Cache-Control', partial ? 'no-store' : 'public, max-age=60, stale-while-revalidate=120');
     res.json({
       ...payload,
       cached: false,
@@ -958,51 +1066,79 @@ app.get('/api/tags', async (req, res) => {
   }
 });
 
-// API: Hotlink-Proof Streaming Media Proxy (Supports Images, GIFs, and Video Range Requests)
+// Streams upstream media. Small previews are cached; large files are not buffered first.
 app.get('/api/media', async (req, res) => {
   const targetUrl = String(req.query.url || '');
-  const referer = String(req.query.referer || '');
-  if (!targetUrl || !/^https?:\/\//i.test(targetUrl)) {
+  let parsedUrl;
+  try {
+    parsedUrl = new URL(targetUrl);
+  } catch (err) {
+    return res.status(400).send('Invalid media URL');
+  }
+  if (!/^https?:$/.test(parsedUrl.protocol) || isBlockedMediaHost(parsedUrl.hostname)) {
     return res.status(400).send('Invalid media URL');
   }
 
-  try {
-    const parsedUrl = new URL(targetUrl);
-    const headers = {
-      'User-Agent': USER_AGENT,
-      'Accept': '*/*'
-    };
-    if (referer) {
-      headers['Referer'] = referer;
-    } else {
-      headers['Referer'] = `${parsedUrl.protocol}//${parsedUrl.hostname}/`;
+  if (!req.headers.range) {
+    const hit = takeMediaCache(targetUrl);
+    if (hit) {
+      res.setHeader('Content-Type', hit.contentType);
+      res.setHeader('Content-Length', String(hit.buf.length));
+      res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      return res.status(200).end(hit.buf);
     }
-    if (req.headers.range) {
-      headers['Range'] = req.headers.range;
-    }
+  }
 
-    const upstream = await fetchWithTimeout(targetUrl, { headers }, 15000);
+  const referer = String(req.query.referer || `${parsedUrl.protocol}//${parsedUrl.hostname}/`);
+  const headers = {
+    'User-Agent': USER_AGENT,
+    'Accept': 'image/avif,image/webp,image/*,*/*;q=0.8',
+    'Referer': referer
+  };
+  if (req.headers.range) headers.Range = req.headers.range;
+
+  try {
+    const upstream = await fetchWithTimeout(targetUrl, { headers }, 12000);
     if (!upstream.ok && upstream.status !== 206) {
       return res.redirect(targetUrl);
     }
 
-    const contentType = upstream.headers.get('content-type') || 'image/jpeg';
-    res.setHeader('Content-Type', contentType);
-    res.setHeader('Cache-Control', 'public, max-age=86400');
-    res.setHeader('Access-Control-Allow-Origin', '*');
-
-    const contentLength = upstream.headers.get('content-length');
-    if (contentLength) res.setHeader('Content-Length', contentLength);
-    const contentRange = upstream.headers.get('content-range');
-    if (contentRange) res.setHeader('Content-Range', contentRange);
-    const acceptRanges = upstream.headers.get('accept-ranges');
-    if (acceptRanges) res.setHeader('Accept-Ranges', acceptRanges);
+    const contentType = upstream.headers.get('content-type') || 'application/octet-stream';
+    if (contentType.includes('text/html')) return res.redirect(targetUrl);
 
     res.status(upstream.status);
-    const arrayBuffer = await upstream.arrayBuffer();
-    res.send(Buffer.from(arrayBuffer));
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    const contentRange = upstream.headers.get('content-range');
+    if (contentRange) res.setHeader('Content-Range', contentRange);
+    res.setHeader('Accept-Ranges', upstream.headers.get('accept-ranges') || 'bytes');
+
+    const len = Number(upstream.headers.get('content-length') || 0);
+    const cacheable = !req.headers.range && upstream.status === 200 && len > 0 && len <= MEDIA_CACHE_ITEM && /^image\//.test(contentType);
+    if (cacheable) {
+      const buf = Buffer.from(await upstream.arrayBuffer());
+      putMediaCache(targetUrl, buf, contentType);
+      res.setHeader('Content-Length', String(buf.length));
+      return res.end(buf);
+    }
+
+    if (len) res.setHeader('Content-Length', String(len));
+    if (upstream.body && typeof Readable.fromWeb === 'function') {
+      const stream = Readable.fromWeb(upstream.body);
+      stream.on('error', () => {
+        if (!res.headersSent) res.redirect(targetUrl);
+        else res.end();
+      });
+      stream.pipe(res);
+      return;
+    }
+
+    res.end(Buffer.from(await upstream.arrayBuffer()));
   } catch (err) {
-    res.redirect(targetUrl);
+    if (!res.headersSent) res.redirect(targetUrl);
   }
 });
 
