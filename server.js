@@ -1669,7 +1669,7 @@ function generateLicenseKeyString(prefix = "R34PRO", tierCode = "annual", seed =
     ? String(prefix).toUpperCase()
     : "R34PRO";
   const t = String(tierCode || "annual").toLowerCase();
-  const tierChar = (t === "monthly" || t === "30d" || t === "30d_pass" || t === "30days") ? "M" : t === "lifetime" ? "L" : "A";
+  const tierChar = (t === "starter7d" || t === "7d") ? "S" : (t === "monthly" || t === "30d" || t === "30d_pass" || t === "30days") ? "M" : t === "lifetime" ? "L" : "A";
   const rawSeed = seed ? String(seed) : crypto.randomBytes(8).toString("hex");
   const seedHash = crypto.createHash("sha256").update(rawSeed).digest("hex").toUpperCase();
   const b1 = `${tierChar}${seedHash.slice(0, 3)}`;
@@ -1682,22 +1682,24 @@ function generateLicenseKeyString(prefix = "R34PRO", tierCode = "annual", seed =
 function verifyStatelessLicenseKey(rawKey) {
   const clean = String(rawKey || "").trim().toUpperCase();
   // 1. Check HMAC-signed format: PREFIX-[MAL]XXX-XXXX-XXXX
-  const m = clean.match(/^(R34PRO|R34H|SHOP2|PATREON|SLX)-([MAL][0-9A-F]{3})-([0-9A-F]{4})-([0-9A-F]{4})$/);
+  const m = clean.match(/^(R34PRO|R34H|SHOP2|PATREON|SLX)-([SMAL][0-9A-F]{3})-([0-9A-F]{4})-([0-9A-F]{4})$/);
   if (m) {
     const [, prefix, b1, b2, b3] = m;
     const expectedSig = crypto.createHmac("sha256", getLicenseHmacSecret()).update(`${prefix}:${b1}`).digest("hex").toUpperCase().slice(0, 8);
     if (secretMatches(`${b2}${b3}`, expectedSig)) {
       const tierChar = b1[0];
-      const tier = tierChar === "M" ? "monthly" : tierChar === "L" ? "lifetime" : "annual";
-      const planName = tier === "monthly"
-        ? "30-Day Monthly Pro (€5.60)"
-        : tier === "lifetime"
-          ? "Lifetime VIP Master Pass (€159.99)"
-          : "365-Day Annual Pro (€47.99/yr)";
-      const priceEur = tier === "monthly" ? 5.60 : tier === "lifetime" ? 159.99 : 47.99;
+      const tier = tierChar === "S" ? "starter7d" : tierChar === "M" ? "monthly" : tierChar === "L" ? "lifetime" : "annual";
+      const planName = tier === "starter7d"
+        ? "7-Day Starter Pro Pass (€2.49)"
+        : tier === "monthly"
+          ? "30-Day Monthly Pro (€5.60)"
+          : tier === "lifetime"
+            ? "Lifetime VIP Master Pass (€159.99)"
+            : "365-Day Annual Pro (€47.99/yr)";
+      const priceEur = tier === "starter7d" ? 2.49 : tier === "monthly" ? 5.60 : tier === "lifetime" ? 159.99 : 47.99;
       const expiresAt = tier === "lifetime"
         ? "2099-12-31T23:59:59.000Z"
-        : new Date(Date.now() + (tier === "monthly" ? 30 : 365) * 86400000).toISOString();
+        : new Date(Date.now() + (tier === "starter7d" ? 7 : tier === "monthly" ? 30 : 365) * 86400000).toISOString();
       return {
         key: clean,
         prefix,
@@ -2114,6 +2116,8 @@ app.post("/api/admin/licenses/generate", (req, res) => {
 
   const num = Math.min(50, Math.max(1, parseInt(count, 10) || 1));
   const planMap = {
+    "starter7d": { tier: "starter7d", days: 7, name: "7-Day Starter Pro Pass (€2.49)", priceEur: 2.49 },
+    "7d": { tier: "starter7d", days: 7, name: "7-Day Starter Pro Pass (€2.49)", priceEur: 2.49 },
     "30d": { tier: "monthly", days: 30, name: "30-Day Monthly Pro (€7.00/mo)", priceEur: 7.00 },
     "monthly": { tier: "monthly", days: 30, name: "30-Day Monthly Pro (€7.00/mo)", priceEur: 7.00 },
     "365d": { tier: "annual", days: 365, name: "365-Day Annual Pro (€59.99/yr)", priceEur: 59.99 },
@@ -2241,6 +2245,7 @@ async function handlePaymentWebhook(req, res) {
   const prefix = body.prefix || "R34PRO";
 
   const planLookup = {
+    starter7d: { tier: "starter7d", name: "7-Day Starter Pro Pass (€2.49)", priceEur: 2.49, days: 7 },
     monthly: { tier: "monthly", name: "30-Day Monthly Pro (€7.00/mo)", priceEur: 7.00, days: 30 },
     yearly: { tier: "annual", name: "365-Day Annual Pro (€59.99/yr)", priceEur: 59.99, days: 365 },
     annual: { tier: "annual", name: "365-Day Annual Pro (€59.99/yr)", priceEur: 59.99, days: 365 },
@@ -2642,6 +2647,8 @@ async function createHubCloudOrderHandler(req, res) {
   const txHash = String(body.txHash || "").trim();
 
   const planLookup = {
+    starter7d: { id: "starter7d", name: "7-Day Starter Pro Pass", tier: "starter7d", amountEur: 3.1125, amountUsd: 3.3625, days: 7 },
+    "7d": { id: "starter7d", name: "7-Day Starter Pro Pass", tier: "starter7d", amountEur: 3.1125, amountUsd: 3.3625, days: 7 },
     monthly: { id: "monthly", name: "30-Day Monthly Pro", tier: "monthly", amountEur: 7.00, amountUsd: 7.50, days: 30 },
     yearly: { id: "annual", name: "Annual Pro (365 Days)", tier: "annual", amountEur: 59.99, amountUsd: 64.99, days: 365 },
     annual: { id: "annual", name: "Annual Pro (365 Days)", tier: "annual", amountEur: 59.99, amountUsd: 64.99, days: 365 },
@@ -2888,40 +2895,61 @@ app.get("/r34hubindexnow2026key.txt", (req, res) => {
 });
 
 const SEO_HIGH_VOLUME_TAGS = [
-  "genshin_impact",
-  "blue_archive",
-  "hololive",
-  "zenless_zone_zero",
-  "honkai_star_rail",
-  "frieren",
-  "overwatch",
-  "nier_automata",
-  "cyberpunk_edgerunners",
-  "chainsaw_man",
-  "jujutsu_kaisen",
-  "one_piece",
-  "naruto",
-  "elden_ring",
-  "baldurs_gate_3",
-  "pokemon",
-  "league_of_legends",
-  "valorant",
-  "street_fighter",
-  "resident_evil",
-  "final_fantasy",
-  "nikke",
-  "wuthering_waves",
-  "azur_lane",
-  "fate_grand_order",
-  "animated",
-  "video",
-  "1girl",
-  "highres",
-  "raiden_shogun",
-  "2b_(nier:automata)",
-  "tifa_lockhart",
-  "makima_(chainsaw_man)",
-  "yor_forger"
+  "genshin_impact", "blue_archive", "zenless_zone_zero", "honkai_star_rail", "hololive",
+  "frieren", "overwatch", "nier_automata", "cyberpunk_edgerunners", "chainsaw_man",
+  "jujutsu_kaisen", "one_piece", "naruto", "bleach", "dragon_ball",
+  "my_hero_academia", "demon_slayer", "attack_on_titan", "spy_x_family", "dandadan",
+  "konosuba", "re_zero", "sword_art_online", "evangelion", "fate_grand_order",
+  "azur_lane", "nikke", "arknights", "wuthering_waves", "girls_frontline",
+  "granblue_fantasy", "princess_connect", "umamusume", "idolmaster", "love_live",
+  "touhou", "vocaloid", "hatsune_miku", "pokemon", "palworld",
+  "league_of_legends", "arcane", "valorant", "elden_ring", "dark_souls",
+  "bloodborne", "resident_evil", "street_fighter", "tekken", "guilty_gear",
+  "dead_or_alive", "final_fantasy", "final_fantasy_vii", "baldurs_gate_3", "the_witcher",
+  "cyberpunk_2077", "persona_5", "stellar_blade", "bayonetta", "metroid",
+  "zelda", "super_mario", "splatoon", "fire_emblem", "xenoblade",
+  "raiden_shogun", "hu_tao", "furina", "yae_miko", "ganyu",
+  "navia", "arlecchino", "clorinde", "mavuika", "xilonen",
+  "citlali", "nahida", "shenhe", "yelan", "keqing",
+  "mona", "yoimiya", "nilou", "eula", "kamisato_ayaka",
+  "kafka", "firefly", "acheron", "black_swan", "silver_wolf",
+  "feixiao", "robin", "sparkle", "ruan_mei", "topaz",
+  "fu_xuan", "jingliu", "himeko", "march_7th", "stelle",
+  "ellen_joe", "jane_doe", "zhu_yuan", "burnice_white", "caesar_king",
+  "miyabi", "nicole_demara", "anby_demara", "grace_howard", "yanagi",
+  "asuna", "kisaki", "shiroko", "yuuka", "hina",
+  "toki", "rio", "karin", "hanako", "arona",
+  "2b", "a2", "tifa_lockhart", "aerith_gainsborough", "yuffie",
+  "makima", "power", "reze", "kobeni", "asa_mitaka",
+  "yor_forger", "fern", "ubel", "marcille", "momo_ayase",
+  "eve_(stellar_blade)", "d.va", "mercy", "widowmaker", "tracer",
+  "kiriko", "juno", "sombra", "mei", "brigitte",
+  "ahri", "jinx", "vi", "caitlyn", "lux",
+  "akali", "evelynn", "kai_sa", "miss_fortune", "sona",
+  "shadowheart", "karlach", "lae_zel", "minthara", "marika",
+  "ranni", "malenia", "melina", "ada_wong", "jill_valentine",
+  "lady_dimitrescu", "ashley_graham", "claire_redfield", "chun_li", "cammy_white",
+  "juri_han", "mai_shiranui", "morrigan_aensland", "baiken", "bridget",
+  "jack_o_valentine", "ramlethal_valentine", "kasumi", "honoka", "marie_rose",
+  "nyotengu", "samus_aran", "princess_zelda", "purah", "midna",
+  "urbosa", "mipha", "pyra", "mythra", "mia_fey",
+  "marin_kitagawa", "zero_two", "albedo", "aqua", "megumin",
+  "darkness", "rem", "ram", "emilia", "echidna",
+  "asuka_langley", "rei_ayanami", "misato_katsuragi", "lucy_(edgerunners)", "rebecca_(edgerunners)",
+  "hinata_hyuga", "tsunade", "sakura_haruno", "nami", "nico_robin",
+  "boa_hancock", "yamato", "uta", "yoruichi", "rangiku_matsumoto",
+  "orihime_inouye", "rukia_kuchiki", "neliel", "android_18", "bulma",
+  "chi_chi", "ochako_uraraka", "momo_yaoyorozu", "mirko", "mt_lady",
+  "toga_himiko", "nezuko_kamado", "mitsuri_kanroji", "shinobu_kocho", "mikasa_ackerman",
+  "historia_reiss", "annie_leonhart", "pieck_finger", "esdeath", "rias_gremory",
+  "akeno_himejima", "erza_scarlet", "lucy_heartfilia", "holo", "raphtalia",
+  "roxy_migurdia", "eris_boreas_greyrat", "sylphiette", "houshou_marine", "usada_pekora",
+  "gawr_gura", "mori_calliope", "shirakami_fubuki", "oozora_subaru", "inugami_korone",
+  "animated", "video", "mp4", "webm", "sound",
+  "highres", "4k", "uncensored", "comic", "translated",
+  "english", "pov", "office_lady", "swimsuit", "bikini",
+  "maid", "bunny_girl", "succubus", "elf", "kemonomimi",
+  "fox_girl", "cat_girl", "wolf_girl", "1girl", "solo"
 ];
 
 app.get("/robots.txt", (req, res) => {
@@ -2936,6 +2964,8 @@ app.get("/robots.txt", (req, res) => {
     "Allow: /posts/",
     "Allow: /grid/",
     "Allow: /tag/",
+    "Allow: /t/",
+    "Allow: /feed.xml",
     "Allow: /premium",
     "Allow: /hubcloud",
     "Disallow: /api/admin/",
@@ -2984,7 +3014,7 @@ app.get("/sitemap.xml", (req, res) => {
   </url>`);
   });
 
-  SEO_HIGH_VOLUME_TAGS.forEach(tag => {
+  SEO_HIGH_VOLUME_TAGS.forEach((tag, idx) => {
     const enc = encodeURIComponent(tag);
     urls.push(`  <url>
     <loc>${baseUrl}/tag/${enc}</loc>
@@ -2992,12 +3022,14 @@ app.get("/sitemap.xml", (req, res) => {
     <changefreq>hourly</changefreq>
     <priority>0.90</priority>
   </url>`);
-    urls.push(`  <url>
-    <loc>${baseUrl}/grid/rule34.xxx?q=${enc}</loc>
+    if (idx < 60) {
+      urls.push(`  <url>
+    <loc>${baseUrl}/t/${enc}</loc>
     <lastmod>${today}</lastmod>
-    <changefreq>hourly</changefreq>
+    <changefreq>daily</changefreq>
     <priority>0.85</priority>
   </url>`);
+    }
   });
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
@@ -3092,8 +3124,48 @@ function sendEnrichedIndex(req, res) {
   res.send(enriched);
 }
 
+
+app.get(["/feed.xml", "/rss.xml"], (req, res) => {
+  const proto = req.get("x-forwarded-proto") || req.protocol || "https";
+  const host = req.get("host") || "r34hub-five.vercel.app";
+  const baseUrl = `${proto}://${host}`;
+  const nowRfc = new Date().toUTCString();
+  const topTags = SEO_HIGH_VOLUME_TAGS.slice(0, 40);
+
+  const itemsXml = topTags.map((tag, i) => {
+    const cleanName = formatTagHeadline(tag);
+    const link = `${baseUrl}/tag/${encodeURIComponent(tag)}`;
+    const pubDate = new Date(Date.now() - i * 600000).toUTCString();
+    return `    <item>
+      <title><![CDATA[${cleanName} — Rule 34 & Booru HD Videos/Art Feed on R34Hub]]></title>
+      <link>${link}</link>
+      <guid isPermaLink="true">${link}</guid>
+      <pubDate>${pubDate}</pubDate>
+      <description><![CDATA[Stream and browse the latest high-resolution ${cleanName} MP4/WebM videos and artwork across 11 connected booru boards (Rule34.xxx, Danbooru, e621, Yande.re, Sakugabooru) on R34Hub.]]></description>
+    </item>`;
+  }).join("\n");
+
+  const rss = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>R34Hub — Multi-Board Anime, Rule 34 &amp; Booru HD Video Explorer</title>
+    <link>${baseUrl}/</link>
+    <description>Unified search engine and HD video grid across 11 anime, Rule 34, and sakuga booru boards.</description>
+    <language>en-us</language>
+    <lastBuildDate>${nowRfc}</lastBuildDate>
+    <atom:link href="${baseUrl}/feed.xml" rel="self" type="application/rss+xml" />
+    <atom:link href="https://pubsubhubbub.appspot.com/" rel="hub" />
+${itemsXml}
+  </channel>
+</rss>`;
+
+  res.setHeader("Content-Type", "application/rss+xml; charset=utf-8");
+  res.setHeader("Cache-Control", "public, max-age=1800");
+  res.send(rss);
+});
+
 app.get("/", sendEnrichedIndex);
-app.get("/tag/:slug", sendEnrichedIndex);
+app.get(["/tag/:slug", "/t/:slug"], sendEnrichedIndex);
 app.get("/posts/:source", sendEnrichedIndex);
 app.get(["/posts", "/reels", "/grid", "/grid/:source", "/saved", "/settings"], sendEnrichedIndex);
 
