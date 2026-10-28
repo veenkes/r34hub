@@ -384,16 +384,16 @@ function paintFeatured(row, posts) {
   posts.forEach((post, index) => {
     const slot = slots[index];
     if (!slot || slot.querySelector('img')) return;
-    const src = stillUrl(post);
-    if (!src) return;
+    const shown = displayStill(post);
+    if (!shown.src) return;
     const img = document.createElement('img');
     img.alt = '';
     img.decoding = 'async';
     img.loading = 'lazy';
     img.referrerPolicy = 'no-referrer';
-    if (post.proxiedPreviewUrl) img.dataset.proxy = post.proxiedPreviewUrl;
+    if (shown.proxy) img.dataset.proxy = shown.proxy;
     img.addEventListener('error', () => useProxy(img));
-    img.src = src;
+    img.src = shown.src;
     slot.appendChild(img);
   });
 }
@@ -679,6 +679,8 @@ async function loadPosts(append = false, silent = false) {
     }, 1400);
   } else if (state.activeTab === 'reels') {
     pumpReels();
+  } else if (state.activeTab === 'gallery') {
+    pumpGallery();
   }
 }
 
@@ -697,6 +699,17 @@ function setSlot(btn, iconName, label) {
 
 function stillUrl(post) {
   return post.previewUrl || post.proxiedPreviewUrl || '';
+}
+
+function directIsBlocked(url) {
+  return /donmai\.us|e621\.net|e926\.net|konachan\.(com|net)/i.test(String(url || ''));
+}
+
+function displayStill(post) {
+  const direct = stillUrl(post);
+  const proxy = post.proxiedPreviewUrl || '';
+  if (directIsBlocked(direct) && proxy) return { src: proxy, proxy: '' };
+  return { src: direct, proxy };
 }
 
 function looksLikeVideo(url) {
@@ -934,17 +947,16 @@ function tagGroupsHtml(post) {
 function buildPostCardHTML(post, idx) {
   const isSaved = state.savedPosts.some(s => s.id === post.id);
   const isVideo = post.mediaType === 'video';
-  const preview = stillUrl(post);
-  const proxy = post.proxiedPreviewUrl || '';
-  const eager = idx < 4;
+  const shown = displayStill(post);
+  const eager = idx < 8;
   const tags = post.tags || [];
 
   return `
     <article class="masonry-item card">
       <div class="card-media" data-open="${esc(post.id)}"${isVideo ? ` data-kind="video" data-file="${esc(post.fileUrl || '')}" data-proxy-file="${esc(post.proxiedFileUrl || '')}"` : ''}>
         <img
-          src="${esc(preview)}"
-          data-proxy="${esc(proxy)}"
+          src="${esc(shown.src)}"
+          data-proxy="${esc(shown.proxy)}"
           alt=""
           loading="${eager ? 'eager' : 'lazy'}"
           decoding="async"
@@ -993,9 +1005,37 @@ function renderGallery(options = {}) {
   }
   if (Number.isInteger(options.appendFrom)) {
     feedEl.insertAdjacentHTML('beforeend', cardsHtml(state.posts.slice(options.appendFrom), options.appendFrom));
-    return;
+  } else {
+    feedEl.innerHTML = cardsHtml(state.posts, 0);
   }
-  feedEl.innerHTML = cardsHtml(state.posts, 0);
+  rescueSlowImages();
+}
+
+let galleryPumpQueued = false;
+function pumpGallery() {
+  if (galleryPumpQueued || state.activeTab !== 'gallery' || state.isLoading || !state.hasMore || state.lastPartial || !state.posts.length) return;
+  const sentinel = document.getElementById('infinite-scroll-sentinel');
+  if (!sentinel) return;
+  if (sentinel.getBoundingClientRect().top > window.innerHeight + 800) return;
+  galleryPumpQueued = true;
+  state.page += 1;
+  Promise.resolve(loadPosts(true)).finally(() => { galleryPumpQueued = false; });
+}
+
+function rescueSlowImages() {
+  document.querySelectorAll('#masonry-feed img, #saved-grid img').forEach(img => {
+    if (img.dataset.rescue === '1' || img.naturalWidth > 0) return;
+    const box = img.getBoundingClientRect();
+    const near = box.bottom > -120 && box.top < window.innerHeight + 400;
+    if (!near) return;
+    img.dataset.rescue = '1';
+    const swap = () => {
+      if (img.naturalWidth > 0) return;
+      useProxy(img);
+    };
+    if (img.complete) swap();
+    else setTimeout(swap, 1800);
+  });
 }
 
 function frameStyle(post) {
@@ -1208,6 +1248,7 @@ function renderSavedPosts() {
     return;
   }
   grid.innerHTML = state.savedPosts.map((post, i) => buildPostCardHTML(post, i + 4)).join('');
+  rescueSlowImages();
 }
 
 function paintSaveButtons(postId, on) {
@@ -1430,7 +1471,10 @@ window.switchTab = function(tabId) {
   if (tabId !== 'reels') document.querySelectorAll('#reels-feed .reel').forEach(deactivateReel);
   stopAllCardVideos();
   if (tabId === 'saved') renderSavedPosts();
-  if (tabId === 'gallery' && state.posts.length) renderGallery();
+  if (tabId === 'gallery' && state.posts.length) {
+    renderGallery();
+    requestAnimationFrame(pumpGallery);
+  }
   if (tabId === 'reels' && state.posts.length) renderReels();
   if (browsingPosts()) {
     syncUrlBarInPlace();
@@ -1481,10 +1525,7 @@ async function initApp() {
     if (sentinel && 'IntersectionObserver' in window) {
       const observer = new IntersectionObserver(entries => {
         entries.forEach(entry => {
-          if (entry.isIntersecting && !state.isLoading && state.hasMore && state.posts.length && state.activeTab === 'gallery') {
-            state.page += 1;
-            loadPosts(true);
-          }
+          if (entry.isIntersecting) pumpGallery();
         });
       }, { rootMargin: '480px' });
       observer.observe(sentinel);
@@ -1818,4 +1859,6 @@ document.addEventListener('scroll', () => {
     const rect = media.getBoundingClientRect();
     if (rect.bottom < 0 || rect.top > window.innerHeight) stopCardVideo(media);
   });
+  pumpGallery();
+  rescueSlowImages();
 }, { passive: true, capture: true });
