@@ -897,14 +897,15 @@ async function fetchFromSourceRaw(sourceId, params) {
           // Fall through to open mirrors
         }
       }
-      const [pahealPosts, xbooruPosts] = await Promise.allSettled([
+      const jobs = [
         fetchPaheal({ ...params, allowAllRatingsOnExplicitBoard: true }),
-        fetchGelbooru02('xbooru', 'xbooru.com', 'Rule34 Mirror (XBooru)', { ...params, rating: 'all' })
-      ]);
-      const merged = [
-        ...(pahealPosts.status === 'fulfilled' ? pahealPosts.value : []),
-        ...(xbooruPosts.status === 'fulfilled' ? xbooruPosts.value : [])
+        fetchGelbooru02('xbooru', 'xbooru.com', 'Rule34 Mirror (XBooru)', { ...params, rating: params.rating === 's' ? 's' : 'all' })
       ];
+      if (params.rating === 's') {
+        jobs.unshift(fetchGelbooru02('safebooru', 'safebooru.org', 'Rule34 Safe Pool', { ...params, rating: 's' }));
+      }
+      const settled = await Promise.allSettled(jobs);
+      const merged = settled.flatMap(r => (r.status === 'fulfilled' && Array.isArray(r.value) ? r.value : []));
       return merged.map(p => ({
         ...p,
         sourceName: `${p.sourceName} (R34 Pool)`
@@ -1147,8 +1148,24 @@ app.get('/api/posts', async (req, res) => {
       }
     }
 
+    // Apply media & exclusion filters BEFORE rating fallback so media=video never gets emptied by non-video posts
+    posts = applyClientFilters(posts);
     posts = finalizePosts(posts, effectiveSort, limit * 2, rating);
-    posts = applyClientFilters(posts).slice(0, limit);
+    posts = applyClientFilters(posts);
+
+    if ((mediaFilter === 'video' || effectiveSort === 'video') && posts.length < 12) {
+      const videoBoards = (rating === 's')
+        ? ['sakugabooru', 'danbooru']
+        : ['paheal', 'danbooru', 'sakugabooru'];
+      const gatheredVid = await gatherSources(
+        videoBoards,
+        { tags, rating: rating === 's' ? 's' : 'all', sort: 'video', page, limit: 24 },
+        2400
+      );
+      const extraVideos = applyClientFilters(interleaveLists(gatheredVid.lists.map(l => l || [])));
+      posts = deduplicatePostsList([...posts, ...extraVideos]);
+    }
+    posts = posts.slice(0, limit);
 
     const payload = {
       source,

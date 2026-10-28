@@ -23,6 +23,7 @@
       --danger: #e11d48;
     }
     * { box-sizing: border-box; }
+    html, body { overflow-x: hidden; }
     body {
       margin: 0;
       background: var(--bg);
@@ -36,20 +37,33 @@
     button { cursor: pointer; }
     .hidden { display: none !important; }
 
-    /* Top Minimal Bar */
+    /* Unified 1360px Top Navigation Bar (matches index.html) */
     .topbar {
       position: sticky;
       top: 0;
       z-index: 30;
-      background: rgba(11, 11, 14, 0.9);
+      background: rgba(11, 11, 14, 0.92);
       backdrop-filter: blur(14px);
       border-bottom: 1px solid var(--line);
     }
+    .topbar-inner,
+    .page {
+      width: min(1360px, calc(100% - 28px));
+      max-width: 1360px;
+      margin-inline: auto;
+      box-sizing: border-box;
+    }
+    @media (max-width: 768px) {
+      .topbar-inner,
+      .page {
+        width: calc(100% - 20px);
+      }
+      body {
+        padding-bottom: calc(68px + env(safe-area-inset-bottom));
+      }
+    }
     .topbar-inner {
-      max-width: 820px;
-      margin: 0 auto;
-      padding: 0 18px;
-      height: 56px;
+      min-height: 58px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -62,16 +76,46 @@
       font-weight: 750;
       font-size: 16px;
       letter-spacing: -0.02em;
+      min-height: 44px;
     }
     .brand-mark {
       display: inline-grid;
       place-items: center;
-      padding: 3px 8px;
+      padding: 4px 8px;
       border-radius: 7px;
       background: var(--accent);
       color: var(--accent-ink);
       font-weight: 800;
       font-size: 13px;
+    }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .nav-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 40px;
+      padding: 0 13px;
+      border-radius: 999px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+    .nav-link:hover {
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.06);
+    }
+    .nav-link.is-on {
+      color: var(--accent-ink);
+      background: var(--accent);
+      font-weight: 750;
+    }
+    @media (max-width: 768px) {
+      .nav-links { display: none; }
     }
     .top-actions {
       display: flex;
@@ -79,13 +123,18 @@
       gap: 8px;
     }
     .pill-btn {
-      padding: 6px 12px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      padding: 0 14px;
       border-radius: 999px;
       border: 1px solid var(--line);
       background: var(--surface);
       color: var(--muted);
       font-size: 12px;
-      font-weight: 600;
+      font-weight: 650;
+      white-space: nowrap;
     }
     .pill-btn:hover {
       color: var(--text);
@@ -93,7 +142,10 @@
       background: var(--surface-2);
     }
     .pro-active-pill {
-      padding: 5px 11px;
+      display: inline-flex;
+      align-items: center;
+      min-height: 36px;
+      padding: 0 12px;
       border-radius: 999px;
       background: rgba(16, 185, 129, 0.15);
       border: 1px solid rgba(16, 185, 129, 0.4);
@@ -104,18 +156,18 @@
 
     /* Main Container */
     .page {
-      max-width: 820px;
-      margin: 0 auto;
-      padding: 32px 18px 64px;
+      padding: 20px 0 56px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
     }
 
     /* Active Membership Dashboard Card */
     .membership-card {
-      padding: 24px;
+      padding: clamp(18px, 2.5vw, 24px);
       border-radius: 18px;
       background: linear-gradient(180deg, rgba(16, 185, 129, 0.12) 0%, var(--surface) 100%);
       border: 1.5px solid rgba(16, 185, 129, 0.45);
-      margin-bottom: 24px;
     }
     .membership-head {
       display: flex;
@@ -127,7 +179,7 @@
     }
     .membership-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       gap: 12px;
       padding: 14px;
       border-radius: 12px;
@@ -148,7 +200,11 @@
       font-family: monospace;
     }
     .btn-logout-big {
-      padding: 10px 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      padding: 0 18px;
       border-radius: 11px;
       border: 0;
       background: var(--danger);
@@ -160,121 +216,230 @@
     }
     .btn-logout-big:hover { filter: brightness(1.1); }
 
-    /* Compact Header */
-    .hero {
-      text-align: center;
-      margin: 0 auto 24px;
+    /* Hero Card inside 1360px container */
+    .hero-card {
+      background: linear-gradient(180deg, rgba(22, 25, 36, 0.95), rgba(14, 16, 23, 0.96));
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: clamp(18px, 2.8vw, 28px);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
     }
-    .hero h1 {
+    .hero-copy h1 {
       margin: 0 0 6px;
-      font-size: clamp(24px, 4vw, 32px);
+      font-size: clamp(22px, 3vw, 30px);
       font-weight: 800;
       letter-spacing: -0.025em;
     }
-    .hero p {
+    .hero-copy p {
       margin: 0;
       color: var(--muted);
       font-size: 14px;
     }
+    .hero-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #6ee7b7;
+      font-size: 12px;
+      font-weight: 650;
+    }
 
-    /* 3 Clean Pricing Cards */
+    /* 3-Column Pricing Cards Grid */
     .plans-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 12px;
-      margin-bottom: 20px;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+    @media (max-width: 900px) {
+      .plans-grid {
+        grid-template-columns: 1fr;
+      }
     }
     .plan-card {
       position: relative;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      padding: 20px 18px;
-      border-radius: 16px;
+      padding: 22px 20px;
+      border-radius: 18px;
       background: var(--surface);
       border: 1.5px solid var(--line);
       cursor: pointer;
+      transition: border-color 0.15s ease, transform 0.15s ease;
     }
-    .plan-card:hover { border-color: var(--line-strong); }
+    .plan-card:hover {
+      border-color: var(--line-strong);
+      transform: translateY(-2px);
+    }
     .plan-card.is-selected {
-      background: linear-gradient(180deg, rgba(16, 185, 129, 0.09) 0%, var(--surface) 100%);
+      background: linear-gradient(180deg, rgba(16, 185, 129, 0.11) 0%, var(--surface) 100%);
       border-color: var(--accent);
       box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.35);
     }
     .plan-badge {
       position: absolute;
-      top: -10px;
-      right: 14px;
-      padding: 2px 9px;
+      top: -11px;
+      right: 16px;
+      padding: 3px 10px;
       border-radius: 999px;
       background: var(--accent);
       color: var(--accent-ink);
-      font-size: 10px;
+      font-size: 11px;
       font-weight: 800;
       text-transform: uppercase;
     }
-    .plan-name { font-size: 15px; font-weight: 700; margin: 0 0 2px; }
-    .plan-sub { color: var(--muted); font-size: 12px; margin: 0 0 12px; }
-    .plan-price { display: flex; align-items: baseline; gap: 5px; margin-bottom: 14px; }
-    .plan-price strong { font-size: 30px; font-weight: 800; letter-spacing: -0.03em; }
+    .plan-name { font-size: 17px; font-weight: 750; margin: 0 0 3px; }
+    .plan-sub { color: var(--muted); font-size: 12px; margin: 0 0 14px; }
+    .plan-price { display: flex; align-items: baseline; gap: 6px; margin-bottom: 14px; }
+    .plan-price strong { font-size: 32px; font-weight: 800; letter-spacing: -0.03em; }
     .plan-price span { color: var(--muted); font-size: 13px; }
     .plan-strike { color: var(--faint); text-decoration: line-through; font-size: 13px; }
+    .plan-perks {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 18px;
+      display: grid;
+      gap: 7px;
+      font-size: 12.5px;
+      color: var(--muted);
+    }
+    .plan-perks li {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .plan-perks li::before {
+      content: "✓";
+      color: var(--accent);
+      font-weight: 800;
+    }
     .plan-select-indicator {
       width: 100%;
-      padding: 9px 12px;
-      border-radius: 10px;
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 14px;
+      border-radius: 11px;
       border: 1px solid var(--line);
       background: var(--surface-2);
       color: var(--text);
-      font-size: 12px;
-      font-weight: 650;
+      font-size: 13px;
+      font-weight: 700;
       text-align: center;
     }
     .plan-card.is-selected .plan-select-indicator {
       background: var(--accent);
       color: var(--accent-ink);
       border-color: transparent;
-      font-weight: 750;
+      font-weight: 800;
     }
 
-    /* Clean Crypto Checkout Box */
-    .checkout-box {
-      padding: 20px;
-      border-radius: 16px;
+    /* 2-Column Checkout & License Key Grid */
+    .bottom-grid {
+      display: grid;
+      grid-template-columns: 1.25fr 1fr;
+      gap: 18px;
+      align-items: start;
+    }
+    @media (max-width: 960px) {
+      .bottom-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Crypto Checkout Card */
+    .checkout-box,
+    .license-box {
+      padding: clamp(18px, 2.2vw, 24px);
+      border-radius: 18px;
       background: var(--surface);
       border: 1px solid var(--line-strong);
-      margin-bottom: 18px;
     }
-    .checkout-head { margin-bottom: 14px; }
-    .checkout-head h2 { margin: 0; font-size: 16px; font-weight: 750; }
-    .checkout-head p { margin: 2px 0 0; font-size: 12px; color: var(--muted); }
-    .form-grid {
-      display: grid;
-      grid-template-columns: 1.5fr 1fr;
-      gap: 10px;
-      margin-bottom: 12px;
+    .checkout-head { margin-bottom: 16px; }
+    .checkout-head h2 { margin: 0; font-size: 17px; font-weight: 750; }
+    .checkout-head p { margin: 4px 0 0; font-size: 12.5px; color: var(--muted); }
+
+    .field-group {
+      margin-bottom: 14px;
     }
-    @media (max-width: 640px) { .form-grid { grid-template-columns: 1fr; } }
-    .form-grid label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 5px; }
+    .field-group label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
     .field {
       width: 100%;
-      padding: 10px 13px;
-      border-radius: 10px;
+      min-height: 44px;
+      padding: 10px 14px;
+      border-radius: 11px;
       border: 1px solid var(--line-strong);
       background: var(--bg);
       color: var(--text);
-      font-size: 13px;
+      font-size: 13.5px;
       outline: none;
     }
     .field:focus { border-color: var(--accent); }
+
+    .coin-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    @media (max-width: 480px) {
+      .coin-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+    .coin-pill {
+      min-height: 44px;
+      padding: 6px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--line-strong);
+      background: var(--bg);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+    }
+    .coin-pill:hover {
+      color: var(--text);
+      border-color: rgba(255, 255, 255, 0.28);
+    }
+    .coin-pill.is-on {
+      border-color: var(--accent);
+      background: rgba(16, 185, 129, 0.14);
+      color: #34d399;
+    }
+
     .btn-crypto-main {
       width: 100%;
+      min-height: 48px;
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
-      padding: 13px 18px;
-      border-radius: 11px;
+      padding: 12px 18px;
+      border-radius: 12px;
       border: 0;
       background: var(--accent);
       color: var(--accent-ink);
@@ -291,7 +456,10 @@
       border: 1px solid var(--line);
     }
     .gw-btn {
-      display: block;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
       padding: 10px 14px;
       border-radius: 10px;
       background: var(--accent);
@@ -301,55 +469,101 @@
       text-align: center;
     }
 
-    /* Compact Sign In with Key Box */
+    /* License Key Activation & Recovery Card */
     .license-box {
-      padding: 18px 20px;
-      border-radius: 16px;
-      background: var(--surface);
-      border: 1px solid var(--line);
-      display: grid;
-      gap: 14px;
-    }
-    .license-row {
       display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
+      flex-direction: column;
+      gap: 18px;
+    }
+    .license-block h3 {
+      margin: 0 0 4px;
+      font-size: 15px;
+      font-weight: 750;
+    }
+    .license-block p {
+      margin: 0 0 12px;
+      font-size: 12.5px;
+      color: var(--muted);
     }
     .license-form {
       display: flex;
+      flex-wrap: wrap;
       gap: 8px;
+    }
+    .license-form .field {
       flex: 1;
-      min-width: 240px;
+      min-width: 190px;
     }
     .btn-activate {
-      padding: 0 16px;
-      border-radius: 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      padding: 0 18px;
+      border-radius: 11px;
       border: 0;
       background: var(--accent);
       color: var(--accent-ink);
-      font-weight: 750;
+      font-weight: 800;
       font-size: 13px;
       white-space: nowrap;
-      min-height: 40px;
     }
     .btn-ghost-sm {
-      padding: 8px 14px;
-      border-radius: 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      padding: 0 16px;
+      border-radius: 11px;
       border: 1px solid var(--line-strong);
       background: var(--surface-2);
       color: var(--text);
-      font-size: 12px;
-      font-weight: 650;
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    /* Mobile Bottom Tabbar (matches index.html) */
+    .mobile-tabbar {
+      display: none;
+    }
+    @media (max-width: 768px) {
+      .mobile-tabbar {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 45;
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        height: calc(58px + env(safe-area-inset-bottom));
+        padding-bottom: env(safe-area-inset-bottom);
+        background: rgba(11, 11, 14, 0.96);
+        backdrop-filter: blur(16px);
+        border-top: 1px solid var(--line);
+      }
+      .mob-nav-btn {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 3px;
+        min-height: 44px;
+        color: var(--muted);
+        font-size: 10.5px;
+        font-weight: 650;
+      }
+      .mob-nav-btn.is-on {
+        color: var(--accent);
+      }
     }
 
     .toast {
       position: fixed;
-      bottom: 20px;
+      bottom: 24px;
       right: 20px;
       z-index: 60;
-      padding: 11px 16px;
+      padding: 12px 16px;
       border-radius: 12px;
       background: var(--surface-2);
       border: 1px solid var(--line-strong);
@@ -363,14 +577,24 @@
 <body>
   <header class="topbar">
     <div class="topbar-inner">
-      <a href="/" class="brand">
-        <span class="brand-mark">R34</span>
-        <span>Hub Premium</span>
-      </a>
+      <div style="display:flex;align-items:center;gap:14px;">
+        <a href="/" class="brand">
+          <span class="brand-mark">R34</span>
+          <span>Hub</span>
+        </a>
+        <nav class="nav-links" aria-label="Primary Navigation">
+          <a href="/" class="nav-link">Home</a>
+          <a href="/posts/rule34.xxx" class="nav-link">Posts</a>
+          <a href="/grid/rule34.xxx" class="nav-link">Grid</a>
+          <a href="/saved" class="nav-link">Saved</a>
+          <a href="/settings" class="nav-link">Settings</a>
+          <a href="/premium" class="nav-link is-on">Premium</a>
+        </nav>
+      </div>
       <div class="top-actions">
         <span id="header-pro-pill" class="pro-active-pill hidden">● PRO ACTIVE</span>
-        <button id="header-logout-btn" type="button" class="btn-logout-big hidden" style="padding:6px 12px;font-size:11px;border-radius:999px;" onclick="logoutFromPremium()">LOG OUT</button>
-        <a href="/" class="pill-btn">← Back to R34Hub</a>
+        <button id="header-logout-btn" type="button" class="btn-logout-big hidden" style="min-height:44px;padding:0 14px;font-size:11px;border-radius:999px;" onclick="logoutFromPremium()">LOG OUT</button>
+        <a href="/grid/rule34.xxx" class="pill-btn">← Back to Grid</a>
       </div>
     </div>
   </header>
@@ -384,16 +608,16 @@
           <h2 style="margin:4px 0 0;font-size:20px;font-weight:800;">Your Premium Membership is Active</h2>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <a href="/posts/rule34.xxx" class="btn-activate" style="display:inline-flex;align-items:center;padding:0 16px;">← Back to Ad-Free Feed</a>
+          <a href="/grid/rule34.xxx" class="btn-activate">← Back to Ad-Free Grid</a>
           <button type="button" class="btn-logout-big" onclick="logoutFromPremium()">LOG OUT</button>
         </div>
       </div>
       <div class="membership-grid">
         <div class="meta-item">
           <small>License Key</small>
-          <div style="display:flex;align-items:center;gap:8px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
             <strong id="active-key-text" style="color:#34d399;">R34PRO-XXXX-XXXX-XXXX</strong>
-            <button type="button" class="pill-btn" style="padding:2px 8px;font-size:11px;" onclick="copyActiveKey()">Copy</button>
+            <button type="button" class="pill-btn" style="min-height:44px;padding:0 12px;font-size:11px;" onclick="copyActiveKey()">Copy Key</button>
           </div>
         </div>
         <div class="meta-item">
@@ -422,10 +646,18 @@
     </section>
 
     <!-- LOGGED-OUT VIEW (Hidden when Pro is active) -->
-    <div id="logged-out-view">
-      <section class="hero">
-        <h1>R34Hub Premium</h1>
-        <p>Zero ads across all feeds &amp; videos • All 11 boards unlocked • 1-click page downloads • Up to 5 devices</p>
+    <div id="logged-out-view" style="display:flex;flex-direction:column;gap:20px;">
+      <section class="hero-card">
+        <div class="hero-copy">
+          <h1>R34Hub Premium</h1>
+          <p>Zero ads across all feeds &amp; videos, instant multi-board search, and unlimited collections on up to 5 devices.</p>
+        </div>
+        <div class="hero-badges">
+          <span class="hero-badge">✓ 100% Ad-Free Feeds</span>
+          <span class="hero-badge">✓ All 11 Boards Unlocked</span>
+          <span class="hero-badge">✓ Original HD Video &amp; ZIP</span>
+          <span class="hero-badge">✓ Instant Key Delivery</span>
+        </div>
       </section>
 
       <!-- 3 PRICING CARDS -->
@@ -433,12 +665,18 @@
         <div class="plan-card" id="card-monthly" onclick="selectPlan('monthly')">
           <div>
             <h3 class="plan-name">30 Days Access</h3>
-            <p class="plan-sub">One-time crypto payment</p>
+            <p class="plan-sub">One-time crypto payment • No auto-rebill</p>
             <div class="plan-price">
               <span class="plan-strike">€7.00</span>
               <strong>€5.60</strong>
               <span>/ 30d</span>
             </div>
+            <ul class="plan-perks">
+              <li>100% zero ads across Grid &amp; Reels</li>
+              <li>All 11 boards &amp; Multi-Board parallel feed</li>
+              <li>Original HD media &amp; 1-click downloads</li>
+              <li>Use on up to 5 devices simultaneously</li>
+            </ul>
           </div>
           <div class="plan-select-indicator" id="btn-sel-monthly">Select plan</div>
         </div>
@@ -447,12 +685,18 @@
           <span class="plan-badge">Save 29% • Best Value</span>
           <div>
             <h3 class="plan-name">Annual Pro (365 Days)</h3>
-            <p class="plan-sub">€47.99/yr in crypto</p>
+            <p class="plan-sub">€47.99/yr in crypto • Full year pass</p>
             <div class="plan-price">
               <span class="plan-strike">€7.00</span>
               <strong>€3.99</strong>
               <span>/ mo</span>
             </div>
+            <ul class="plan-perks">
+              <li>Everything in 30 Days Access for 365 days</li>
+              <li>Unlimited Saved Collections &amp; Pinned Searches</li>
+              <li>Priority high-speed media proxy streaming</li>
+              <li>Instant email &amp; on-screen key activation</li>
+            </ul>
           </div>
           <div class="plan-select-indicator" id="btn-sel-annual">Selected ✓</div>
         </div>
@@ -460,31 +704,40 @@
         <div class="plan-card" id="card-lifetime" onclick="selectPlan('lifetime')">
           <div>
             <h3 class="plan-name">Lifetime VIP</h3>
-            <p class="plan-sub">Pay once, keep forever</p>
+            <p class="plan-sub">Pay once, keep forever • Never expires</p>
             <div class="plan-price">
               <span class="plan-strike">€199.99</span>
               <strong>€159.99</strong>
+              <span>once</span>
             </div>
+            <ul class="plan-perks">
+              <li>Permanent Lifetime Pro key (never expires)</li>
+              <li>All future boards &amp; VIP features included</li>
+              <li>Up to 5 concurrent devices with instant recovery</li>
+              <li>Priority dedicated proxy bandwidth</li>
+            </ul>
           </div>
           <div class="plan-select-indicator" id="btn-sel-lifetime">Select plan</div>
         </div>
       </section>
 
-      <!-- CRYPTO CHECKOUT BOX -->
-      <section class="checkout-box" id="checkout-panel">
-        <div class="checkout-head">
-          <h2 id="chk-heading">Crypto Checkout: Annual Pro — €47.99 (365 Days)</h2>
-          <p>Your license key (<code style="color:#34d399;">R34PRO-XXXX-XXXX-XXXX</code>) is automatically emailed to you and activated immediately after payment.</p>
-        </div>
+      <!-- 2-COLUMN CHECKOUT + LICENSE ACTIVATION GRID -->
+      <div class="bottom-grid">
+        <!-- LEFT COLUMN: CRYPTO CHECKOUT BOX -->
+        <section class="checkout-box" id="checkout-panel">
+          <div class="checkout-head">
+            <h2 id="chk-heading">Crypto Checkout: Annual Pro — €47.99 (365 Days)</h2>
+            <p>Your license key (<code style="color:#34d399;">R34PRO-XXXX-XXXX-XXXX</code>) is displayed on screen and emailed to you immediately after payment.</p>
+          </div>
 
-        <div class="form-grid">
-          <div>
-            <label for="chk-email">Your Email Address (for license key delivery)</label>
+          <div class="field-group">
+            <label for="chk-email">1. Delivery Email Address (for your license key &amp; backup)</label>
             <input id="chk-email" class="field" type="email" placeholder="you@email.com" autocomplete="email" required />
           </div>
-          <div>
-            <label for="chk-crypto-coin">Cryptocurrency</label>
-            <select id="chk-crypto-coin" class="field" onchange="updateWalletDisplay()">
+
+          <div class="field-group">
+            <label>2. Choose Cryptocurrency</label>
+            <select id="chk-crypto-coin" class="hidden" onchange="updateWalletDisplay()">
               <option value="USDT_TRC20">USDT (TRC-20 Tron)</option>
               <option value="BTC">BTC (Bitcoin)</option>
               <option value="ETH">ETH / USDT (ERC-20)</option>
@@ -492,71 +745,84 @@
               <option value="SOL">SOL (Solana)</option>
               <option value="XMR">XMR (Monero)</option>
             </select>
-          </div>
-        </div>
-
-        <button type="button" class="btn-crypto-main" onclick="startCryptoCheckout()">
-          <span>⚡</span>
-          <span id="btn-crypto-label">Pay with Cryptocurrency (€47.99) →</span>
-        </button>
-
-        <div id="crypto-drawer" class="drawer-box hidden">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
-            <strong style="font-size:13px;color:#6ee7b7;">Cryptocurrency Invoice Ready</strong>
-            <span style="font-size:12px;color:#6ee7b7;font-family:monospace;" id="crypto-order-badge"></span>
-          </div>
-          <div style="display:flex;gap:8px;margin:10px 0;flex-wrap:wrap;">
-            <a id="np-invoice-btn" href="#" target="_blank" rel="noopener" class="gw-btn" style="flex:1;">
-              ⚡ Open NOWPayments Live Checkout ↗
-            </a>
-          </div>
-          <div style="font-size:12px;color:var(--muted);margin-bottom:6px;">Or send directly to merchant wallet (<code id="direct-coin-code">USDT_TRC20</code>):</div>
-          <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
-            <input id="direct-usdt-wallet" class="field" style="padding:8px 12px;font-family:monospace;font-size:12px;color:#6ee7b7;" type="text" readonly value="TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX" />
-            <button type="button" class="pill-btn" style="padding:9px 14px;color:var(--text);" onclick="copyUsdtWallet()">Copy</button>
-          </div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <input id="crypto-tx-input" class="field" style="flex:1;min-width:200px;padding:8px 12px;font-size:12px;" type="text" placeholder="Paste Transaction Hash (TXID) to issue &amp; email your key immediately" />
-            <button type="button" class="btn-activate" style="padding:8px 14px;" onclick="submitCryptoTx()">Confirm TXID</button>
-          </div>
-        </div>
-
-        <div id="order-status-box" class="drawer-box hidden" style="border-color:rgba(16,185,129,0.5);">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
-            <div>
-              <div style="font-size:13px;font-weight:800;color:#34d399;" id="status-headline">Waiting for payment confirmation…</div>
-              <div style="font-size:12px;color:var(--muted);margin-top:2px;" id="status-subline">Polling order status every 4 seconds.</div>
+            <div class="coin-grid" role="radiogroup" aria-label="Choose Cryptocurrency">
+              <button type="button" class="coin-pill is-on" data-coin="USDT_TRC20" onclick="pickCoin('USDT_TRC20')">USDT TRC-20</button>
+              <button type="button" class="coin-pill" data-coin="BTC" onclick="pickCoin('BTC')">BTC</button>
+              <button type="button" class="coin-pill" data-coin="ETH" onclick="pickCoin('ETH')">ETH / ERC-20</button>
+              <button type="button" class="coin-pill" data-coin="TON" onclick="pickCoin('TON')">TON</button>
+              <button type="button" class="coin-pill" data-coin="SOL" onclick="pickCoin('SOL')">SOL</button>
+              <button type="button" class="coin-pill" data-coin="XMR" onclick="pickCoin('XMR')">XMR</button>
             </div>
-            <a href="/posts/rule34.xxx" class="btn-activate" style="padding:8px 14px;display:inline-flex;align-items:center;">Open Feed →</a>
           </div>
-        </div>
-      </section>
 
-      <!-- SIGN IN WITH LICENSE KEY -->
-      <section class="license-box" id="license-section">
-        <div class="license-row">
-          <div>
-            <strong style="font-size:14px;">Already have a license key?</strong>
-            <div style="font-size:12px;color:var(--muted);">Paste your key (<code style="color:#fff;">R34PRO-XXXX-XXXX-XXXX</code>) to sign in on this device.</div>
+          <button type="button" class="btn-crypto-main" onclick="startCryptoCheckout()">
+            <span>⚡</span>
+            <span id="btn-crypto-label">Pay with Cryptocurrency (€47.99) →</span>
+          </button>
+
+          <div id="crypto-drawer" class="drawer-box hidden">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+              <strong style="font-size:13px;color:#6ee7b7;">Cryptocurrency Invoice Ready</strong>
+              <span style="font-size:12px;color:#6ee7b7;font-family:monospace;" id="crypto-order-badge"></span>
+            </div>
+            <div style="display:flex;gap:8px;margin:10px 0;flex-wrap:wrap;">
+              <a id="np-invoice-btn" href="#" target="_blank" rel="noopener" class="gw-btn" style="flex:1;">
+                ⚡ Open NOWPayments Live Checkout ↗
+              </a>
+            </div>
+            <div style="font-size:12px;color:var(--muted);margin-bottom:6px;">Or send directly to merchant wallet (<code id="direct-coin-code">USDT_TRC20</code>):</div>
+            <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
+              <input id="direct-usdt-wallet" class="field" style="font-family:monospace;font-size:12px;color:#6ee7b7;" type="text" readonly value="TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX" />
+              <button type="button" class="pill-btn" style="color:var(--text);" onclick="copyUsdtWallet()">Copy</button>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <input id="crypto-tx-input" class="field" style="flex:1;min-width:200px;font-size:12px;" type="text" placeholder="Paste Transaction Hash (TXID) to issue &amp; email your key immediately" />
+              <button type="button" class="btn-activate" onclick="submitCryptoTx()">Confirm TXID</button>
+            </div>
           </div>
-          <form class="license-form" onsubmit="activateKeyOnPage(); return false;">
-            <input id="page-license-input" class="field" type="text" placeholder="R34PRO-XXXX-XXXX-XXXX" spellcheck="false" autocomplete="off" />
-            <button type="submit" class="btn-activate">Activate Key</button>
-          </form>
-        </div>
-        <div class="license-row" style="padding-top:10px;border-top:1px solid var(--line);">
-          <div>
-            <strong style="font-size:13px;">Lost your key?</strong>
-            <div style="font-size:12px;color:var(--muted);">Send your active license key to your purchase email.</div>
+
+          <div id="order-status-box" class="drawer-box hidden" style="border-color:rgba(16,185,129,0.5);">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+              <div>
+                <div style="font-size:13px;font-weight:800;color:#34d399;" id="status-headline">Waiting for payment confirmation…</div>
+                <div style="font-size:12px;color:var(--muted);margin-top:2px;" id="status-subline">Polling order status every 4 seconds.</div>
+              </div>
+              <a href="/grid/rule34.xxx" class="btn-activate">Open Grid →</a>
+            </div>
           </div>
-          <form class="license-form" onsubmit="recoverKeyByEmail(); return false;">
-            <input id="recover-email-input" class="field" type="email" placeholder="you@email.com" autocomplete="email" />
-            <button type="submit" class="btn-ghost-sm" style="min-height:40px;white-space:nowrap;">Recover by Email</button>
-          </form>
-        </div>
-      </section>
+        </section>
+
+        <!-- RIGHT COLUMN: SIGN IN WITH LICENSE KEY & RECOVERY -->
+        <section class="license-box" id="license-section">
+          <div class="license-block">
+            <h3>Already have a License Key?</h3>
+            <p>Paste your key (<code style="color:#fff;">R34PRO-XXXX-XXXX-XXXX</code>) to unlock Pro across this browser immediately.</p>
+            <form class="license-form" onsubmit="activateKeyOnPage(); return false;">
+              <input id="page-license-input" class="field" type="text" placeholder="R34PRO-XXXX-XXXX-XXXX" spellcheck="false" autocomplete="off" aria-label="License Key" />
+              <button type="submit" class="btn-activate">Activate Key</button>
+            </form>
+          </div>
+
+          <div class="license-block" style="padding-top:16px;border-top:1px solid var(--line);">
+            <h3>Lost Your Key? Recover by Email</h3>
+            <p>Enter the email address used during checkout to restore and email your active key in 1 click.</p>
+            <form class="license-form" onsubmit="recoverKeyByEmail(); return false;">
+              <input id="recover-email-input" class="field" type="email" placeholder="you@email.com" autocomplete="email" aria-label="Recovery Email" />
+              <button type="submit" class="btn-ghost-sm">Recover Key</button>
+            </form>
+          </div>
+        </section>
+      </div>
     </div>
   </main>
+
+  <nav class="mobile-tabbar" aria-label="Mobile Navigation">
+    <a href="/" class="mob-nav-btn"><span>Home</span></a>
+    <a href="/posts/rule34.xxx" class="mob-nav-btn"><span>Posts</span></a>
+    <a href="/grid/rule34.xxx" class="mob-nav-btn"><span>Grid</span></a>
+    <a href="/saved" class="mob-nav-btn"><span>Saved</span></a>
+    <a href="/premium" class="mob-nav-btn is-on"><span>Premium</span></a>
+  </nav>
 
   <div id="toast" class="toast hidden"></div>
 
@@ -585,6 +851,15 @@
       el.classList.remove('hidden');
       clearTimeout(window.__premToast);
       window.__premToast = setTimeout(() => el.classList.add('hidden'), 3400);
+    }
+
+    function pickCoin(coin) {
+      const sel = document.getElementById('chk-crypto-coin');
+      if (sel) sel.value = coin;
+      document.querySelectorAll('.coin-pill').forEach(btn => {
+        btn.classList.toggle('is-on', btn.dataset.coin === coin);
+      });
+      updateWalletDisplay();
     }
 
     function saveProToStorage(key, meta = {}) {
@@ -635,7 +910,6 @@
         loadLicenseDevices();
       }
     }
-
 
     function getClientDeviceId() {
       let dId = localStorage.getItem('r34hub_device_id') || '';

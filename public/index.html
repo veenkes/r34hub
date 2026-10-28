@@ -228,15 +228,15 @@
           <button type="button" class="filter-pill rating-btn" data-rating="e">Explicit 18+</button>
           <button type="button" class="filter-pill rating-btn" data-rating="all">All</button>
           <span class="filter-sep"></span>
+          <button type="button" class="filter-pill media-btn is-on" data-media="all" onclick="setMediaFilter('all')">All Media</button>
+          <button type="button" class="filter-pill media-btn" data-media="video" onclick="setMediaFilter('video')"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-film"/></svg>Video</button>
+          <button type="button" class="filter-pill media-btn" data-media="gif" onclick="setMediaFilter('gif')"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-spark"/></svg>GIFs</button>
+          <button type="button" class="filter-pill media-btn" data-media="image" onclick="setMediaFilter('image')"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-image"/></svg>Images</button>
+          <span class="filter-sep"></span>
           <button type="button" class="filter-pill sort-btn is-on" data-sort="score"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-flame"/></svg>Popular</button>
           <button type="button" class="filter-pill sort-btn" data-sort="latest"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-clock"/></svg>Newest</button>
           <button type="button" class="filter-pill sort-btn" data-sort="no_ai"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-ban"/></svg>No AI</button>
           <button type="button" class="filter-pill sort-btn" data-sort="random"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-shuffle"/></svg>Random</button>
-          <span class="filter-sep"></span>
-          <button type="button" class="filter-pill media-btn is-on" data-media="all" onclick="setMediaFilter('all')">All Media</button>
-          <button type="button" class="filter-pill media-btn" data-media="image" onclick="setMediaFilter('image')"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-image"/></svg>Images</button>
-          <button type="button" class="filter-pill media-btn" data-media="gif" onclick="setMediaFilter('gif')"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-spark"/></svg>GIFs</button>
-          <button type="button" class="filter-pill media-btn" data-media="video" onclick="setMediaFilter('video')"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-film"/></svg>Video</button>
         </div>
         <button type="button" class="filter-pill filter-more-btn" onclick="openFilterDrawer()" title="All Filters">
           <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-sliders"/></svg>
@@ -254,55 +254,87 @@
       <span id="reels-counter" class="sr">0 posts</span>
     </div>
 
-    <section id="tab-home">
-      <div class="home-hero">
-        <h1>R34 <svg class="hero-mark" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="M8 9.5h8M8 12.5h8M8 15.5h5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg> Hub</h1>
-        <p>Search every board from one place.</p>
-      </div>
-      <h2 class="section-title">Search</h2>
-      <div class="home-search-row">
-        <div class="domain-wrap">
-          <button id="home-domain-btn" class="domain-btn is-compact" type="button" aria-label="Choose a board" aria-expanded="false" onclick="toggleDomainMenu('home-domain-menu', this)">
-            <img data-domain-icon alt="" width="20" height="20" hidden>
-            <span class="domain-fallback" data-domain-fallback>R34</span>
-          </button>
-          <div id="home-domain-menu" class="domain-menu hidden" role="listbox"></div>
-        </div>
-        <div id="home-search-mount">
-          <div id="search-block">
-            <form class="search" role="search" onsubmit="return false">
-              <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-search"/></svg>
-              <input id="tag-search-input" type="search" enterkeyhint="search" autocomplete="off" placeholder="Search tags" aria-label="Search tags" />
-              <button id="pin-search-btn" class="btn btn-tiny btn-ghost" type="button" title="Save / Pin current search" aria-label="Pin current search" onclick="togglePinCurrentSearch()"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-star"/></svg></button>
-              <button id="clear-search-btn" class="btn btn-tiny btn-ghost hidden" type="button">Clear</button>
-              <button id="run-search-btn" class="btn btn-tiny btn-primary" type="button">Search</button>
-              <div id="tag-autocomplete" class="suggest hidden"></div>
-            </form>
-            <div id="search-history-bar" class="tag-row" style="margin-top:8px;"></div>
+    <section id="tab-home" class="home-dashboard">
+      <div class="home-hero-card">
+        <div class="home-hero-top">
+          <div class="home-hero-brand">
+            <span class="mark">R34</span>
+            <div>
+              <h1>R34Hub — Multi-Board Explorer</h1>
+              <p>Search and stream across 11 anime, Rule 34, and sakuga boards in one unified feed.</p>
+            </div>
+          </div>
+          <div class="home-hero-actions">
+            <button type="button" class="filter-pill is-on" onclick="switchTab('gallery')"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-grid"/></svg><span>Open Grid</span></button>
+            <button type="button" class="filter-pill" onclick="openVideoGridShortcut()"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-film"/></svg><span>Videos</span></button>
+            <button type="button" class="filter-pill" onclick="openBoardsCompareModal()"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chart"/></svg><span>Compare 11 Boards</span></button>
           </div>
         </div>
-        <button id="home-go-btn" class="go-btn" type="button" aria-label="Search">
-          <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-arrow"/></svg>
-        </button>
-      </div>
-      <div id="home-popular-tags" class="filter-strip" style="margin-top:12px;">
-        <button type="button" class="filter-pill" onclick="applySavedSearchChip('genshin_impact')">genshin impact</button>
-        <button type="button" class="filter-pill" onclick="applySavedSearchChip('blue_archive')">blue archive</button>
-        <button type="button" class="filter-pill" onclick="applySavedSearchChip('hololive')">hololive</button>
-        <button type="button" class="filter-pill" onclick="applySavedSearchChip('zenless_zone_zero')">zenless zone zero</button>
-        <button type="button" class="filter-pill" onclick="applySavedSearchChip('honkai:_star_rail')">honkai: star rail</button>
-        <button type="button" class="filter-pill" onclick="applySavedSearchChip('frieren')">frieren</button>
-        <button type="button" class="filter-pill" onclick="applySavedSearchChip('overwatch')">overwatch</button>
-        <button type="button" class="filter-pill" onclick="applySavedSearchChip('animated')">animated</button>
-      </div>
-      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-top:28px;">
-        <div>
-          <h2 class="section-title" style="margin:0;">Featured</h2>
-          <p class="fine section-note">The top post for each sort.</p>
+
+        <div class="home-search-row">
+          <div class="domain-wrap">
+            <button id="home-domain-btn" class="domain-btn" type="button" aria-label="Choose a board" aria-expanded="false" onclick="toggleDomainMenu('home-domain-menu', this)">
+              <img data-domain-icon alt="" width="20" height="20" hidden>
+              <span class="domain-fallback" data-domain-fallback>R34</span>
+              <span id="home-domain-label">Rule34.xxx</span>
+              <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevrons"/></svg>
+            </button>
+            <div id="home-domain-menu" class="domain-menu hidden" role="listbox"></div>
+          </div>
+          <div id="home-search-mount">
+            <div id="search-block">
+              <form class="search" role="search" onsubmit="return false">
+                <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-search"/></svg>
+                <input id="tag-search-input" type="search" enterkeyhint="search" autocomplete="off" placeholder="Search tags (e.g. genshin_impact -ai_generated)" aria-label="Search tags" />
+                <button id="pin-search-btn" class="btn btn-tiny btn-ghost" type="button" title="Save / Pin current search" aria-label="Pin current search" onclick="togglePinCurrentSearch()"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-star"/></svg></button>
+                <button id="clear-search-btn" class="btn btn-tiny btn-ghost hidden" type="button">Clear</button>
+                <button id="run-search-btn" class="btn btn-tiny btn-primary" type="button">Search</button>
+                <div id="tag-autocomplete" class="suggest hidden"></div>
+              </form>
+              <div id="search-history-bar" class="tag-row" style="margin-top:8px;"></div>
+            </div>
+          </div>
+          <button id="home-go-btn" class="go-btn" type="button" aria-label="Search">
+            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-arrow"/></svg>
+          </button>
         </div>
-        <button type="button" class="filter-pill" onclick="openBoardsCompareModal()"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chart"/></svg>Compare 11 Boards</button>
+
+        <div class="home-tags-wrap">
+          <span class="kicker">Popular Tags</span>
+          <div id="home-popular-tags" class="filter-strip">
+            <button type="button" class="filter-pill" onclick="applySavedSearchChip('genshin_impact')">genshin impact</button>
+            <button type="button" class="filter-pill" onclick="applySavedSearchChip('blue_archive')">blue archive</button>
+            <button type="button" class="filter-pill" onclick="applySavedSearchChip('hololive')">hololive</button>
+            <button type="button" class="filter-pill" onclick="applySavedSearchChip('zenless_zone_zero')">zenless zone zero</button>
+            <button type="button" class="filter-pill" onclick="applySavedSearchChip('honkai:_star_rail')">honkai: star rail</button>
+            <button type="button" class="filter-pill" onclick="applySavedSearchChip('frieren')">frieren</button>
+            <button type="button" class="filter-pill" onclick="applySavedSearchChip('overwatch')">overwatch</button>
+            <button type="button" class="filter-pill" onclick="applySavedSearchChip('animated')">animated</button>
+          </div>
+        </div>
       </div>
-      <div id="home-boards"></div>
+
+      <section class="home-boards-directory">
+        <div class="home-section-head">
+          <div>
+            <h2 class="section-title" style="margin:0;">Connected Boards (11)</h2>
+            <p class="fine section-note">Jump directly into any board or search across the top 4 in parallel.</p>
+          </div>
+          <button type="button" class="filter-pill" onclick="selectSourceInPlace('multiboard', false)"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-layers"/></svg><span>Launch Multi-Board</span></button>
+        </div>
+        <div id="home-directory-grid" class="home-directory-grid"></div>
+      </section>
+
+      <section class="home-featured-section">
+        <div class="home-section-head">
+          <div>
+            <h2 class="section-title" style="margin:0;">Featured Feeds by Board</h2>
+            <p class="fine section-note">Top posts across Trending, Newest, No-AI, and Video categories.</p>
+          </div>
+          <button type="button" class="filter-pill" onclick="switchTab('gallery')"><span>Browse Full Grid →</span></button>
+        </div>
+        <div id="home-boards" class="home-boards-stack"></div>
+      </section>
     </section>
 
     <section id="tab-gallery" class="hidden">

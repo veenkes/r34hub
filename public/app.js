@@ -505,7 +505,7 @@ const FEATURE_SHORTCUTS = [
   { label: 'Trending', sort: 'score', tags: '' },
   { label: 'New', sort: 'latest', tags: '' },
   { label: 'No AI', sort: 'no_ai', tags: '', fetchSort: 'score', fetchTags: '-ai_generated' },
-  // { label: 'Video', sort: 'video', tags: '' }
+  { label: 'Video', sort: 'video', tags: '' }
 ];
 let homeBoardKey = '';
 const featuredCache = new Map();
@@ -537,7 +537,54 @@ function fitFeatureRow(row) {
   if (!count && section) section.remove();
 }
 
+window.openVideoGridShortcut = function() {
+  state.media = 'video';
+  state.page = 1;
+  paintChoice('.media-btn', 'media', 'video');
+  if (state.activeTab !== 'gallery') {
+    applyPage('gallery');
+  } else {
+    showBrowseAndReload();
+  }
+};
+
 function renderHomeBoards() {
+  const dirGrid = document.getElementById('home-directory-grid');
+  if (dirGrid && state.sources && state.sources.length) {
+    const SCALE_MAP = {
+      rule34xxx: '8.4M+ posts',
+      danbooru: '7.6M+ posts',
+      yandere: '1.1M+ HD',
+      e621: '4.5M+ posts',
+      paheal: '5.9M+ posts',
+      konachan: '380K+ walls',
+      safebooru: '4.6M+ safe',
+      xbooru: '1.3M+ posts',
+      tbib: '9.2M+ mirror',
+      sakugabooru: '260K+ clips',
+      aibooru: '620K+ AI'
+    };
+    dirGrid.innerHTML = state.sources.filter(s => s.id !== 'multiboard').map(source => {
+      const locked = Boolean(source.isPremiumSource && !state.isPro);
+      const fav = source.domain
+        ? `<img src="${esc(faviconUrl(source.domain))}" alt="" width="18" height="18" referrerpolicy="no-referrer">`
+        : '';
+      const active = state.source === source.id;
+      return `
+        <button type="button" class="home-board-chip ${active ? 'is-on' : ''}" onclick="selectSourceInPlace('${esc(source.id)}', ${locked})">
+          <div class="home-board-chip-top">
+            ${fav}
+            <strong>${esc(source.name)}</strong>
+            ${locked ? '<span class="lock">Pro</span>' : '<span class="board-status-dot" title="Online"></span>'}
+          </div>
+          <div class="home-board-chip-meta">
+            <span>${esc(SCALE_MAP[source.id] || '1M+ posts')}</span>
+            <span>Grid →</span>
+          </div>
+        </button>`;
+    }).join('');
+  }
+
   const homeBoards = document.getElementById('home-boards');
   if (!homeBoards) return;
   const key = homeSources().map(source => `${source.id}:${source.isPremiumSource ? 1 : 0}`).join('|') + (state.isPro ? ':pro' : '');
@@ -553,9 +600,12 @@ function renderHomeBoards() {
       : '';
     return `
       <section class="board-block">
-        <button type="button" class="board-head" onclick="selectSourceInPlace('${esc(source.id)}', ${locked})">
-          ${fav}<span>${esc(source.domain || source.name)}</span>${locked ? '<span class="lock">Pro</span>' : ''}
-        </button>
+        <div class="board-block-header">
+          <button type="button" class="board-head" onclick="selectSourceInPlace('${esc(source.id)}', ${locked})">
+            ${fav}<span>${esc(source.domain || source.name)}</span>${locked ? '<span class="lock">Pro</span>' : ''}
+          </button>
+          <button type="button" class="btn btn-tiny btn-ghost" onclick="selectSourceInPlace('${esc(source.id)}', ${locked})">Open Grid →</button>
+        </div>
         <ol class="feature-row" data-feature-row="${esc(source.id)}" data-count="0"></ol>
       </section>`;
   }).join('');
@@ -754,6 +804,10 @@ function setRating(rating, reload = true) {
 
 window.setSortInPlace = function(sort) {
   state.sort = sort;
+  if (sort === 'video') {
+    state.media = 'video';
+    paintChoice('.media-btn', 'media', 'video');
+  }
   state.page = 1;
   scrollFeedToTop();
   paintChoice('.sort-btn', 'sort', sort);
@@ -1404,15 +1458,64 @@ function bindPlayer(root) {
   paintMute();
 }
 
+window.onGridVideoMeta = function(video) {
+  if (!video || !Number.isFinite(video.duration) || video.duration <= 0) return;
+  const media = video.closest('.card-media');
+  if (!media) return;
+  const durText = media.querySelector('[data-video-dur] .dur-text');
+  if (durText) durText.textContent = fmtTime(video.duration);
+};
+
+window.onGridVideoPlayState = function(video, playing) {
+  if (!video) return;
+  const media = video.closest('.card-media');
+  if (!media) return;
+  media.classList.toggle('is-playing', Boolean(playing));
+  const btn = media.querySelector('.play-badge');
+  if (btn) {
+    btn.innerHTML = icon(playing ? 'pause' : 'play');
+    btn.setAttribute('aria-label', playing ? 'Pause video' : 'Play video');
+  }
+};
+
+window.onGridVideoError = function(video) {
+  if (!video) return;
+  const direct = video.getAttribute('data-src') || '';
+  const proxy = video.getAttribute('data-proxy-src') || '';
+  const sample = video.getAttribute('data-sample') || '';
+  if (video.dataset.fallbackStep !== '1' && direct && video.src !== direct) {
+    video.dataset.fallbackStep = '1';
+    video.src = direct;
+    video.load();
+    if (video.closest('.card-media.is-playing')) video.play().catch(() => {});
+    return;
+  }
+  if (video.dataset.fallbackStep !== '2' && proxy && video.src !== proxy) {
+    video.dataset.fallbackStep = '2';
+    video.src = proxy;
+    video.load();
+    if (video.closest('.card-media.is-playing')) video.play().catch(() => {});
+    return;
+  }
+  if (video.dataset.fallbackStep !== '3' && sample && video.src !== sample) {
+    video.dataset.fallbackStep = '3';
+    video.src = sample;
+    video.load();
+  }
+};
+
 function stopCardVideo(media) {
   if (!media) return;
   media.classList.remove('is-playing');
   const video = media.querySelector('video.card-video');
-  if (!video) return;
-  video.pause();
-  video.removeAttribute('src');
-  video.load();
-  video.remove();
+  if (video) {
+    try { video.pause(); } catch (_) {}
+  }
+  const btn = media.querySelector('.play-badge');
+  if (btn) {
+    btn.innerHTML = icon('play');
+    btn.setAttribute('aria-label', 'Play video');
+  }
 }
 
 function stopAllCardVideos(except) {
@@ -1421,31 +1524,88 @@ function stopAllCardVideos(except) {
   });
 }
 
-function playCardVideo(media) {
-  // Grid mode never autoplays inline video; videos only play inside the post modal or Reels view
-  return;
-  const existing = media.querySelector('video.card-video');
-  if (media.classList.contains('is-playing') && existing) {
-    existing.play().catch(() => {});
-    return;
+function enforceMaxConcurrentGridVideos(maxPlaying = 4) {
+  const playing = Array.from(document.querySelectorAll('.card-media.is-playing'));
+  if (playing.length > maxPlaying) {
+    playing.slice(0, playing.length - maxPlaying).forEach(m => stopCardVideo(m));
   }
-  stopAllCardVideos(media);
-  const video = document.createElement('video');
-  video.className = 'card-video';
+}
+
+function playCardVideo(media, allowConcurrent = false) {
+  if (!media) return;
+  let video = media.querySelector('video.card-video');
+  if (!video) {
+    const fileUrl = media.dataset.file || '';
+    const proxyUrl = media.dataset.proxyFile || '';
+    if (!fileUrl && !proxyUrl) return;
+    video = document.createElement('video');
+    video.className = 'card-video grid-video';
+    video.muted = true;
+    video.loop = true;
+    video.playsInline = true;
+    video.setAttribute('playsinline', '');
+    video.setAttribute('webkit-playsinline', '');
+    video.preload = 'metadata';
+    video.src = proxyUrl || fileUrl;
+    video.setAttribute('data-src', fileUrl);
+    video.setAttribute('data-proxy-src', proxyUrl);
+    media.appendChild(video);
+  }
+  if (!allowConcurrent) {
+    enforceMaxConcurrentGridVideos(3);
+  } else {
+    enforceMaxConcurrentGridVideos(4);
+  }
   video.muted = true;
-  video.loop = true;
-  video.playsInline = true;
-  video.setAttribute('playsinline', '');
-  video.preload = 'auto';
-  media.appendChild(video);
   media.classList.add('is-playing');
-  loadVideo(video, media.dataset.file || '', media.dataset.proxyFile || '', true);
+  const playPromise = video.play();
+  if (playPromise && typeof playPromise.catch === 'function') {
+    playPromise.catch(() => {
+      onGridVideoError(video);
+    });
+  }
 }
 
 function toggleCardVideo(media) {
   if (!media) return;
-  if (media.classList.contains('is-playing')) stopCardVideo(media);
-  else playCardVideo(media);
+  const video = media.querySelector('video.card-video');
+  if (media.classList.contains('is-playing') && video && !video.paused) {
+    stopCardVideo(media);
+  } else {
+    playCardVideo(media, false);
+  }
+}
+
+let gridVideoObserver = null;
+function observeGridVideos() {
+  if (!('IntersectionObserver' in window)) return;
+  if (!gridVideoObserver) {
+    gridVideoObserver = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        const video = entry.target;
+        const media = video.closest('.card-media');
+        if (!media) return;
+        if (!entry.isIntersecting || entry.intersectionRatio < 0.35) {
+          if (media.classList.contains('is-playing') && !media.dataset.manualPlay) {
+            stopCardVideo(media);
+          }
+          return;
+        }
+        if (state.autoplayReels && entry.intersectionRatio >= 0.45) {
+          const activeCount = document.querySelectorAll('.card-media.is-playing').length;
+          if (activeCount < 4) {
+            playCardVideo(media, true);
+          }
+        }
+      });
+    }, { threshold: [0, 0.35, 0.55] });
+  }
+  document.querySelectorAll('#masonry-feed video.grid-video, #saved-feed video.grid-video').forEach(video => {
+    if (video.dataset.observed !== '1') {
+      video.dataset.observed = '1';
+      gridVideoObserver.observe(video);
+    }
+  });
 }
 
 const ADULT_FALLBACK_THUMBS = [
@@ -1681,15 +1841,17 @@ function shortBoardName(post) {
 
 function buildPostCardHTML(post, idx) {
   const isSaved = state.savedPosts.some(s => s.id === post.id);
-  const isVideo = post.mediaType === 'video';
+  const isVideo = post.mediaType === 'video' || /\.(mp4|webm)(\?|$)/i.test(post.fileUrl || '');
   const shown = cardStill(post);
   const eager = idx < 8;
   const tags = post.tags || [];
+  const videoSrc = post.proxiedFileUrl || post.fileUrl || post.proxiedSampleUrl || post.sampleUrl || '';
 
   return `
-    <article class="masonry-item card is-in" style="--d:${idx % 8}">
-      <div class="card-media" data-open="${esc(post.id)}">
+    <article class="masonry-item card is-in ${isVideo ? 'is-video-card' : ''}" style="--d:${idx % 8}">
+      <div class="card-media" data-open="${esc(post.id)}" data-file="${esc(post.fileUrl || '')}" data-proxy-file="${esc(post.proxiedFileUrl || '')}" onmouseenter="if(window.matchMedia('(hover:hover)').matches && this.querySelector('video.grid-video')) playCardVideo(this, true)" onmouseleave="if(window.matchMedia('(hover:hover)').matches && this.querySelector('video.grid-video') && !state.autoplayReels) stopCardVideo(this)">
         <img
+          class="card-thumb"
           src="${esc(shown.src)}"
           data-proxy="${esc(shown.proxy)}"
           alt=""
@@ -1699,10 +1861,32 @@ function buildPostCardHTML(post, idx) {
           referrerpolicy="no-referrer"
           onerror="useProxy(this)"
         />
-        ${isVideo ? `<span class="play-badge" aria-hidden="true" style="pointer-events:none;display:inline-grid;place-items:center;">${icon('play')}</span>` : ''}
+        ${isVideo ? `
+          <video
+            class="card-video grid-video"
+            src="${esc(videoSrc)}"
+            poster="${esc(shown.src)}"
+            data-src="${esc(post.fileUrl || '')}"
+            data-proxy-src="${esc(post.proxiedFileUrl || '')}"
+            data-sample="${esc(post.proxiedSampleUrl || post.sampleUrl || '')}"
+            muted
+            loop
+            playsinline
+            webkit-playsinline
+            preload="metadata"
+            onloadedmetadata="onGridVideoMeta(this)"
+            onplay="onGridVideoPlayState(this, true)"
+            onpause="onGridVideoPlayState(this, false)"
+            onerror="onGridVideoError(this)"
+          ></video>
+          <button type="button" class="play-badge" data-preview aria-label="Play or pause video">${icon('play')}</button>
+        ` : ''}
         <div class="card-float">
           <span class="pill">${esc(shortBoardName(post))}</span>
-          <span class="pill">${isVideo ? icon('play') : ''}${icon('star')} ${esc(formatScore(post.score))}</span>
+          <div style="display:flex;align-items:center;gap:4px;">
+            ${isVideo ? `<span class="pill video-dur-pill" data-video-dur>${icon('play')} <span class="dur-text">VIDEO</span></span>` : ''}
+            <span class="pill">${icon('star')} ${esc(formatScore(post.score))}</span>
+          </div>
         </div>
       </div>
       <div class="card-body">
@@ -1763,6 +1947,7 @@ function renderGallery(options = {}) {
     feedEl.innerHTML = cardsHtml(state.posts, 0);
   }
   rescueSlowImages();
+  observeGridVideos();
 }
 
 let galleryPumpQueued = false;
