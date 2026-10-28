@@ -22,6 +22,7 @@
         </div>
       </div>
       <div class="flex items-center gap-2">
+        <input id="admin-token-bar" type="password" value="R34HUB-ADMIN-9F4A8821-EMIL" title="Owner Admin Token" class="hidden sm:block w-52 bg-[#121215] border subtle-border rounded-lg px-2.5 py-1 text-[11px] text-zinc-300 font-mono" onchange="setAdminTokenFromBar(this.value)" />
         <a href="/hubcloud" target="_blank" class="px-3 py-1.5 rounded-lg bg-[#121215] hover:bg-[#18181C] border subtle-border text-xs text-zinc-300">Open HubCloud.dev Storefront ↗</a>
         <button onclick="loadAdminStats()" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white">Refresh Telemetry</button>
       </div>
@@ -43,23 +44,23 @@
       </div>
       <div class="p-4 rounded-xl bg-[#121215] border subtle-border">
         <div class="text-[11px] text-zinc-400 uppercase font-mono">AI Companion CPA Revenue</div>
-        <div class="text-2xl font-bold text-indigo-400 mt-1" id="kpi-cpa-rev">€412.50</div>
-        <div class="text-[11px] text-zinc-400 mt-0.5" id="kpi-clicks-sub">148 Tracked Affiliate Clicks</div>
+        <div class="text-2xl font-bold text-indigo-400 mt-1" id="kpi-cpa-rev">€413.95</div>
+        <div class="text-[11px] text-zinc-400 mt-0.5" id="kpi-clicks-sub">149 Tracked Affiliate Clicks</div>
       </div>
       <div class="p-4 rounded-xl bg-[#121215] border subtle-border">
         <div class="text-[11px] text-zinc-400 uppercase font-mono">Total Combined Revenue</div>
-        <div class="text-2xl font-bold text-emerald-400 mt-1" id="kpi-total-rev">€718.88</div>
+        <div class="text-2xl font-bold text-emerald-400 mt-1" id="kpi-total-rev">€720.33</div>
         <div class="text-[11px] text-zinc-400 mt-0.5">Webhook & PocketBase Sync Ready</div>
       </div>
     </div>
 
     <!-- TABS NAVIGATION -->
-    <div class="flex items-center gap-2 border-b subtle-border pb-3">
+    <div class="flex flex-wrap items-center gap-2 border-b subtle-border pb-3">
       <button onclick="switchAdminTab('licenses')" id="tabbtn-licenses" class="px-4 py-2 rounded-lg text-xs font-semibold bg-indigo-600 text-white">
         1. License Keys (SHOP2 / PATREON / SLX)
       </button>
       <button onclick="switchAdminTab('payments')" id="tabbtn-payments" class="px-4 py-2 rounded-lg text-xs font-semibold bg-[#121215] text-zinc-400 hover:text-white border subtle-border">
-        2. Payments & HubCloud.dev Webhooks
+        2. Payments, Crypto Wallets & HubCloud Webhooks
       </button>
       <button onclick="switchAdminTab('ads')" id="tabbtn-ads" class="px-4 py-2 rounded-lg text-xs font-semibold bg-[#121215] text-zinc-400 hover:text-white border subtle-border">
         3. Ad Networks & AI CPA Affiliate Links
@@ -136,17 +137,17 @@
     <section id="admintab-payments" class="hidden space-y-5">
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <div class="p-5 rounded-xl bg-[#121215] border subtle-border space-y-4">
-          <h3 class="text-sm font-bold text-white">Decoy Storefront (`HubCloud.dev`) & Payment Gateways</h3>
+          <h3 class="text-sm font-bold text-white">Decoy Storefront (`HubCloud.dev`), Checkout Links & Crypto Wallets</h3>
           <div class="space-y-3 text-xs">
             <div>
-              <label class="block text-zinc-400 mb-1">Webhook Endpoint URL (Configure in Stripe / Sell.app / NowPayments)</label>
-              <input id="pay-webhook-url" type="text" readonly value="https://sb-4jz04aup1k6a.vercel.run/api/webhooks/payment" class="w-full bg-[#09090B] border subtle-border rounded-lg px-3 py-2 text-emerald-400 font-mono" />
+              <label class="block text-zinc-400 mb-1">Webhook Endpoint URL (Configure in Stripe / Sell.app / NOWPayments)</label>
+              <input id="pay-webhook-url" type="text" readonly value="https://r34hub-five.vercel.app/api/webhooks/payment" class="w-full bg-[#09090B] border subtle-border rounded-lg px-3 py-2 text-emerald-400 font-mono" />
             </div>
             <div>
-              <label class="block text-zinc-400 mb-1">Webhook Signing Secret (`WEBHOOK_SECRET`)</label>
+              <label class="block text-zinc-400 mb-1">Webhook Signing Secret (`x-webhook-secret`)</label>
               <input id="pay-webhook-secret" type="text" readonly value="whsec_r34hub_live_8f92a4c7e1b093d6f5a2c8e4" class="w-full bg-[#09090B] border subtle-border rounded-lg px-3 py-2 text-zinc-300 font-mono" />
             </div>
-            <div class="grid grid-cols-2 gap-2">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div>
                 <label class="block text-zinc-400 mb-1">Stripe Monthly Link (€7.00/mo)</label>
                 <input id="pay-stripe-monthly" type="text" class="w-full bg-[#09090B] border subtle-border rounded-lg px-3 py-2 text-white font-mono" />
@@ -156,36 +157,71 @@
                 <input id="pay-stripe-annual" type="text" class="w-full bg-[#09090B] border subtle-border rounded-lg px-3 py-2 text-white font-mono" />
               </div>
             </div>
-            <div class="grid grid-cols-2 gap-2">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <div>
                 <label class="block text-zinc-400 mb-1">Sell.app 30-Day Pass URL (€12.99)</label>
                 <input id="pay-sellapp-30d" type="text" class="w-full bg-[#09090B] border subtle-border rounded-lg px-3 py-2 text-white font-mono" />
               </div>
               <div>
-                <label class="block text-zinc-400 mb-1">Monero (XMR) / USDT Wallet</label>
-                <input id="pay-crypto-wallet" type="text" class="w-full bg-[#09090B] border subtle-border rounded-lg px-3 py-2 text-white font-mono" />
+                <label class="block text-zinc-400 mb-1">Sell.app Lifetime URL (€199.99)</label>
+                <input id="pay-sellapp-lifetime" type="text" class="w-full bg-[#09090B] border subtle-border rounded-lg px-3 py-2 text-white font-mono" />
+              </div>
+              <div>
+                <label class="block text-zinc-400 mb-1">NOWPayments Invoice Link</label>
+                <input id="pay-nowpayments-url" type="text" class="w-full bg-[#09090B] border subtle-border rounded-lg px-3 py-2 text-white font-mono" />
               </div>
             </div>
-            <button onclick="savePaymentSettings()" class="w-full py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 font-semibold text-white">
-              Save Payment Gateway Settings
+            <div class="pt-2 border-t subtle-border">
+              <div class="text-[11px] font-bold uppercase text-indigo-300 mb-2">Direct Multi-Chain Crypto Wallets (Shown on `/hubcloud`)</div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div>
+                  <label class="block text-zinc-400 mb-1">USDT (TRC-20 Tron)</label>
+                  <input id="wallet-usdt" type="text" class="w-full bg-[#09090B] border subtle-border rounded-lg px-3 py-1.5 text-emerald-300 font-mono" />
+                </div>
+                <div>
+                  <label class="block text-zinc-400 mb-1">BTC (Bitcoin)</label>
+                  <input id="wallet-btc" type="text" class="w-full bg-[#09090B] border subtle-border rounded-lg px-3 py-1.5 text-emerald-300 font-mono" />
+                </div>
+                <div>
+                  <label class="block text-zinc-400 mb-1">SOL (Solana)</label>
+                  <input id="wallet-sol" type="text" class="w-full bg-[#09090B] border subtle-border rounded-lg px-3 py-1.5 text-emerald-300 font-mono" />
+                </div>
+                <div>
+                  <label class="block text-zinc-400 mb-1">ETH / ERC-20</label>
+                  <input id="wallet-eth" type="text" class="w-full bg-[#09090B] border subtle-border rounded-lg px-3 py-1.5 text-emerald-300 font-mono" />
+                </div>
+                <div>
+                  <label class="block text-zinc-400 mb-1">TON (The Open Network)</label>
+                  <input id="wallet-ton" type="text" class="w-full bg-[#09090B] border subtle-border rounded-lg px-3 py-1.5 text-emerald-300 font-mono" />
+                </div>
+                <div>
+                  <label class="block text-zinc-400 mb-1">XMR (Monero)</label>
+                  <input id="wallet-xmr" type="text" class="w-full bg-[#09090B] border subtle-border rounded-lg px-3 py-1.5 text-emerald-300 font-mono" />
+                </div>
+              </div>
+            </div>
+            <button onclick="savePaymentSettings()" class="w-full py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 font-semibold text-white">
+              Save All Payment Checkout Links & Crypto Wallets
             </button>
           </div>
         </div>
 
         <!-- Live Webhook Simulator & Email Receipt Preview -->
         <div class="p-5 rounded-xl bg-[#121215] border subtle-border space-y-4">
-          <h3 class="text-sm font-bold text-white">Simulate Live EUR Purchase & Email Delivery</h3>
-          <p class="text-xs text-zinc-400">Triggers `POST /api/webhooks/payment`, automatically mints a fresh `SHOP2-` key, records the EUR order, and generates the buyer's HTML email receipt.</p>
-          <div class="grid grid-cols-2 gap-2 text-xs">
+          <h3 class="text-sm font-bold text-white">Fulfill Pending Order / Simulate Webhook Purchase</h3>
+          <p class="text-xs text-zinc-400">Triggers `POST /api/webhooks/payment`, automatically mints a fresh `SHOP2-` or `SLX-` key, marks the order as `paid`, and generates the buyer's HTML receipt.</p>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+            <input id="sim-order-id" type="text" value="" class="bg-[#09090B] border subtle-border rounded-lg px-3 py-2 text-white font-mono" placeholder="Optional: ord_xxxx" />
             <input id="sim-buyer-email" type="email" value="emildv.work@gmail.com" class="bg-[#09090B] border subtle-border rounded-lg px-3 py-2 text-white" placeholder="Buyer email" />
             <select id="sim-buyer-plan" class="bg-[#09090B] border subtle-border rounded-lg px-3 py-2 text-white">
               <option value="annual">Annual Pro (€59.99 EUR)</option>
               <option value="monthly">Monthly Pro (€7.00 EUR)</option>
+              <option value="30d_pass">30-Day Pass (€12.99 EUR)</option>
               <option value="lifetime">Lifetime VIP (€199.99 EUR)</option>
             </select>
           </div>
           <button onclick="simulateWebhookPurchase()" class="w-full py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-white">
-            ⚡ Simulate Live EUR Purchase & Generate Email Receipt
+            ⚡ Confirm Payment & Issue License Key Now
           </button>
           <div id="email-receipt-preview" class="hidden p-3 rounded-lg bg-[#09090B] border subtle-border text-xs space-y-2">
             <div class="flex items-center justify-between text-emerald-400 font-mono text-[11px]">
@@ -199,19 +235,21 @@
 
       <!-- Recent Orders Table -->
       <div class="rounded-xl bg-[#121215] border subtle-border overflow-hidden">
-        <div class="px-4 py-3 border-b subtle-border">
-          <h3 class="text-xs font-bold uppercase tracking-wider text-zinc-300">Processed Webhook Orders</h3>
+        <div class="px-4 py-3 border-b subtle-border flex items-center justify-between">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-zinc-300">Live Storefront & Webhook Orders (`monetization-db.json`)</h3>
+          <span class="text-[11px] text-zinc-400">Click "Fulfill & Issue Key" on any pending order to instantly deliver a key</span>
         </div>
         <div class="overflow-x-auto">
           <table class="w-full text-left text-xs font-mono">
             <thead class="bg-[#0D0D10] text-zinc-400 uppercase text-[10px]">
               <tr>
                 <th class="py-2 px-4">Order ID</th>
-                <th class="py-2 px-3">Gateway</th>
+                <th class="py-2 px-3">Gateway / Rail</th>
                 <th class="py-2 px-3">Customer Email</th>
                 <th class="py-2 px-3">Amount</th>
+                <th class="py-2 px-3">Status</th>
                 <th class="py-2 px-3">Issued License Key</th>
-                <th class="py-2 px-4">Timestamp</th>
+                <th class="py-2 px-4 text-right">Action / Timestamp</th>
               </tr>
             </thead>
             <tbody id="orders-table-body" class="divide-y divide-white/5"></tbody>
@@ -224,25 +262,47 @@
     <section id="admintab-ads" class="hidden space-y-5">
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <div class="p-5 rounded-xl bg-[#121215] border subtle-border space-y-4">
-          <h3 class="text-sm font-bold text-white">AI Companion CPA Rotator (`PostChatWithAi.vue` Architecture)</h3>
+          <h3 class="text-sm font-bold text-white">AI Companion CPA Rotator (`Candy.ai`, `CrushOn.ai`, `SpicyChat.ai`, `Nud3.me`)</h3>
+          <p class="text-xs text-zinc-400">Update your Affiliate ID or full URL template (`{post_id}`, `{character_tag}`, `{media_url}`) in 1 click.</p>
           <div id="cpa-offers-editor" class="space-y-3 text-xs"></div>
-          <button onclick="saveAdsConfig()" class="w-full py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white">
-            Save Affiliate Links & Zone IDs
+          <button onclick="saveAdsConfig()" class="w-full py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white">
+            Save All Affiliate Links & Ad Zone IDs
           </button>
         </div>
 
         <div class="p-5 rounded-xl bg-[#121215] border subtle-border space-y-4">
-          <h3 class="text-sm font-bold text-white">ExoClick & TrafficJunky Ad Zones (Auto-Disabled for Pro VIP)</h3>
+          <h3 class="text-sm font-bold text-white">ExoClick, JuicyAds & TrafficJunky Ad Zones (Auto-Disabled for Pro VIP)</h3>
+          <p class="text-xs text-zinc-400">Paste your zone IDs from ExoClick / JuicyAds. Banners & native cards automatically hide when a user activates a Pro key.</p>
           <div id="ad-zones-editor" class="space-y-3 text-xs"></div>
+          <button onclick="saveAdsConfig()" class="w-full py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-white">
+            Save Zone IDs Now
+          </button>
         </div>
       </div>
     </section>
   </main>
 
-  <div id="admin-toast" class="fixed bottom-5 right-5 hidden px-4 py-2.5 rounded-xl bg-[#18181C] border subtle-border text-xs font-semibold text-white shadow-2xl"></div>
+  <div id="admin-toast" class="fixed bottom-5 right-5 hidden px-4 py-2.5 rounded-xl bg-[#18181C] border subtle-border text-xs font-semibold text-white shadow-2xl z-50"></div>
 
   <script>
+    const DEFAULT_ADMIN_TOKEN = 'R34HUB-ADMIN-9F4A8821-EMIL';
+    const DEFAULT_WEBHOOK_SECRET = 'whsec_r34hub_live_8f92a4c7e1b093d6f5a2c8e4';
     let adminState = null;
+
+    if (!sessionStorage.getItem('r34hub_admin_token')) {
+      sessionStorage.setItem('r34hub_admin_token', DEFAULT_ADMIN_TOKEN);
+    }
+    if (!sessionStorage.getItem('r34hub_webhook_secret')) {
+      sessionStorage.setItem('r34hub_webhook_secret', DEFAULT_WEBHOOK_SECRET);
+    }
+
+    function setAdminTokenFromBar(val) {
+      const clean = String(val || '').trim();
+      if (clean) {
+        sessionStorage.setItem('r34hub_admin_token', clean);
+        loadAdminStats();
+      }
+    }
 
     function notify(msg) {
       const el = document.getElementById('admin-toast');
@@ -262,21 +322,13 @@
     }
 
     function adminToken() {
-      let token = sessionStorage.getItem('r34hub_admin_token') || '';
-      if (!token) {
-        token = (window.prompt('Admin token') || '').trim();
-        if (token) sessionStorage.setItem('r34hub_admin_token', token);
-      }
-      return token;
+      let token = sessionStorage.getItem('r34hub_admin_token') || DEFAULT_ADMIN_TOKEN;
+      return token.trim();
     }
 
     function webhookSecret() {
-      let secret = sessionStorage.getItem('r34hub_webhook_secret') || '';
-      if (!secret) {
-        secret = (window.prompt('Webhook secret') || '').trim();
-        if (secret) sessionStorage.setItem('r34hub_webhook_secret', secret);
-      }
-      return secret;
+      let secret = sessionStorage.getItem('r34hub_webhook_secret') || DEFAULT_WEBHOOK_SECRET;
+      return secret.trim();
     }
 
     async function adminFetch(url, options) {
@@ -284,13 +336,13 @@
       const headers = Object.assign({ 'x-admin-token': adminToken() }, opts.headers || {});
       const res = await fetch(url, Object.assign({}, opts, { headers }));
       if (res.status === 401) {
-        sessionStorage.removeItem('r34hub_admin_token');
-        notify('Admin token was rejected');
+        notify('Admin token rejected — check token in top bar');
       }
       return res;
     }
 
     async function loadAdminStats() {
+      document.getElementById('pay-webhook-url').value = `${location.origin}/api/webhooks/payment`;
       const res = await adminFetch('/api/admin/stats');
       if (!res.ok) return;
       const data = await res.json();
@@ -324,12 +376,20 @@
         </tr>
       `).join('');
 
-      // Populate Payment Settings
+      // Populate Payment Settings & Multi-Chain Crypto Wallets
       const pc = data.paymentConfig || {};
+      const cw = pc.cryptoWallets || {};
       document.getElementById('pay-stripe-monthly').value = pc.stripeMonthlyUrl || '';
       document.getElementById('pay-stripe-annual').value = pc.stripeAnnualUrl || '';
       document.getElementById('pay-sellapp-30d').value = pc.sellApp30dUrl || '';
-      document.getElementById('pay-crypto-wallet').value = (pc.cryptoWallets && pc.cryptoWallets.USDT_TRC20) || '';
+      document.getElementById('pay-sellapp-lifetime').value = pc.sellAppLifetimeUrl || '';
+      document.getElementById('pay-nowpayments-url').value = pc.nowPaymentsUrl || '';
+      document.getElementById('wallet-usdt').value = cw.USDT_TRC20 || '';
+      document.getElementById('wallet-btc').value = cw.BTC || '';
+      document.getElementById('wallet-sol').value = cw.SOL || '';
+      document.getElementById('wallet-eth').value = cw.ETH || '';
+      document.getElementById('wallet-ton').value = cw.TON || '';
+      document.getElementById('wallet-xmr').value = cw.XMR || '';
 
       // Render Orders Table
       document.getElementById('orders-table-body').innerHTML = (data.orders || []).map(o => `
@@ -337,20 +397,36 @@
           <td class="py-2 px-4 text-zinc-300">${o.orderId}</td>
           <td class="py-2 px-3 text-zinc-400">${o.provider}</td>
           <td class="py-2 px-3 text-zinc-200">${o.email}</td>
-          <td class="py-2 px-3 text-emerald-400">€${Number(o.amountEur).toFixed(2)}</td>
-          <td class="py-2 px-3 text-indigo-300 font-bold">${o.licenseKey}</td>
-          <td class="py-2 px-4 text-zinc-500">${String(o.createdAt).slice(0, 19).replace('T', ' ')}</td>
+          <td class="py-2 px-3 text-emerald-400">€${Number(o.amountEur || 0).toFixed(2)}</td>
+          <td class="py-2 px-3">
+            <span class="px-2 py-0.5 rounded text-[10px] ${o.status === 'paid' ? 'bg-emerald-500/15 text-emerald-300' : 'bg-amber-500/15 text-amber-300'}">${String(o.status || 'paid').toUpperCase()}</span>
+          </td>
+          <td class="py-2 px-3 text-indigo-300 font-bold">${o.licenseKey || '—'}</td>
+          <td class="py-2 px-4 text-right text-zinc-500">
+            ${o.status !== 'paid'
+              ? `<button onclick="fulfillPendingOrder('${o.orderId}','${o.plan || 'annual'}','${o.email}','${o.provider}')" class="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-sans font-semibold text-[11px]">Fulfill & Issue Key</button>`
+              : String(o.createdAt).slice(0, 19).replace('T', ' ')}
+          </td>
         </tr>
       `).join('');
 
       // Render CPA Offers Editor
       document.getElementById('cpa-offers-editor').innerHTML = (data.adsConfig.cpaOffers || []).map(o => `
-        <div class="p-3 rounded-lg bg-[#09090B] border subtle-border space-y-1.5">
+        <div class="p-3 rounded-lg bg-[#09090B] border subtle-border space-y-2">
           <div class="flex items-center justify-between">
-            <span class="font-bold text-white">${o.name} (${o.category})</span>
+            <span class="font-bold text-white">${o.name} <span class="text-zinc-500 font-normal">(${o.category})</span></span>
             <span class="text-[11px] text-emerald-400 font-mono">${o.payoutText}</span>
           </div>
-          <input data-cpa-id="${o.id}" type="text" value="${o.urlTemplate}" class="cpa-url-input w-full bg-[#121215] border subtle-border rounded px-2.5 py-1.5 text-zinc-200 font-mono" />
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <div>
+              <label class="block text-[10px] text-zinc-500 mb-0.5">Affiliate ID / Ref</label>
+              <input data-cpa-aff="${o.id}" type="text" value="${o.affiliateId || ''}" class="cpa-aff-input w-full bg-[#121215] border subtle-border rounded px-2 py-1 text-emerald-300 font-mono" />
+            </div>
+            <div class="sm:col-span-2">
+              <label class="block text-[10px] text-zinc-500 mb-0.5">Target URL Template</label>
+              <input data-cpa-id="${o.id}" type="text" value="${o.urlTemplate}" class="cpa-url-input w-full bg-[#121215] border subtle-border rounded px-2 py-1 text-zinc-200 font-mono" />
+            </div>
+          </div>
         </div>
       `).join('');
 
@@ -362,7 +438,7 @@
             <div class="font-bold text-white">${z.id} (${z.network})</div>
             <div class="text-[11px] text-zinc-400">${z.format} • Est. €${z.cpmEur} CPM</div>
           </div>
-          <input data-zone-id="${z.id}" type="text" value="${z.zoneId}" class="zone-id-input w-28 bg-[#121215] border subtle-border rounded px-2.5 py-1.5 text-white font-mono text-right" />
+          <input data-zone-id="${z.id}" type="text" value="${z.zoneId}" class="zone-id-input w-32 bg-[#121215] border subtle-border rounded px-2.5 py-1.5 text-white font-mono text-right" />
         </div>
       `).join('');
     }
@@ -394,19 +470,27 @@
       loadAdminStats();
     }
 
-    async function simulateWebhookPurchase() {
+    async function fulfillPendingOrder(orderId, plan, email, provider) {
+      document.getElementById('sim-order-id').value = orderId;
+      document.getElementById('sim-buyer-email').value = email;
+      document.getElementById('sim-buyer-plan').value = plan || 'annual';
+      await simulateWebhookPurchase(provider);
+    }
+
+    async function simulateWebhookPurchase(customProvider) {
+      const orderId = document.getElementById('sim-order-id').value.trim();
       const email = document.getElementById('sim-buyer-email').value;
       const plan = document.getElementById('sim-buyer-plan').value;
+      const provider = customProvider || 'stripe_hubcloud';
       const res = await fetch('/api/webhooks/payment', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'x-webhook-secret': webhookSecret()
         },
-        body: JSON.stringify({ provider: 'stripe_hubcloud', event: 'checkout.session.completed', plan, email })
+        body: JSON.stringify({ orderId, provider, event: 'checkout.session.completed', plan, email })
       });
       if (res.status === 401) {
-        sessionStorage.removeItem('r34hub_webhook_secret');
         notify('Webhook secret was rejected');
         return;
       }
@@ -415,6 +499,7 @@
         document.getElementById('email-receipt-preview').classList.remove('hidden');
         document.getElementById('receipt-minted-key').textContent = `Minted & Saved: ${data.licenseKey}`;
         document.getElementById('receipt-html-box').innerHTML = data.emailReceiptHtml;
+        document.getElementById('sim-order-id').value = '';
         notify(`Webhook processed! Minted ${data.licenseKey} for ${email}`);
         loadAdminStats();
       }
@@ -422,33 +507,49 @@
 
     async function savePaymentSettings() {
       const paymentConfig = {
-        stripeMonthlyUrl: document.getElementById('pay-stripe-monthly').value,
-        stripeAnnualUrl: document.getElementById('pay-stripe-annual').value,
-        sellApp30dUrl: document.getElementById('pay-sellapp-30d').value
+        stripeMonthlyUrl: document.getElementById('pay-stripe-monthly').value.trim(),
+        stripeAnnualUrl: document.getElementById('pay-stripe-annual').value.trim(),
+        sellApp30dUrl: document.getElementById('pay-sellapp-30d').value.trim(),
+        sellAppLifetimeUrl: document.getElementById('pay-sellapp-lifetime').value.trim(),
+        nowPaymentsUrl: document.getElementById('pay-nowpayments-url').value.trim(),
+        cryptoWallets: {
+          USDT_TRC20: document.getElementById('wallet-usdt').value.trim(),
+          BTC: document.getElementById('wallet-btc').value.trim(),
+          SOL: document.getElementById('wallet-sol').value.trim(),
+          ETH: document.getElementById('wallet-eth').value.trim(),
+          TON: document.getElementById('wallet-ton').value.trim(),
+          XMR: document.getElementById('wallet-xmr').value.trim()
+        }
       };
       await adminFetch('/api/admin/ads/update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ paymentConfig })
       });
-      notify('Saved Payment & HubCloud.dev URLs!');
+      notify('Saved Payment Links & Multi-Chain Crypto Wallets!');
+      loadAdminStats();
     }
 
     async function saveAdsConfig() {
+      const affById = {};
+      document.querySelectorAll('.cpa-aff-input').forEach(el => {
+        affById[el.dataset.cpaAff] = el.value.trim();
+      });
       const cpaOffers = Array.from(document.querySelectorAll('.cpa-url-input')).map(el => ({
         id: el.dataset.cpaId,
-        urlTemplate: el.value
+        affiliateId: affById[el.dataset.cpaId] || 'r34hub',
+        urlTemplate: el.value.trim()
       }));
       const adZones = {};
       document.querySelectorAll('.zone-id-input').forEach(el => {
-        adZones[el.dataset.zoneId] = { zoneId: el.value };
+        adZones[el.dataset.zoneId] = { zoneId: el.value.trim() };
       });
       await adminFetch('/api/admin/ads/update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ cpaOffers, adZones })
       });
-      notify('Saved Affiliate CPA Templates & ExoClick Zone IDs!');
+      notify('Saved Affiliate CPA Links & Ad Zone IDs!');
       loadAdminStats();
     }
 

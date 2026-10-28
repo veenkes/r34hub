@@ -21,9 +21,12 @@
     "nowPaymentsApiKey": "np_live_r34hub_9941a8c3d2e7f001",
     "cryptoDiscountPercent": 20,
     "cryptoWallets": {
-      "XMR": "44Affq5kSiGBoZ4NMDwYtN18obc8AemS33DBLWs3H7otXft3XjrpDtQGv7SqSsaBYBb98uNbr2VBBEt7f2wfn3RVGQBEP3A",
       "USDT_TRC20": "TNPeeaaFB7K9cmo4uQpcU32zGK8G1NYqeL",
-      "BTC": "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh"
+      "BTC": "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
+      "SOL": "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU",
+      "ETH": "0x71C7656EC7ab88b098defB751B7401B5f6d8976F",
+      "TON": "UQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqEBI",
+      "XMR": "44Affq5kSiGBoZ4NMDwYtN18obc8AemS33DBLWs3H7otXft3XjrpDtQGv7SqSsaBYBb98uNbr2VBBEt7f2wfn3RVGQBEP3A"
     },
     "plans": {
       "monthly": {
@@ -70,7 +73,8 @@
         "prefix": "SLX",
         "description": "One-time payment for permanent Pro VIP access across up to 5 devices forever."
       }
-    }
+    },
+    "nowPaymentsUrl": "https://nowpayments.io/payment/?iid=r34hub_vip"
   },
   "adsConfig": {
     "adsEnabled": true,
@@ -205,6 +209,20 @@
     }
   },
   "licenses": [
+    {
+      "key": "SLX-C115-2CA4-1CEB",
+      "prefix": "SLX",
+      "tier": "annual",
+      "planName": "365-Day Annual Pro (€59.99/yr)",
+      "priceEur": 47.99,
+      "email": "emildv.work@gmail.com",
+      "status": "active",
+      "devicesUsed": 1,
+      "maxDevices": 5,
+      "createdAt": "2026-10-28T12:14:58.875Z",
+      "expiresAt": "2027-10-28T12:14:58.875Z",
+      "notes": "Auto-minted via nowpayments_usdt (payment_status:finished)"
+    },
     {
       "key": "SHOP2-OWNER-VIP-9F4A-8821",
       "prefix": "SHOP2",
@@ -432,6 +450,26 @@
     }
   ],
   "orders": [
+    {
+      "orderId": "ord_0121f7de23",
+      "sessionId": "ord_0121f7de23",
+      "provider": "nowpayments_usdt",
+      "event": "payment_status:finished",
+      "email": "emildv.work@gmail.com",
+      "plan": "annual",
+      "tier": "annual",
+      "planName": "365-Day Annual Pro (€59.99/yr)",
+      "amountEur": 47.99,
+      "currency": "EUR (USDT_TRC20)",
+      "cryptoCurrency": "USDT_TRC20",
+      "walletAddress": "TNPeeaaFB7K9cmo4uQpcU32zGK8G1NYqeL",
+      "txHash": null,
+      "licenseKey": "SLX-C115-2CA4-1CEB",
+      "status": "paid",
+      "externalCheckoutUrl": "https://nowpayments.io/payment/?iid=r34hub_vip",
+      "createdAt": "2026-10-28T12:14:58.849Z",
+      "paidAt": "2026-10-28T12:14:58.875Z"
+    },
     {
       "orderId": "ord_stripe_98412a",
       "provider": "stripe_hubcloud",

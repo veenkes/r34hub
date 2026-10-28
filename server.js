@@ -1607,6 +1607,7 @@ app.post("/api/webhooks/payment", (req, res) => {
   monDb = loadMonetizationDb();
   if (!requireWebhook(req, res)) return;
   const {
+    orderId: existingOrderId = "",
     provider = "stripe_hubcloud",
     event = "checkout.session.completed",
     plan = "annual",
@@ -1649,20 +1650,35 @@ app.post("/api/webhooks/payment", (req, res) => {
   };
   monDb.licenses.unshift(licenseRecord);
 
-  const orderRecord = {
-    orderId: `ord_${crypto.randomBytes(4).toString("hex")}`,
-    provider,
-    event,
-    email: licenseRecord.email,
-    plan: chosen.tier,
-    planName: chosen.name,
-    amountEur: finalPrice,
-    currency: isCrypto ? "EUR (Crypto -20%)" : "EUR",
-    licenseKey,
-    status: "paid",
-    createdAt: now.toISOString()
-  };
-  monDb.orders.unshift(orderRecord);
+  let orderRecord = existingOrderId
+    ? (monDb.orders || []).find(o => o.orderId === existingOrderId || o.sessionId === existingOrderId)
+    : null;
+  if (orderRecord) {
+    orderRecord.provider = provider || orderRecord.provider;
+    orderRecord.event = event;
+    orderRecord.email = licenseRecord.email;
+    orderRecord.plan = chosen.tier;
+    orderRecord.planName = chosen.name;
+    orderRecord.amountEur = finalPrice;
+    orderRecord.licenseKey = licenseKey;
+    orderRecord.status = "paid";
+    orderRecord.paidAt = now.toISOString();
+  } else {
+    orderRecord = {
+      orderId: existingOrderId || `ord_${crypto.randomBytes(4).toString("hex")}`,
+      provider,
+      event,
+      email: licenseRecord.email,
+      plan: chosen.tier,
+      planName: chosen.name,
+      amountEur: finalPrice,
+      currency: isCrypto ? "EUR (Crypto -20%)" : "EUR",
+      licenseKey,
+      status: "paid",
+      createdAt: now.toISOString()
+    };
+    monDb.orders.unshift(orderRecord);
+  }
   saveMonetizationDb(monDb);
 
   const emailReceiptHtml = buildLicenseEmailHtml({
@@ -1831,7 +1847,11 @@ app.post("/api/admin/ads/update", (req, res) => {
   }
 
   if (body.paymentConfig && typeof body.paymentConfig === "object") {
-    Object.assign(monDb.paymentConfig, body.paymentConfig);
+    const { cryptoWallets, ...restPayment } = body.paymentConfig;
+    Object.assign(monDb.paymentConfig, restPayment);
+    if (cryptoWallets && typeof cryptoWallets === "object") {
+      monDb.paymentConfig.cryptoWallets = Object.assign({}, monDb.paymentConfig.cryptoWallets || {}, cryptoWallets);
+    }
   }
 
   saveMonetizationDb(monDb);
@@ -1876,6 +1896,254 @@ app.get("/api/admin/stats", (req, res) => {
   });
 });
 
+
+// 4. HubCloud Storefront Public Config, Live Order Creation & Order Status Polling
+app.get("/api/hubcloud/config", (req, res) => {
+  monDb = loadMonetizationDb();
+  const pc = monDb.paymentConfig || {};
+  res.json({
+    ok: true,
+    brand: pc.decoyBrandName || "HubCloud.dev",
+    tagline: pc.decoyTagline || "Cloud Media Indexing & Discord/Telegram Role Sync Engine",
+    descriptor: pc.stripeDescriptor || "HUBCLOUD.DEV * CLOUD SYNC",
+    currency: pc.currency || "EUR",
+    cryptoDiscountPercent: pc.cryptoDiscountPercent || 20,
+    checkoutLinks: {
+      stripeMonthlyUrl: pc.stripeMonthlyUrl || "",
+      stripeAnnualUrl: pc.stripeAnnualUrl || "",
+      ghostPortalUrl: pc.ghostPortalUrl || "",
+      sellApp30dUrl: pc.sellApp30dUrl || "",
+      sellAppLifetimeUrl: pc.sellAppLifetimeUrl || "",
+      nowPaymentsUrl: pc.nowPaymentsUrl || ""
+    },
+    cryptoWallets: pc.cryptoWallets || {},
+    plans: pc.plans || {}
+  });
+});
+
+function createHubCloudOrderHandler(req, res) {
+  monDb = loadMonetizationDb();
+  const body = req.body || {};
+  const plan = body.plan || "annual";
+  const provider = body.provider || "stripe_hubcloud";
+  const email = String(body.email || "").trim() || "buyer@r34hub.app";
+  const cryptoCurrency = String(body.cryptoCurrency || "USDT_TRC20").toUpperCase();
+  const txHash = String(body.txHash || "").trim();
+
+  const planLookup = {
+    monthly: { id: "monthly", name: "Monthly Pro", tier: "monthly", amountEur: 7.00, days: 30 },
+    yearly: { id: "annual", name: "Annual Pro (€4.97/mo)", tier: "annual", amountEur: 59.99, days: 365 },
+    annual: { id: "annual", name: "Annual Pro (€4.97/mo)", tier: "annual", amountEur: 59.99, days: 365 },
+    "30days": { id: "30d_pass", name: "30-Day One-Time Pass", tier: "monthly", amountEur: 12.99, days: 30 },
+    "30d_pass": { id: "30d_pass", name: "30-Day One-Time Pass", tier: "monthly", amountEur: 12.99, days: 30 },
+    lifetime: { id: "lifetime", name: "Lifetime VIP Master Pass", tier: "lifetime", amountEur: 199.99, days: 36500 }
+  };
+  const selected = planLookup[plan] || planLookup.annual;
+  const isCrypto = String(provider).includes("crypto") || String(provider).includes("nowpayments") || ["USDT_TRC20", "BTC", "SOL", "ETH", "TON", "XMR"].includes(String(provider).toUpperCase());
+  const finalAmountEur = isCrypto ? Number((selected.amountEur * 0.8).toFixed(2)) : selected.amountEur;
+  const orderId = `ord_${crypto.randomBytes(5).toString("hex")}`;
+  const now = new Date();
+
+  const pc = monDb.paymentConfig || {};
+  const wallets = pc.cryptoWallets || {};
+  const walletAddress = wallets[cryptoCurrency] || wallets.USDT_TRC20 || "";
+
+  let externalCheckoutUrl = "";
+  if (!isCrypto) {
+    if (selected.id === "monthly") externalCheckoutUrl = pc.stripeMonthlyUrl || pc.ghostPortalUrl || "";
+    else if (selected.id === "annual") externalCheckoutUrl = pc.stripeAnnualUrl || pc.ghostPortalUrl || "";
+    else if (selected.id === "30d_pass") externalCheckoutUrl = pc.sellApp30dUrl || "";
+    else if (selected.id === "lifetime") externalCheckoutUrl = pc.sellAppLifetimeUrl || "";
+  } else {
+    externalCheckoutUrl = pc.nowPaymentsUrl || pc.sellAppLifetimeUrl || "";
+  }
+
+  const orderRecord = {
+    orderId,
+    sessionId: orderId,
+    provider: isCrypto ? `crypto_${cryptoCurrency.toLowerCase()}` : provider,
+    event: "order.created",
+    email,
+    plan: selected.id,
+    tier: selected.tier,
+    planName: selected.name,
+    amountEur: finalAmountEur,
+    currency: isCrypto ? `EUR (${cryptoCurrency})` : "EUR",
+    cryptoCurrency: isCrypto ? cryptoCurrency : null,
+    walletAddress: isCrypto ? walletAddress : null,
+    txHash: txHash || null,
+    licenseKey: null,
+    status: txHash ? "verifying_tx" : "pending_payment",
+    externalCheckoutUrl,
+    createdAt: now.toISOString()
+  };
+
+  monDb.orders = monDb.orders || [];
+  monDb.orders.unshift(orderRecord);
+  saveMonetizationDb(monDb);
+
+  res.json({
+    ok: true,
+    orderId,
+    sessionId: orderId,
+    order: orderRecord,
+    provider: orderRecord.provider,
+    plan: selected.id,
+    planName: selected.name,
+    tier: selected.tier,
+    email,
+    amountEur: finalAmountEur,
+    currency: "EUR",
+    cryptoCurrency: orderRecord.cryptoCurrency,
+    walletAddress: orderRecord.walletAddress,
+    cryptoDiscountApplied: isCrypto ? "20% OFF" : null,
+    statementDescriptor: pc.stripeDescriptor || "HUBCLOUD.DEV * CLOUD SYNC",
+    externalCheckoutUrl,
+    statusUrl: `/api/hubcloud/order-status?orderId=${encodeURIComponent(orderId)}`,
+    checkoutUrl: `/hubcloud?orderId=${encodeURIComponent(orderId)}&plan=${encodeURIComponent(selected.id)}&provider=${encodeURIComponent(provider)}&email=${encodeURIComponent(email)}`
+  });
+}
+
+app.post("/api/hubcloud/create-order", createHubCloudOrderHandler);
+app.post("/api/hubcloud/checkout", createHubCloudOrderHandler);
+
+app.get("/api/hubcloud/order-status", (req, res) => {
+  monDb = loadMonetizationDb();
+  const orderId = String(req.query.orderId || req.query.session || "").trim();
+  if (!orderId) return res.status(400).json({ ok: false, error: "Missing orderId parameter" });
+  const order = (monDb.orders || []).find(o => o.orderId === orderId || o.sessionId === orderId);
+  if (!order) return res.status(404).json({ ok: false, error: "Order not found" });
+  res.json({
+    ok: true,
+    orderId: order.orderId,
+    status: order.status,
+    plan: order.plan,
+    planName: order.planName,
+    amountEur: order.amountEur,
+    currency: order.currency,
+    email: order.email,
+    licenseKey: order.licenseKey || null,
+    createdAt: order.createdAt
+  });
+});
+
+app.post("/api/hubcloud/submit-tx", (req, res) => {
+  monDb = loadMonetizationDb();
+  const { orderId = "", txHash = "", email = "" } = req.body || {};
+  const order = (monDb.orders || []).find(o => o.orderId === orderId || o.sessionId === orderId);
+  if (!order) return res.status(404).json({ ok: false, error: "Order not found" });
+  if (txHash) order.txHash = String(txHash).trim();
+  if (email) order.email = String(email).trim();
+  order.status = "verifying_tx";
+  order.updatedAt = new Date().toISOString();
+  saveMonetizationDb(monDb);
+  res.json({ ok: true, order });
+});
+
+// 5. Production SEO Endpoints (/robots.txt & /sitemap.xml)
+app.get("/robots.txt", (req, res) => {
+  const proto = req.get("x-forwarded-proto") || req.protocol || "https";
+  const host = req.get("host") || "r34hub-five.vercel.app";
+  const baseUrl = `${proto}://${host}`;
+  res.setHeader("Content-Type", "text/plain; charset=utf-8");
+  res.setHeader("Cache-Control", "public, max-age=3600");
+  res.send([
+    "User-agent: *",
+    "Allow: /",
+    "Allow: /posts/",
+    "Allow: /grid/",
+    "Allow: /hubcloud",
+    "Disallow: /api/admin/",
+    "",
+    `Sitemap: ${baseUrl}/sitemap.xml`
+  ].join("\n") + "\n");
+});
+
+app.get("/sitemap.xml", (req, res) => {
+  const proto = req.get("x-forwarded-proto") || req.protocol || "https";
+  const host = req.get("host") || "r34hub-five.vercel.app";
+  const baseUrl = `${proto}://${host}`;
+  const today = new Date().toISOString().slice(0, 10);
+
+  const coreRoutes = [
+    { path: "/", priority: "1.0", changefreq: "hourly" },
+    { path: "/posts/rule34.xxx", priority: "0.95", changefreq: "hourly" },
+    { path: "/grid/rule34.xxx", priority: "0.95", changefreq: "hourly" },
+    { path: "/posts/danbooru", priority: "0.9", changefreq: "hourly" },
+    { path: "/grid/danbooru", priority: "0.9", changefreq: "hourly" },
+    { path: "/posts/e621", priority: "0.9", changefreq: "hourly" },
+    { path: "/grid/e621", priority: "0.9", changefreq: "hourly" },
+    { path: "/posts/yandere", priority: "0.85", changefreq: "daily" },
+    { path: "/grid/yandere", priority: "0.85", changefreq: "daily" },
+    { path: "/posts/paheal", priority: "0.85", changefreq: "hourly" },
+    { path: "/grid/paheal", priority: "0.85", changefreq: "hourly" },
+    { path: "/posts/safebooru", priority: "0.8", changefreq: "daily" },
+    { path: "/posts/konachan", priority: "0.8", changefreq: "daily" },
+    { path: "/posts/sakugabooru", priority: "0.8", changefreq: "daily" },
+    { path: "/saved", priority: "0.7", changefreq: "weekly" },
+    { path: "/settings", priority: "0.6", changefreq: "monthly" },
+    { path: "/hubcloud", priority: "0.85", changefreq: "weekly" }
+  ];
+
+  const seoTags = [
+    "genshin_impact",
+    "blue_archive",
+    "hololive",
+    "zenless_zone_zero",
+    "honkai:_star_rail",
+    "frieren",
+    "overwatch",
+    "cyberpunk",
+    "animated",
+    "1girl",
+    "naruto",
+    "one_piece",
+    "elden_ring",
+    "nier:_automata",
+    "pokemon",
+    "league_of_legends",
+    "valorant",
+    "chainsaw_man",
+    "jujutsu_kaisen",
+    "street_fighter"
+  ];
+
+  const urls = [];
+  coreRoutes.forEach(r => {
+    urls.push(`  <url>
+    <loc>${baseUrl}${r.path}</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>${r.changefreq}</changefreq>
+    <priority>${r.priority}</priority>
+  </url>`);
+  });
+
+  seoTags.forEach(tag => {
+    const enc = encodeURIComponent(tag);
+    urls.push(`  <url>
+    <loc>${baseUrl}/posts/rule34.xxx?tags=${enc}</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>hourly</changefreq>
+    <priority>0.85</priority>
+  </url>`);
+    urls.push(`  <url>
+    <loc>${baseUrl}/grid/rule34.xxx?tags=${enc}</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>hourly</changefreq>
+    <priority>0.85</priority>
+  </url>`);
+  });
+
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${urls.join("\n")}
+</urlset>
+`;
+  res.setHeader("Content-Type", "application/xml; charset=utf-8");
+  res.setHeader("Cache-Control", "public, max-age=3600");
+  res.send(xml);
+});
+
 // HTML Page Routes for /admin, /hubcloud, and /posts/*
 app.get("/admin", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "admin.html"));
@@ -1890,7 +2158,7 @@ function sendIndex(_req, res) {
 }
 
 app.get("/posts/:source", sendIndex);
-app.get(["/grid", "/grid/:source", "/saved", "/settings"], sendIndex);
+app.get(["/posts", "/reels", "/grid", "/grid/:source", "/saved", "/settings"], sendIndex);
 
 app.get("/api/health", (req, res) => {
   res.setHeader("Cache-Control", "no-store");
