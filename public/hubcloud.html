@@ -409,6 +409,16 @@
           <strong id="active-exp-text">Active</strong>
         </div>
       </div>
+      <div style="margin-top:16px;padding:14px;border-radius:12px;background:var(--bg);border:1px solid var(--line);">
+        <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;">
+          <div>
+            <strong style="font-size:13px;color:var(--text);">Authorized Devices (<span id="devices-count-label">1 / 5</span>)</strong>
+            <div style="font-size:11px;color:var(--muted);">Your license key works on up to 5 devices simultaneously.</div>
+          </div>
+          <button type="button" class="pill-btn" onclick="revokeOtherDevices()" style="color:#fda4af;border-color:rgba(225,29,72,0.35);">Revoke Other Devices</button>
+        </div>
+        <div id="devices-list-box" style="display:grid;gap:8px;font-size:12px;"></div>
+      </div>
     </section>
 
     <!-- LOGGED-OUT VIEW (Hidden when Pro is active) -->
@@ -622,7 +632,72 @@
         document.getElementById('active-email-text').textContent = meta.email || 'Verified Key';
         const exp = String(meta.expiresAt || '').slice(0, 10);
         document.getElementById('active-exp-text').textContent = (!exp || exp === '2099-12-31') ? 'Lifetime (Never Expires)' : exp;
+        loadLicenseDevices();
       }
+    }
+
+
+    function getClientDeviceId() {
+      let dId = localStorage.getItem('r34hub_device_id') || '';
+      if (!dId) {
+        dId = 'dev_' + Math.random().toString(36).slice(2, 10);
+        localStorage.setItem('r34hub_device_id', dId);
+      }
+      return dId;
+    }
+
+    async function loadLicenseDevices() {
+      const key = localStorage.getItem('bp_license') || localStorage.getItem('r34hub_license_key') || '';
+      if (!key) return;
+      try {
+        const dId = getClientDeviceId();
+        const res = await fetch(`/api/license/devices?key=${encodeURIComponent(key)}&deviceId=${encodeURIComponent(dId)}`);
+        const data = await res.json();
+        if (!data || !data.ok) return;
+        const lbl = document.getElementById('devices-count-label');
+        if (lbl) lbl.textContent = `${data.devicesUsed || 1} / ${data.maxDevices || 5}`;
+        const box = document.getElementById('devices-list-box');
+        if (!box) return;
+        const list = data.devices || [];
+        box.innerHTML = list.map(d => {
+          const isCurrent = d.deviceId === data.currentDeviceId || d.deviceId === dId;
+          return `
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;border-radius:9px;background:var(--surface);border:1px solid var(--line);">
+              <div>
+                <strong style="color:var(--text);">${d.name || 'Browser Device'}</strong>
+                ${isCurrent ? '<span style="margin-left:6px;padding:2px 6px;border-radius:4px;background:rgba(16,185,129,0.18);color:#34d399;font-size:10px;font-weight:700;">THIS DEVICE</span>' : ''}
+                <div style="font-size:11px;color:var(--muted);font-family:monospace;">IP: ${d.maskedIp || '*.*.*.*'} • Active: ${String(d.lastActiveAt || '').slice(0, 16).replace('T', ' ')}</div>
+              </div>
+              ${isCurrent
+                ? '<button type="button" class="pill-btn" onclick="logoutFromPremium()" style="color:#fda4af;">Sign Out</button>'
+                : `<button type="button" class="pill-btn" onclick="revokeSingleDevice('${d.deviceId}')">Revoke</button>`}
+            </div>`;
+        }).join('');
+      } catch (_) {}
+    }
+
+    async function revokeSingleDevice(deviceId) {
+      const key = localStorage.getItem('bp_license') || localStorage.getItem('r34hub_license_key') || '';
+      if (!key) return;
+      await fetch('/api/license/devices/revoke', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key, deviceId })
+      });
+      showToast('Device revoked');
+      loadLicenseDevices();
+    }
+
+    async function revokeOtherDevices() {
+      const key = localStorage.getItem('bp_license') || localStorage.getItem('r34hub_license_key') || '';
+      if (!key) return;
+      await fetch('/api/license/devices/revoke', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-device-id': getClientDeviceId() },
+        body: JSON.stringify({ key, deviceId: getClientDeviceId(), revokeAllOthers: true })
+      });
+      showToast('All other devices signed out');
+      loadLicenseDevices();
     }
 
     function copyActiveKey() {

@@ -476,6 +476,8 @@ function renderSourcePills() {
     bindDomainMenu(menu);
   });
   paintDomainButtons();
+  const mbBtn = document.getElementById('multiboard-pill-btn');
+  if (mbBtn) mbBtn.classList.toggle('is-on', state.source === 'multiboard');
   renderHomeBoards();
   const drawerList = document.getElementById('drawer-source-list');
   if (drawerList) {
@@ -2379,6 +2381,82 @@ window.stepModalPost = function(delta) {
   }
 };
 
+
+function renderRelatedPostsInModal(post) {
+  const wrap = document.getElementById('modal-related-wrap');
+  const box = document.getElementById('modal-related-posts');
+  if (!box || !wrap) return;
+  const postTags = new Set((post.tags || []).map(t => String(t).toLowerCase()));
+  const candidates = (state.posts || [])
+    .filter(p => p && p.id !== post.id && cardStill(p).src)
+    .map(p => {
+      const overlap = (p.tags || []).reduce((acc, t) => acc + (postTags.has(String(t).toLowerCase()) ? 1 : 0), 0);
+      return { p, overlap };
+    })
+    .sort((a, b) => b.overlap - a.overlap);
+
+  const picked = candidates.slice(0, 4).map(x => x.p);
+  if (!picked.length) {
+    wrap.classList.add('hidden');
+    return;
+  }
+  wrap.classList.remove('hidden');
+  box.innerHTML = picked.map(rel => {
+    const shown = cardStill(rel);
+    return `
+      <button type="button" onclick="openPostModal('${esc(rel.id)}')" style="border:1px solid var(--line);border-radius:8px;overflow:hidden;padding:0;background:#09090b;aspect-ratio:1/1;position:relative;" title="${esc(rel.sourceName || rel.source)} #${esc(rel.rawId || rel.id)}">
+        <img src="${esc(shown.src)}" data-proxy="${esc(shown.proxy)}" onerror="useProxy(this)" alt="" style="width:100%;height:100%;object-fit:cover;display:block;" loading="lazy" />
+      </button>`;
+  }).join('');
+}
+
+window.openBoardsCompareModal = async function() {
+  const modal = document.getElementById('boards-compare-modal');
+  const body = document.getElementById('boards-compare-body');
+  if (!modal || !body) return;
+  modal.classList.remove('hidden');
+  body.innerHTML = '<div class="fine">Loading board metrics…</div>';
+  try {
+    const res = await fetch('/api/boards/compare');
+    const data = await res.json();
+    const list = (data && data.boards) || state.sources || [];
+    body.innerHTML = [
+      `<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-radius:12px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.35);">
+        <div>
+          <strong style="color:#34d399;font-size:14px;">⚡ Multi-Board Parallel Aggregator (Top 4)</strong>
+          <div style="font-size:12px;color:var(--muted);">Queries Rule34, Danbooru, Yande.re &amp; Safebooru/XBooru simultaneously with automatic MD5 deduplication.</div>
+        </div>
+        <button type="button" class="btn btn-tiny btn-primary" onclick="closeBoardsCompareModal();selectSourceInPlace('multiboard', false)">Switch →</button>
+      </div>`,
+      ...list.map(b => {
+        const locked = Boolean(b.isPremiumSource && !state.isPro);
+        return `
+          <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;padding:11px 14px;border-radius:12px;background:var(--surface);border:1px solid var(--line);">
+            <div style="display:flex;align-items:center;gap:10px;min-width:200px;flex:1;">
+              <img src="${esc(faviconUrl(b.domain))}" alt="" width="20" height="20" style="border-radius:4px;" referrerpolicy="no-referrer" />
+              <div>
+                <div style="display:flex;align-items:center;gap:6px;">
+                  <strong style="color:#fff;font-size:14px;">${esc(b.name)}</strong>
+                  <span class="meta-badge" style="margin:0;font-size:10px;">${esc(b.scale || '1M+ posts')}</span>
+                  ${locked ? '<span class="lock">Pro</span>' : '<span class="meta-badge" style="margin:0;font-size:10px;color:#34d399;">Free</span>'}
+                </div>
+                <div style="font-size:12px;color:var(--muted);">${esc(b.focus || b.description || '')} • <span style="color:#7dd3fc;">~${esc(b.avgLatencyMs || 220)}ms (${esc(b.speedRating || 'Fast')})</span></div>
+              </div>
+            </div>
+            <button type="button" class="btn btn-tiny ${state.source === b.id ? 'btn-primary' : 'btn-ghost'}" onclick="closeBoardsCompareModal();selectSourceInPlace('${esc(b.id)}', ${locked})">${state.source === b.id ? 'Active ✓' : 'Open Board →'}</button>
+          </div>`;
+      })
+    ].join('');
+  } catch (_) {
+    body.innerHTML = '<div class="fine">Could not load board comparison.</div>';
+  }
+};
+
+window.closeBoardsCompareModal = function() {
+  const modal = document.getElementById('boards-compare-modal');
+  if (modal) modal.classList.add('hidden');
+};
+
 window.openPostModal = function(postId) {
   const post = state.posts.find(p => p.id === postId) || state.savedPosts.find(p => p.id === postId);
   if (!post) return;
@@ -2451,6 +2529,7 @@ window.openPostModal = function(postId) {
   const tags = post.tags || [];
   const tagCount = document.getElementById('modal-tag-count');
   if (tagCount) tagCount.textContent = String(tags.length);
+  renderRelatedPostsInModal(post);
   document.getElementById('modal-tags-list').innerHTML = tagGroupsHtml(post);
   document.getElementById('post-modal').classList.remove('hidden');
 };
@@ -2964,6 +3043,7 @@ document.addEventListener('DOMContentLoaded', () => {
       closePostModal();
       closeProModal();
       closeFilterDrawer();
+      closeBoardsCompareModal();
       return;
     }
     if (!eventTargetIsField(e.target) && e.key === '/') {

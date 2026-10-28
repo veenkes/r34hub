@@ -945,6 +945,28 @@ app.get('/api/sources', (req, res) => {
   });
 });
 
+app.get('/api/boards/compare', (req, res) => {
+  const metaMap = {
+    rule34xxx: { focus: 'Explicit Rule 34 & Animated', scale: '8.4M+ posts', avgLatencyMs: 240, speedRating: 'Fast' },
+    danbooru: { focus: 'Curated Anime & Game Art', scale: '7.6M+ posts', avgLatencyMs: 210, speedRating: 'Ultra Fast' },
+    paheal: { focus: 'Rule 34 Open Archive', scale: '6.5M+ posts', avgLatencyMs: 310, speedRating: 'Fast' },
+    e621: { focus: 'Anthro / Furry & WebM', scale: '4.8M+ posts', avgLatencyMs: 260, speedRating: 'Fast' },
+    yandere: { focus: 'High-Res Official Art & Scans', scale: '1.2M+ posts', avgLatencyMs: 190, speedRating: 'Ultra Fast' },
+    konachan: { focus: 'HD Anime Wallpapers (16:9)', scale: '950K+ posts', avgLatencyMs: 220, speedRating: 'Fast' },
+    safebooru: { focus: '100% SFW Anime & Gaming', scale: '4.5M+ posts', avgLatencyMs: 180, speedRating: 'Ultra Fast' },
+    sakugabooru: { focus: 'Key Animation MP4 Clips', scale: '260K+ videos', avgLatencyMs: 250, speedRating: 'Fast' },
+    xbooru: { focus: 'Explicit Adult Booru (Pro)', scale: '1.4M+ posts', avgLatencyMs: 205, speedRating: 'Ultra Fast' },
+    tbib: { focus: 'Big ImageBoard Mirror (Pro)', scale: '9.7M+ posts', avgLatencyMs: 280, speedRating: 'Fast' },
+    aibooru: { focus: 'AI-Generated Character Art (Pro)', scale: '420K+ posts', avgLatencyMs: 270, speedRating: 'Fast' }
+  };
+  const boards = SOURCES.map(s => ({
+    ...s,
+    ...(metaMap[s.id] || { focus: 'Anime & Booru', scale: '1M+ posts', avgLatencyMs: 250, speedRating: 'Fast' })
+  }));
+  res.json({ ok: true, boards });
+});
+
+
 function interleaveLists(lists) {
   const posts = [];
   const maxLen = lists.reduce((n, list) => Math.max(n, list.length), 0);
@@ -1800,6 +1822,53 @@ async function sendLicenseEmail({ email, licenseKey, planName, priceEur, expires
   return { sent: true, provider: deliveredVia, magicLink, html };
 }
 
+
+function parseClientDevice(req) {
+  const ua = String(req.get("user-agent") || "Browser");
+  const ip = String(req.headers["x-forwarded-for"] || req.ip || "127.0.0.1").split(",")[0].trim();
+  const clientDevId = String((req.body && req.body.deviceId) || req.query.deviceId || "").trim();
+  const deviceId = clientDevId || "dev_" + crypto.createHash("sha256").update(`${ip}:${ua}`).digest("hex").slice(0, 8);
+
+  let browser = "Web Browser";
+  if (/Edg\//i.test(ua)) browser = "Edge";
+  else if (/OPR\/|Opera/i.test(ua)) browser = "Opera";
+  else if (/Chrome\//i.test(ua)) browser = "Chrome";
+  else if (/Firefox\//i.test(ua)) browser = "Firefox";
+  else if (/Safari\//i.test(ua)) browser = "Safari";
+
+  let os = "Desktop";
+  if (/iPhone|iPad|iOS/i.test(ua)) os = "iOS";
+  else if (/Android/i.test(ua)) os = "Android";
+  else if (/Mac OS X|Macintosh/i.test(ua)) os = "macOS";
+  else if (/Windows/i.test(ua)) os = "Windows";
+  else if (/Linux/i.test(ua)) os = "Linux";
+
+  const ipParts = ip.split(".");
+  const maskedIp = ipParts.length === 4 ? `${ipParts[0]}.${ipParts[1]}.*.*` : ip.slice(0, 10) + "*";
+
+  return {
+    deviceId,
+    name: `${browser} on ${os}`,
+    maskedIp,
+    lastActiveAt: new Date().toISOString()
+  };
+}
+
+function syncDeviceOnLicense(record, req) {
+  const dev = parseClientDevice(req);
+  record.devices = Array.isArray(record.devices) ? record.devices : [];
+  const existing = record.devices.find(d => d.deviceId === dev.deviceId);
+  if (existing) {
+    existing.lastActiveAt = dev.lastActiveAt;
+    existing.name = dev.name;
+    existing.maskedIp = dev.maskedIp;
+  } else if (record.devices.length < (record.maxDevices || 5)) {
+    record.devices.unshift(dev);
+  }
+  record.devicesUsed = Math.max(1, record.devices.length);
+  return dev.deviceId;
+}
+
 // 1. License Key Engine (/api/licenses/* & /api/payments/activate-key & /api/license/*)
 function activateLicenseHandler(req, res) {
   monDb = loadMonetizationDb();
@@ -1821,7 +1890,7 @@ function activateLicenseHandler(req, res) {
     return res.status(403).json({ ok: false, valid: false, error: "This license key has expired. Please renew at /premium." });
   }
 
-  record.devicesUsed = Math.min(record.maxDevices || 5, (record.devicesUsed || 0) + 1);
+  const currentDeviceId = syncDeviceOnLicense(record, req);
   record.lastActivatedAt = new Date().toISOString();
   saveMonetizationDb(monDb);
 
@@ -1829,6 +1898,8 @@ function activateLicenseHandler(req, res) {
     ok: true,
     valid: true,
     licenseKey: record.key,
+    currentDeviceId,
+    devices: record.devices || [],
     platform: record.prefix === "SLX" || record.prefix === "R34H" ? "Crypto (NOWPayments)" : record.prefix === "PATREON" ? "Patreon VIP" : "Stripe Checkout",
     plan: record.planName,
     tier: record.tier,
@@ -1859,11 +1930,15 @@ function verifyLicenseQueryHandler(req, res) {
   if (!record) return res.status(404).json({ valid: false, status: "not_found", error: "License key not found" });
   const expired = record.expiresAt && new Date(record.expiresAt).getTime() < Date.now();
   const status = record.status === "revoked" ? "revoked" : expired ? "expired" : "active";
+  const currentDeviceId = status === "active" ? syncDeviceOnLicense(record, req) : null;
+  if (status === "active") saveMonetizationDb(monDb);
   res.json({
     ok: status === "active",
     valid: status === "active",
     status,
     key: record.key,
+    currentDeviceId,
+    devices: record.devices || [],
     licenseKey: record.key,
     prefix: record.prefix,
     tier: record.tier,
@@ -1880,6 +1955,50 @@ function verifyLicenseQueryHandler(req, res) {
 app.get("/api/licenses/verify", verifyLicenseQueryHandler);
 app.get("/api/license/verify", verifyLicenseQueryHandler);
 app.post("/api/monetization/verify-license", activateLicenseHandler);
+
+app.get("/api/license/devices", (req, res) => {
+  monDb = loadMonetizationDb();
+  const rawKey = String(req.query.key || "").trim().toUpperCase();
+  if (!rawKey) return res.status(400).json({ ok: false, error: "Missing key parameter" });
+  const record = findOrVerifyLicenseRecord(rawKey);
+  if (!record) return res.status(404).json({ ok: false, error: "License key not found" });
+  const currentDeviceId = syncDeviceOnLicense(record, req);
+  saveMonetizationDb(monDb);
+  res.json({
+    ok: true,
+    key: record.key,
+    devicesUsed: record.devicesUsed || (record.devices || []).length,
+    maxDevices: record.maxDevices || 5,
+    currentDeviceId,
+    devices: record.devices || []
+  });
+});
+
+app.post("/api/license/devices/revoke", (req, res) => {
+  monDb = loadMonetizationDb();
+  const { key = "", deviceId = "", revokeAllOthers = false } = req.body || {};
+  const rawKey = String(key).trim().toUpperCase();
+  const record = findOrVerifyLicenseRecord(rawKey);
+  if (!record) return res.status(404).json({ ok: false, error: "License key not found" });
+  const currentDeviceId = parseClientDevice(req).deviceId;
+  record.devices = Array.isArray(record.devices) ? record.devices : [];
+  if (revokeAllOthers) {
+    record.devices = record.devices.filter(d => d.deviceId === currentDeviceId);
+  } else if (deviceId) {
+    record.devices = record.devices.filter(d => d.deviceId !== deviceId);
+  }
+  record.devicesUsed = record.devices.length;
+  saveMonetizationDb(monDb);
+  res.json({
+    ok: true,
+    key: record.key,
+    devicesUsed: record.devicesUsed,
+    maxDevices: record.maxDevices || 5,
+    currentDeviceId,
+    devices: record.devices
+  });
+});
+
 
 // Recover or Look Up License Key by Email (/api/license/recover & /api/license/lookup)
 async function recoverLicenseByEmailHandler(req, res) {
