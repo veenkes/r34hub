@@ -1323,11 +1323,13 @@ function playerInner(poster, proxy) {
     <img class="player-poster" alt="" referrerpolicy="no-referrer" src="${esc(poster || '')}" data-proxy="${esc(proxy || '')}" onerror="useProxy(this)" />
     <video muted loop playsinline webkit-playsinline preload="metadata"></video>
     <button type="button" class="player-play" data-player-toggle aria-label="Play">${icon('play')}</button>
-    <div class="player-bar">
+    <div class="player-bar custom-player-bar">
       <button type="button" class="player-btn" data-player-toggle aria-label="Play">${icon('play')}</button>
-      <input class="player-range" type="range" min="0" max="1000" value="0" step="1" aria-label="Progress" />
-      <span class="player-time">0:00</span>
+      <input class="player-range v-progress" type="range" min="0" max="1000" value="0" step="1" aria-label="Video timeline progress" />
+      <span class="player-time" data-reel-time>0:00 / 0:00</span>
       <button type="button" class="player-btn" data-player-mute aria-label="Unmute">${icon('mute')}</button>
+      <input class="player-vol v-volume" type="range" min="0" max="1" step="0.05" value="1" aria-label="Volume" title="Audio Volume" />
+      <button type="button" class="player-speed-btn" data-player-speed aria-label="Playback speed" title="Playback Speed">1x</button>
       <button type="button" class="player-btn" data-player-fs aria-label="Fullscreen" title="Fullscreen">${icon('fullscreen')}</button>
     </div>`;
 }
@@ -1418,8 +1420,31 @@ function bindPlayer(root) {
   const time = root.querySelector('.player-time');
   const toggles = root.querySelectorAll('[data-player-toggle]');
   const muteBtn = root.querySelector('[data-player-mute]');
+  const volSlider = root.querySelector('.player-vol');
+  const speedBtn = root.querySelector('[data-player-speed]');
   const fsBtn = root.querySelector('[data-player-fs]');
   if (!video) return;
+  if (volSlider) {
+    volSlider.addEventListener('click', e => e.stopPropagation());
+    volSlider.addEventListener('input', e => {
+      e.stopPropagation();
+      const v = Number(volSlider.value);
+      video.volume = v;
+      video.muted = v === 0;
+      mediaMuted = video.muted;
+      paintMute();
+    });
+  }
+  if (speedBtn) {
+    const speeds = [1, 1.25, 1.5, 2];
+    speedBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      const cur = video.playbackRate || 1;
+      const next = speeds[(speeds.indexOf(cur) + 1) % speeds.length] || 1;
+      video.playbackRate = next;
+      speedBtn.textContent = next + 'x';
+    });
+  }
   if (fsBtn) {
     fsBtn.addEventListener('click', event => {
       event.stopPropagation();
@@ -1609,32 +1634,18 @@ function enforceMaxConcurrentGridVideos(maxPlaying = 4) {
   }
 }
 
-function playCardVideo(media, allowConcurrent = false) {
+function playCardVideo(media) {
   if (!media) return;
   let video = media.querySelector('video.card-video');
-  if (!video) {
-    const fileUrl = media.dataset.file || '';
-    const proxyUrl = media.dataset.proxyFile || '';
-    if (!fileUrl && !proxyUrl) return;
-    video = document.createElement('video');
-    video.className = 'card-video grid-video';
-    video.muted = true;
-    video.loop = true;
-    video.playsInline = true;
-    video.setAttribute('playsinline', '');
-    video.setAttribute('webkit-playsinline', '');
-    video.preload = 'metadata';
+  if (!video) return;
+  stopAllCardVideos(media);
+  if (!video.getAttribute('src')) {
+    const proxyUrl = video.getAttribute('data-proxy-src') || media.dataset.proxyFile || '';
+    const fileUrl = video.getAttribute('data-src') || media.dataset.file || '';
     video.src = proxyUrl || fileUrl;
-    video.setAttribute('data-src', fileUrl);
-    video.setAttribute('data-proxy-src', proxyUrl);
-    media.appendChild(video);
+    video.load();
   }
-  if (!allowConcurrent) {
-    enforceMaxConcurrentGridVideos(3);
-  } else {
-    enforceMaxConcurrentGridVideos(4);
-  }
-  video.muted = true;
+  video.muted = mediaMuted;
   media.classList.add('is-playing');
   const playPromise = video.play();
   if (playPromise && typeof playPromise.catch === 'function') {
@@ -1654,36 +1665,8 @@ function toggleCardVideo(media) {
   }
 }
 
-let gridVideoObserver = null;
 function observeGridVideos() {
-  if (!('IntersectionObserver' in window)) return;
-  if (!gridVideoObserver) {
-    gridVideoObserver = new IntersectionObserver(entries => {
-      entries.forEach(entry => {
-        const video = entry.target;
-        const media = video.closest('.card-media');
-        if (!media) return;
-        if (!entry.isIntersecting || entry.intersectionRatio < 0.35) {
-          if (media.classList.contains('is-playing') && !media.dataset.manualPlay) {
-            stopCardVideo(media);
-          }
-          return;
-        }
-        if (state.autoplayReels && entry.intersectionRatio >= 0.45) {
-          const activeCount = document.querySelectorAll('.card-media.is-playing').length;
-          if (activeCount < 4) {
-            playCardVideo(media, true);
-          }
-        }
-      });
-    }, { threshold: [0, 0.35, 0.55] });
-  }
-  document.querySelectorAll('#masonry-feed video.grid-video, #saved-feed video.grid-video').forEach(video => {
-    if (video.dataset.observed !== '1') {
-      video.dataset.observed = '1';
-      gridVideoObserver.observe(video);
-    }
-  });
+  // Grid videos use preload="none" and only load/play when the user explicitly clicks the Play button
 }
 
 const ADULT_FALLBACK_THUMBS = [
@@ -1925,9 +1908,11 @@ function buildPostCardHTML(post, idx) {
   const tags = post.tags || [];
   const videoSrc = post.proxiedFileUrl || post.fileUrl || post.proxiedSampleUrl || post.sampleUrl || '';
 
+  const scoreNum = Number(post.score) || 0;
+  const rightBadgeLabel = scoreNum > 0 ? formatScore(scoreNum) : String(post.fileExt || 'HD').toUpperCase();
   return `
     <article class="masonry-item card is-in ${isVideo ? 'is-video-card' : ''}" style="--d:${idx % 8}">
-      <div class="card-media" data-open="${esc(post.id)}" data-file="${esc(post.fileUrl || '')}" data-proxy-file="${esc(post.proxiedFileUrl || '')}" onmouseenter="if(window.matchMedia('(hover:hover)').matches && this.querySelector('video.grid-video')) playCardVideo(this, true)" onmouseleave="if(window.matchMedia('(hover:hover)').matches && this.querySelector('video.grid-video') && !state.autoplayReels) stopCardVideo(this)">
+      <div class="card-media" data-open="${esc(post.id)}" data-file="${esc(post.fileUrl || '')}" data-proxy-file="${esc(post.proxiedFileUrl || '')}">
         <img
           class="card-thumb"
           src="${esc(shown.src)}"
@@ -1942,16 +1927,15 @@ function buildPostCardHTML(post, idx) {
         ${isVideo ? `
           <video
             class="card-video grid-video"
-            src="${esc(videoSrc)}"
             poster="${esc(shown.src)}"
             data-src="${esc(post.fileUrl || '')}"
-            data-proxy-src="${esc(post.proxiedFileUrl || '')}"
+            data-proxy-src="${esc(videoSrc)}"
             data-sample="${esc(post.proxiedSampleUrl || post.sampleUrl || '')}"
             muted
             loop
             playsinline
             webkit-playsinline
-            preload="metadata"
+            preload="none"
             onloadedmetadata="onGridVideoMeta(this)"
             ontimeupdate="onGridVideoTimeUpdate(this)"
             onplay="onGridVideoPlayState(this, true)"
@@ -1968,10 +1952,10 @@ function buildPostCardHTML(post, idx) {
           </div>
         ` : ''}
         <div class="card-float">
-          <span class="pill">${esc(shortBoardName(post))}</span>
-          <div style="display:flex;align-items:center;gap:4px;">
+          <span class="pill pill-board">${esc(shortBoardName(post))}</span>
+          <div class="card-float-right">
             ${isVideo ? `<span class="pill video-dur-pill" data-video-dur>${icon('play')} <span class="dur-text">VIDEO</span></span>` : ''}
-            <span class="pill">${icon('star')} ${esc(formatScore(post.score))}</span>
+            <span class="pill score-pill">${scoreNum > 0 ? icon('star') + ' ' : ''}${esc(rightBadgeLabel)}</span>
           </div>
         </div>
       </div>
@@ -2326,6 +2310,10 @@ function activateReel(slide) {
     mountReelPoster(slide, true);
     bindPlayer(player);
     video.muted = mediaMuted;
+    if (state.autoplayReels && !video.getAttribute('src')) {
+      const source = playerSource(player);
+      loadVideo(video, source.proxy || source.file, source.file || source.proxy, true);
+    }
     return;
   }
   mountReelStill(slide, true);
@@ -2836,7 +2824,7 @@ function maybeShowSmartProBooster(reason = 'power_user') {
       <button type="button" onclick="this.closest('#smart-pro-booster').remove()" style="border:0;background:transparent;color:#9ca3af;font-size:16px;line-height:1;padding:4px;cursor:pointer;" aria-label="Dismiss">×</button>
     </div>
     <div style="font-size:13px;font-weight:700;color:#fff;line-height:1.35;">Unlock 100% Ad-Free Browsing, Original 4K HD Streams & Unlimited Collections</div>
-    <div style="font-size:12px;color:#9ca3af;">Instant crypto key activation across 5 devices — try <strong style="color:#34d399;">7 Days for €2.49</strong> or <strong style="color:#fff;">€3.99/mo Annual</strong>.</div>
+    <div style="font-size:12px;color:#9ca3af;">Instant crypto key activation across 5 devices — try <strong style="color:#34d399;">7 Days for €14.99</strong> or <strong style="color:#fff;">€3.99/mo Annual</strong>.</div>
     <div style="display:flex;gap:8px;margin-top:4px;">
       <a href="/premium" class="btn btn-tiny btn-primary" style="flex:1;justify-content:center;background:#10b981;color:#04130d;font-weight:800;min-height:38px;">Upgrade with Crypto →</a>
       <button type="button" class="btn btn-tiny btn-ghost" style="min-height:38px;" onclick="this.closest('#smart-pro-booster').remove()">Later</button>
@@ -2970,6 +2958,8 @@ window.closeProModal = function() {
 };
 
 window.openFilterDrawer = function() {
+  closeDomainMenus();
+  closeSideMenu();
   document.getElementById('filter-drawer-backdrop').classList.remove('hidden');
 };
 
@@ -2978,6 +2968,9 @@ window.closeFilterDrawer = function() {
 };
 
 window.openSideMenu = function() {
+  closeDomainMenus();
+  const autoBox = document.getElementById('tag-autocomplete');
+  if (autoBox) autoBox.classList.add('hidden');
   document.getElementById('side-menu').classList.remove('hidden');
 };
 
@@ -2987,6 +2980,8 @@ window.closeSideMenu = function() {
 };
 
 window.openSearchMenu = function() {
+  closeDomainMenus();
+  closeSideMenu();
   placeSearch('sheet');
   document.getElementById('search-sheet').classList.remove('hidden');
   const input = document.getElementById('tag-search-input');

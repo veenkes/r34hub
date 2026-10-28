@@ -1690,13 +1690,13 @@ function verifyStatelessLicenseKey(rawKey) {
       const tierChar = b1[0];
       const tier = tierChar === "S" ? "starter7d" : tierChar === "M" ? "monthly" : tierChar === "L" ? "lifetime" : "annual";
       const planName = tier === "starter7d"
-        ? "7-Day Starter Pro Pass (€2.49)"
+        ? "7-Day Starter Pro Pass (€14.99)"
         : tier === "monthly"
-          ? "30-Day Monthly Pro (€5.60)"
+          ? "30-Day Monthly Pro (€19.99)"
           : tier === "lifetime"
             ? "Lifetime VIP Master Pass (€159.99)"
             : "365-Day Annual Pro (€47.99/yr)";
-      const priceEur = tier === "starter7d" ? 2.49 : tier === "monthly" ? 5.60 : tier === "lifetime" ? 159.99 : 47.99;
+      const priceEur = tier === "starter7d" ? 14.99 : tier === "monthly" ? 19.99 : tier === "lifetime" ? 159.99 : 47.99;
       const expiresAt = tier === "lifetime"
         ? "2099-12-31T23:59:59.000Z"
         : new Date(Date.now() + (tier === "starter7d" ? 7 : tier === "monthly" ? 30 : 365) * 86400000).toISOString();
@@ -2116,8 +2116,8 @@ app.post("/api/admin/licenses/generate", (req, res) => {
 
   const num = Math.min(50, Math.max(1, parseInt(count, 10) || 1));
   const planMap = {
-    "starter7d": { tier: "starter7d", days: 7, name: "7-Day Starter Pro Pass (€2.49)", priceEur: 2.49 },
-    "7d": { tier: "starter7d", days: 7, name: "7-Day Starter Pro Pass (€2.49)", priceEur: 2.49 },
+    "starter7d": { tier: "starter7d", days: 7, name: "7-Day Starter Pro Pass (€14.99)", priceEur: 14.99 },
+    "7d": { tier: "starter7d", days: 7, name: "7-Day Starter Pro Pass (€14.99)", priceEur: 14.99 },
     "30d": { tier: "monthly", days: 30, name: "30-Day Monthly Pro (€7.00/mo)", priceEur: 7.00 },
     "monthly": { tier: "monthly", days: 30, name: "30-Day Monthly Pro (€7.00/mo)", priceEur: 7.00 },
     "365d": { tier: "annual", days: 365, name: "365-Day Annual Pro (€59.99/yr)", priceEur: 59.99 },
@@ -2245,8 +2245,8 @@ async function handlePaymentWebhook(req, res) {
   const prefix = body.prefix || "R34PRO";
 
   const planLookup = {
-    starter7d: { tier: "starter7d", name: "7-Day Starter Pro Pass (€2.49)", priceEur: 2.49, days: 7 },
-    monthly: { tier: "monthly", name: "30-Day Monthly Pro (€7.00/mo)", priceEur: 7.00, days: 30 },
+    starter7d: { tier: "starter7d", name: "7-Day Starter Pro Pass (€14.99)", priceEur: 14.99, days: 7 },
+    monthly: { tier: "monthly", name: "30-Day Monthly Pro (€19.99/mo)", priceEur: 19.99, days: 30 },
     yearly: { tier: "annual", name: "365-Day Annual Pro (€59.99/yr)", priceEur: 59.99, days: 365 },
     annual: { tier: "annual", name: "365-Day Annual Pro (€59.99/yr)", priceEur: 59.99, days: 365 },
     "30days": { tier: "monthly", name: "30-Day Monthly Pro (€7.00/mo)", priceEur: 7.00, days: 30 },
@@ -2647,18 +2647,25 @@ async function createHubCloudOrderHandler(req, res) {
   const txHash = String(body.txHash || "").trim();
 
   const planLookup = {
-    starter7d: { id: "starter7d", name: "7-Day Starter Pro Pass", tier: "starter7d", amountEur: 3.1125, amountUsd: 3.3625, days: 7 },
-    "7d": { id: "starter7d", name: "7-Day Starter Pro Pass", tier: "starter7d", amountEur: 3.1125, amountUsd: 3.3625, days: 7 },
-    monthly: { id: "monthly", name: "30-Day Monthly Pro", tier: "monthly", amountEur: 7.00, amountUsd: 7.50, days: 30 },
+    starter7d: { id: "starter7d", name: "7-Day Starter Pro Pass", tier: "starter7d", amountEur: 18.74, amountUsd: 20.625, days: 7 },
+    "7d": { id: "starter7d", name: "7-Day Starter Pro Pass", tier: "starter7d", amountEur: 18.74, amountUsd: 20.625, days: 7 },
+    monthly: { id: "monthly", name: "30-Day Monthly Pro", tier: "monthly", amountEur: 24.99, amountUsd: 26.875, days: 30 },
     yearly: { id: "annual", name: "Annual Pro (365 Days)", tier: "annual", amountEur: 59.99, amountUsd: 64.99, days: 365 },
     annual: { id: "annual", name: "Annual Pro (365 Days)", tier: "annual", amountEur: 59.99, amountUsd: 64.99, days: 365 },
-    "30days": { id: "monthly", name: "30-Day Monthly Pro", tier: "monthly", amountEur: 7.00, amountUsd: 7.50, days: 30 },
-    "30d_pass": { id: "monthly", name: "30-Day Monthly Pro", tier: "monthly", amountEur: 7.00, amountUsd: 7.50, days: 30 },
+    "30days": { id: "monthly", name: "30-Day Monthly Pro", tier: "monthly", amountEur: 24.99, amountUsd: 26.875, days: 30 },
+    "30d_pass": { id: "monthly", name: "30-Day Monthly Pro", tier: "monthly", amountEur: 24.99, amountUsd: 26.875, days: 30 },
     lifetime: { id: "lifetime", name: "Lifetime VIP Master Pass", tier: "lifetime", amountEur: 199.99, amountUsd: 214.99, days: 36500 }
   };
   const selected = planLookup[plan] || planLookup.annual;
-  const finalAmountEur = Number((selected.amountEur * 0.8).toFixed(2));
-  const finalAmountUsd = Number((selected.amountUsd * 0.8).toFixed(2));
+  let finalAmountEur = Number((selected.amountEur * 0.8).toFixed(2));
+  let finalAmountUsd = Number((selected.amountUsd * 0.8).toFixed(2));
+  // Ensure XMR or any high-minimum swap coin is always above NOWPayments cross-chain swap minimum ($20.50 USD)
+  if (cryptoCurrency === "XMR" && finalAmountUsd < 20.50) {
+    finalAmountUsd = 20.50;
+    finalAmountEur = 18.99;
+  } else if (finalAmountUsd < 16.50) {
+    finalAmountUsd = 16.50;
+  }
   const orderId = `ord_${crypto.randomBytes(5).toString("hex")}`;
   const now = new Date();
 

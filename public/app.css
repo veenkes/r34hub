@@ -1895,19 +1895,32 @@ body.mode-reels .reels-wrap {
 /* ==========================================================================
    Z-INDEX / STACKING CONTEXT FIX FOR BOARD DROPDOWN vs SEARCH BAR
    ========================================================================== */
+/* Clean Stacking Context Hierarchy:
+   - Cards: 1
+   - .feed-search-wrap: 30 (drops to 10 when domain-menu is open)
+   - .posts-tools / .home-posts-tools: 45
+   - .domain-menu: 90
+   - .topnav: 1000
+   - #side-menu, #search-sheet, #tag-sheet, .side, .sheet, .drawer-back: 3200
+   - #post-modal, #pro-modal, #boards-compare-modal: 4000
+*/
+.topnav {
+  z-index: 1000 !important;
+}
+
 .posts-tools,
 .home-posts-tools {
   position: relative !important;
-  z-index: 600 !important;
+  z-index: 45 !important;
 }
 
 .domain-wrap {
   position: relative !important;
-  z-index: 650 !important;
+  z-index: 50 !important;
 }
 
 .domain-menu {
-  z-index: 1200 !important;
+  z-index: 90 !important;
   background: #10121a !important;
   border: 1px solid rgba(255, 255, 255, 0.16) !important;
   border-radius: 12px !important;
@@ -1918,13 +1931,30 @@ body.mode-reels .reels-wrap {
 #home-search-mount,
 #feed-search-mount {
   position: relative !important;
-  z-index: 200 !important;
+  z-index: 30 !important;
 }
 
 body.domain-menu-open .feed-search-wrap,
 body.domain-menu-open #home-search-mount,
 body.domain-menu-open #feed-search-mount {
   z-index: 10 !important;
+}
+
+.side,
+.sheet,
+#side-menu,
+#search-sheet,
+#tag-sheet,
+.drawer-back,
+#filter-drawer-backdrop {
+  z-index: 3200 !important;
+}
+
+.modal-back,
+#post-modal,
+#pro-modal,
+#boards-compare-modal {
+  z-index: 4000 !important;
 }
 
 /* ==========================================================================
@@ -2515,4 +2545,93 @@ body.domain-menu-open #feed-search-mount {
 /* Ensure Home search bar has the exact same Search CTA button as Posts/Grid */
 #home-search-mount #run-search-btn {
   display: inline-flex !important;
+}
+
+
+/* ==========================================================================
+   V5 FIXES: Card Top-Right Badges & Posts/Lightbox Custom Video Player Bar
+   ========================================================================== */
+.card-float {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  right: 8px;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 6px;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.card-float .pill-board {
+  max-width: 52% !important;
+  flex-shrink: 1;
+}
+
+.card-float-right {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 5px;
+  margin-left: auto;
+  flex-shrink: 0;
+  max-width: 65%;
+}
+
+.card-float-right .pill {
+  max-width: none !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px;
+  padding: 3px 8px !important;
+  min-width: 34px;
+  line-height: 1.2;
+}
+
+/* Custom Player Bar in Posts (/posts/...) & Lightbox (#post-modal) */
+.custom-player-bar {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 6px 10px;
+  border-radius: 12px;
+  background: rgba(10, 12, 18, 0.86) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(12px);
+}
+
+.custom-player-bar .player-vol {
+  width: 58px;
+  height: 4px;
+  accent-color: #10b981;
+  cursor: pointer;
+}
+
+.custom-player-bar .player-speed-btn {
+  min-width: 34px;
+  height: 28px;
+  padding: 0 6px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+  color: #e4e4e7;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.custom-player-bar .player-speed-btn:hover {
+  border-color: #10b981;
+  color: #34d399;
+}
+
+@media (max-width: 560px) {
+  .custom-player-bar .player-vol {
+    display: none;
+  }
 }
