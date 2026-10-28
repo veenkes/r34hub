@@ -1932,11 +1932,14 @@ function adminUpdateConfigHandler(req, res) {
   saveMonetizationDb(monDb);
   res.json({
     ok: true,
-    adNetworks: monDb.adNetworks || { aads: { enabled: true, unitId: "2460259", iframeUrl: "https://acceptable.a-ads.com/2460259", status: "live" } },
+    adNetworks: monDb.adNetworks || { aads: { enabled: true, unitId: "2460259", iframeUrl: "https://acceptable.a-ads.com/2460259", status: "live", payoutWallet: "TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX", payoutNetwork: "USDTTRC20" } },
+    gateways: monDb.gateways,
     adsConfig: monDb.adsConfig,
-    paymentConfig: paymentConfigForAdmin(monDb.paymentConfig)
+    paymentConfig: paymentConfigForAdmin(monDb.paymentConfig, monDb)
   });
-});
+}
+app.post("/api/admin/ads/update", adminUpdateConfigHandler);
+app.post("/api/admin/config", adminUpdateConfigHandler);
 
 app.get("/api/admin/stats", (req, res) => {
   monDb = loadMonetizationDb();
