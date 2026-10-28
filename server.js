@@ -1614,7 +1614,7 @@ app.post("/api/licenses/activate", (req, res) => {
   });
 });
 
-app.get("/api/licenses/verify", (req, res) => {
+function verifyLicenseQueryHandler(req, res) {
   monDb = loadMonetizationDb();
   const rawKey = String(req.query.key || "").trim().toUpperCase();
   if (!rawKey) return res.status(400).json({ valid: false, error: "Missing key query parameter" });
@@ -1635,7 +1635,9 @@ app.get("/api/licenses/verify", (req, res) => {
     createdAt: record.createdAt,
     expiresAt: record.expiresAt
   });
-});
+}
+app.get("/api/licenses/verify", verifyLicenseQueryHandler);
+app.get("/api/license/verify", verifyLicenseQueryHandler);
 
 // Backwards-compatible verify endpoint
 app.post("/api/monetization/verify-license", (req, res) => {

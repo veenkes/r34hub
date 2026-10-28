@@ -1153,7 +1153,9 @@ function playCardVideo(media) {
   video.preload = 'auto';
   media.appendChild(video);
   media.classList.add('is-playing');
-  loadVideo(video, media.dataset.file || '', media.dataset.proxyFile || '', true);
+  maybeShowVideoPreroll(media, () => {
+    loadVideo(video, media.dataset.file || '', media.dataset.proxyFile || '', true);
+  });
 }
 
 function toggleCardVideo(media) {
