@@ -64,8 +64,6 @@
         <span class="mark">R34</span>
       </a>
       <div class="nav-actions" id="navbar-actions">
-        <button id="nav-pro-badge" class="btn btn-tiny hidden" type="button" onclick="location.assign('/premium')" style="background:rgba(16,185,129,0.16);border:1px solid rgba(16,185,129,0.4);color:#34d399;font-weight:700;padding:5px 10px;border-radius:999px;">● PRO (Ads Off)</button>
-        <button id="nav-logout-btn" class="btn btn-tiny hidden" type="button" onclick="logoutPro()" style="background:rgba(225,29,72,0.18);border:1px solid rgba(225,29,72,0.45);color:#fda4af;font-weight:700;padding:5px 10px;border-radius:999px;">Log Out</button>
         <button id="open-search-btn" class="icon-btn bare nav-search" type="button" aria-label="Search posts" onclick="openSearchMenu()">
           <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-search"/></svg>
           <span id="search-dot" class="dot-mark hidden"></span>
@@ -161,17 +159,20 @@
   </div>
 
   <main class="wrap">
-    <div id="top-ad-banner" class="adbar">
-      <div class="adbar-inner" style="flex-wrap:wrap;gap:10px;">
-        <div style="display:flex;align-items:center;gap:8px;min-width:220px;flex:1;">
-          <span class="pill" style="background:rgba(225,29,72,0.9);color:#fff;font-weight:700;padding:3px 8px;border-radius:999px;font-size:10px;">18+ AD</span>
-          <p style="margin:0;"><strong>Uncensored 18+ AI Waifu Chat &amp; Video.</strong> Roleplay or animate any character tag.</p>
-        </div>
-        <div style="width:320px;max-width:100%;height:50px;overflow:hidden;border-radius:8px;background:#09090b;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;">
-          <iframe data-aa='2460259' src='//acceptable.a-ads.com/2460259' style='border:0px;padding:0;width:100%;height:50px;overflow:hidden;background-color:transparent;' loading="lazy" title="Sponsored Banner"></iframe>
+    <div id="top-ad-banner" class="adbar hidden">
+      <div class="adbar-inner" style="flex-wrap:wrap;gap:12px;background:linear-gradient(90deg,#14141d 0%,#1f1124 55%,#121218 100%);border-color:rgba(225,29,72,0.35);">
+        <div style="display:flex;align-items:center;gap:10px;min-width:220px;flex:1;cursor:pointer;" onclick="triggerAdClick('top_banner','brazzers_hd','header','18plus')">
+          <img src="/api/media?url=https%3A%2F%2Fxbooru.com%2Fthumbnails%2F257%2Fthumbnail_66ade81490698aa620f16b9eddc415ef.jpg&referer=https%3A%2F%2Fxbooru.com%2F" alt="" width="44" height="44" style="width:44px;height:44px;border-radius:8px;object-fit:cover;flex:none;border:1px solid rgba(245,158,11,0.5);" />
+          <div style="min-width:0;">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
+              <span style="background:#f59e0b;color:#000;font-weight:900;font-size:10px;padding:1px 6px;border-radius:4px;letter-spacing:0.04em;">BRAZZERS 18+</span>
+              <span style="background:rgba(225,29,72,0.9);color:#fff;font-weight:800;font-size:10px;padding:1px 6px;border-radius:4px;">🔞 NSFW AD</span>
+            </div>
+            <p style="margin:0;color:#f3f3f7;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"><strong>Brazzers 4K &amp; Uncensored 18+ AI Waifu Chat.</strong> Watch exclusive 18+ scenes or roleplay free.</p>
+          </div>
         </div>
         <div class="ad-actions">
-          <button class="btn btn-tiny btn-primary" type="button" style="background:#e11d48;color:#fff;" onclick="triggerAdClick('top_banner','candy_ai','header','anime')">🔞 Open 18+ AI</button>
+          <button class="btn btn-tiny btn-primary" type="button" style="background:#e11d48;color:#fff;font-weight:700;" onclick="triggerAdClick('top_banner','brazzers_hd','header','18plus')">🔞 Watch 18+ HD</button>
           <button class="btn btn-tiny btn-ghost" type="button" onclick="openProModal()">Remove ads</button>
         </div>
       </div>
@@ -441,28 +442,37 @@
 
 
   <div id="toast" class="toast hidden" role="status"></div>
-  <div id="aads-unit-slot" style="width:100%;max-width:960px;margin:20px auto;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:14px;padding:0 12px;">
-    <div style="position:relative;width:300px;height:250px;overflow:hidden;border-radius:12px;border:1px solid rgba(225,29,72,0.45);background:#09090b;">
-      <a href="https://www.brazzers.com/?utm_source=r34hub" target="_blank" rel="noopener" onclick="triggerAdClick('bottom_banner','brazzers_hd','footer-300x250','18plus');return false;" style="position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;padding:14px;background:linear-gradient(180deg,rgba(9,9,11,0.15) 0%,rgba(9,9,11,0.92) 75%,#09090b 100%),url('https://img.xbooru.com/images/257/66ade81490698aa620f16b9eddc415ef.jpeg') center/cover no-repeat;text-decoration:none;">
-        <span style="position:absolute;top:10px;left:10px;background:#f59e0b;color:#000;font-weight:900;font-size:11px;padding:2px 8px;border-radius:4px;letter-spacing:0.04em;">BRAZZERS 18+</span>
-        <span style="position:absolute;top:10px;right:10px;background:rgba(225,29,72,0.92);color:#fff;font-weight:800;font-size:10px;padding:2px 7px;border-radius:4px;">🔞 4K FULL HD</span>
-        <div style="color:#fff;font-weight:800;font-size:15px;line-height:1.2;margin-bottom:4px;">Brazzers &amp; 18+ Uncensored Pass</div>
-        <div style="color:#d4d4d8;font-size:11px;margin-bottom:8px;">Stream 10,000+ exclusive 4K adult scenes &amp; uncensored hentai</div>
-        <span style="display:inline-block;background:#e11d48;color:#fff;font-weight:800;font-size:12px;padding:7px 12px;border-radius:8px;text-align:center;">🔞 Watch 18+ Now →</span>
-      </a>
-      <iframe src="https://a.magsrv.com/iframe.php?idzone=6068261&size=300x250" width="300" height="250" scrolling="no" marginwidth="0" marginheight="0" frameborder="0" style="position:relative;z-index:2;background:transparent;" loading="lazy" title="ExoClick 18+ Banner"></iframe>
-    </div>
-    <div style="position:relative;flex:1;min-width:280px;max-width:600px;height:90px;overflow:hidden;border-radius:12px;border:1px solid rgba(245,158,11,0.4);background:linear-gradient(90deg,#14141d 0%,#1f1124 50%,#09090b 100%);display:flex;align-items:center;justify-content:space-between;padding:0 16px;gap:12px;">
-      <div style="display:flex;align-items:center;gap:12px;min-width:0;">
-        <span style="background:#f59e0b;color:#000;font-weight:900;font-size:11px;padding:4px 8px;border-radius:6px;white-space:nowrap;">NUTAKU 18+</span>
-        <div style="min-width:0;">
-          <div style="color:#fff;font-weight:800;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Top 18+ Uncensored Hentai &amp; Adult Games</div>
-          <div style="color:#a1a1aa;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Play instant browser 18+ RPGs • No install required</div>
+  <div id="aads-unit-slot" style="width:100%;max-width:760px;margin:20px auto 28px;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;padding:0 10px;">
+    <a href="https://www.brazzers.com/?utm_source=r34hub" target="_blank" rel="noopener" onclick="triggerAdClick('bottom_banner','brazzers_hd','footer-brazzers','18plus');return false;" style="position:relative;height:140px;border-radius:14px;overflow:hidden;border:1px solid rgba(245,158,11,0.45);background:#09090b;display:flex;align-items:flex-end;padding:14px;text-decoration:none;">
+      <img src="/api/media?url=https%3A%2F%2Fimg.xbooru.com%2Fimages%2F257%2F66ade81490698aa620f16b9eddc415ef.jpeg&referer=https%3A%2F%2Fxbooru.com%2F" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 20%;filter:brightness(0.85);" />
+      <div style="position:absolute;inset:0;background:linear-gradient(90deg,rgba(9,9,11,0.95) 0%,rgba(9,9,11,0.72) 60%,rgba(9,9,11,0.25) 100%);"></div>
+      <div style="position:relative;z-index:1;width:100%;display:flex;align-items:flex-end;justify-content:space-between;gap:10px;">
+        <div>
+          <div style="display:flex;gap:6px;margin-bottom:6px;">
+            <span style="background:#f59e0b;color:#000;font-weight:900;font-size:10px;padding:2px 7px;border-radius:4px;">BRAZZERS 18+</span>
+            <span style="background:rgba(225,29,72,0.92);color:#fff;font-weight:800;font-size:10px;padding:2px 7px;border-radius:4px;">🔞 4K FULL HD</span>
+          </div>
+          <div style="color:#fff;font-weight:800;font-size:15px;line-height:1.2;">Brazzers 18+ Uncensored Pass</div>
+          <div style="color:#d4d4d8;font-size:12px;margin-top:2px;">10,000+ exclusive 4K adult scenes &amp; daily releases</div>
         </div>
+        <span style="background:#e11d48;color:#fff;font-weight:800;font-size:12px;padding:8px 12px;border-radius:8px;white-space:nowrap;">Watch 18+ →</span>
       </div>
-      <button type="button" class="btn btn-tiny btn-primary" style="background:#f59e0b;color:#000;font-weight:800;white-space:nowrap;" onclick="triggerAdClick('bottom_banner','nutaku_games','footer-728x90','hentai')">Play 18+ Free →</button>
-      <iframe data-aa='2460259' src='//acceptable.a-ads.com/2460259' style='position:absolute;inset:0;border:0px;padding:0;width:100%;height:90px;overflow:hidden;background-color:transparent;pointer-events:auto;' loading="lazy" title="A-ADS Banner"></iframe>
-    </div>
+    </a>
+    <a href="https://www.nutaku.net/?utm_source=r34hub" target="_blank" rel="noopener" onclick="triggerAdClick('bottom_banner','nutaku_games','footer-nutaku','hentai');return false;" style="position:relative;height:140px;border-radius:14px;overflow:hidden;border:1px solid rgba(225,29,72,0.45);background:#09090b;display:flex;align-items:flex-end;padding:14px;text-decoration:none;">
+      <img src="/api/media?url=https%3A%2F%2Fimg.xbooru.com%2Fimages%2F457%2F27d2e5faf95f990fd83a597d4b6b6c89.jpeg&referer=https%3A%2F%2Fxbooru.com%2F" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 20%;filter:brightness(0.85);" />
+      <div style="position:absolute;inset:0;background:linear-gradient(90deg,rgba(9,9,11,0.95) 0%,rgba(9,9,11,0.72) 60%,rgba(9,9,11,0.25) 100%);"></div>
+      <div style="position:relative;z-index:1;width:100%;display:flex;align-items:flex-end;justify-content:space-between;gap:10px;">
+        <div>
+          <div style="display:flex;gap:6px;margin-bottom:6px;">
+            <span style="background:#e11d48;color:#fff;font-weight:900;font-size:10px;padding:2px 7px;border-radius:4px;">NUTAKU 18+ GAMES</span>
+            <span style="background:rgba(147,51,234,0.92);color:#fff;font-weight:800;font-size:10px;padding:2px 7px;border-radius:4px;">🎮 BROWSER RPG</span>
+          </div>
+          <div style="color:#fff;font-weight:800;font-size:15px;line-height:1.2;">Top 18+ Uncensored Hentai Games</div>
+          <div style="color:#d4d4d8;font-size:12px;margin-top:2px;">Play instant 18+ anime RPGs • No download needed</div>
+        </div>
+        <span style="background:#f59e0b;color:#000;font-weight:800;font-size:12px;padding:8px 12px;border-radius:8px;white-space:nowrap;">Play Free →</span>
+      </div>
+    </a>
   </div>
   <script src="/app.js"></script>
 </body>

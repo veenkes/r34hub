@@ -265,7 +265,7 @@ function syncChrome() {
   const posts = document.getElementById('posts-chrome');
   if (posts) posts.classList.toggle('hidden', !browsingPosts());
   if (!topAd) return;
-  const show = !state.isPro && state.showAdsPreview;
+  const show = !state.isPro && state.showAdsPreview && browsingPosts();
   topAd.classList.toggle('hidden', !show);
 }
 
@@ -1114,22 +1114,30 @@ function maybeShowVideoPreroll(containerEl, onComplete) {
     return;
   }
   if (containerEl.querySelector('.preroll-overlay')) return;
-  const aadsId = (state.adsConfig && state.adsConfig.aads && state.adsConfig.aads.unitId) || '2460259';
-  const exoZoneId = (state.adsConfig && state.adsConfig.exoclick && state.adsConfig.exoclick.zoneId) || '6068261';
+  trackAdImpression('video_preroll');
   const art = pickAdultAdArtwork(videoPlayCount);
   const activeTag = parseTagTokens()[0] || art.tag || 'hentai';
+  const prerollOffers = [
+    { id: 'brazzers_hd', badge: 'BRAZZERS 18+ 4K', badgeBg: '#f59e0b', badgeInk: '#000', title: 'Brazzers 18+ Exclusive 4K Adult Scenes', sub: 'Stream 10,000+ full-length uncensored 4K videos & daily releases.', cta: '🔞 Watch Brazzers 18+ →' },
+    { id: 'nud3_video', badge: 'NUD3.ME 18+ AI', badgeBg: '#9333ea', badgeInk: '#fff', title: 'Uncensored 18+ AI Undress & Hentai Video Animator', sub: 'Turn any character into an explicit 60fps 18+ animation in one click.', cta: '🔞 Open 18+ AI Studio →' },
+    { id: 'candy_ai', badge: 'CANDY.AI 18+', badgeBg: '#e11d48', badgeInk: '#fff', title: 'Uncensored 18+ AI Waifu Sex Chat & Voice', sub: 'Roleplay without filters and receive live 18+ NSFW photos.', cta: '🔞 Start 18+ Chat →' }
+  ];
+  const offer = prerollOffers[videoPlayCount % prerollOffers.length];
   const overlay = document.createElement('div');
   overlay.className = 'preroll-overlay';
-  overlay.style.cssText = 'position:absolute;inset:0;z-index:6;background:rgba(9,9,11,0.94);backdrop-filter:blur(10px);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;text-align:center;gap:10px;';
+  overlay.style.cssText = 'position:absolute;inset:0;z-index:6;background:rgba(9,9,11,0.95);backdrop-filter:blur(10px);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;text-align:center;gap:10px;';
   overlay.innerHTML = `
     <span class="meta-badge" style="margin:0;background:rgba(225,29,72,0.22);border-color:rgba(225,29,72,0.55);color:#fda4af;font-weight:700;">🔞 18+ NSFW AD · Video starts in <b data-preroll-sec>3</b>s</span>
-    <div style="font-size:16px;font-weight:700;color:#fff;">Uncensored 18+ AI Undress & Hentai Video Chat</div>
-    <div style="font-size:12px;color:#d4d4d8;max-width:320px;">Turn any character into an explicit 18+ interactive animation or roleplay chat.</div>
-    <div style="width:300px;height:250px;overflow:hidden;border-radius:10px;border:1px solid var(--line);background:#000;display:flex;align-items:center;justify-content:center;">
-      <iframe src="https://a.magsrv.com/iframe.php?idzone=${esc(exoZoneId)}&size=300x250" width="300" height="250" scrolling="no" marginwidth="0" marginheight="0" frameborder="0" title="ExoClick 18+ Pre-Roll"></iframe>
+    <div data-preroll-card style="position:relative;width:min(320px,100%);height:190px;border-radius:12px;overflow:hidden;border:1px solid rgba(245,158,11,0.5);background:#121218;cursor:pointer;text-align:left;">
+      <img src="${esc(art.proxy || art.src)}" data-proxy="${esc(art.proxy)}" data-fallback="${esc(art.fallback)}" onerror="useAdFallback(this)" alt="" style="width:100%;height:100%;object-fit:cover;object-position:center 20%;display:block;" />
+      <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(9,9,11,0.1) 0%,rgba(9,9,11,0.88) 65%,#09090b 100%);display:flex;flex-direction:column;justify-content:flex-end;padding:12px;">
+        <span style="position:absolute;top:10px;left:10px;background:${offer.badgeBg};color:${offer.badgeInk};font-weight:900;font-size:10px;padding:2px 8px;border-radius:4px;">${esc(offer.badge)}</span>
+        <div style="color:#fff;font-weight:800;font-size:15px;line-height:1.2;margin-bottom:4px;">${esc(offer.title)}</div>
+        <div style="color:#d4d4d8;font-size:11px;line-height:1.35;">${esc(offer.sub)}</div>
+      </div>
     </div>
-    <div style="display:flex;gap:8px;margin-top:4px;">
-      <button type="button" class="btn btn-primary btn-tiny" style="background:#e11d48;color:#fff;font-weight:700;" data-preroll-cta>🔞 Open 18+ AI Studio →</button>
+    <div style="display:flex;gap:8px;margin-top:2px;">
+      <button type="button" class="btn btn-primary btn-tiny" style="background:#e11d48;color:#fff;font-weight:700;" data-preroll-cta>${esc(offer.cta)}</button>
       <button type="button" class="btn btn-ghost btn-tiny" data-preroll-skip disabled>Skip (3)</button>
     </div>
   `;
@@ -1139,16 +1147,19 @@ function maybeShowVideoPreroll(containerEl, onComplete) {
   const secEl = overlay.querySelector('[data-preroll-sec]');
   const skipBtn = overlay.querySelector('[data-preroll-skip]');
   const ctaBtn = overlay.querySelector('[data-preroll-cta]');
+  const cardEl = overlay.querySelector('[data-preroll-card]');
   let left = 3;
   const finish = () => {
     clearInterval(timer);
     overlay.remove();
     onComplete();
   };
-  ctaBtn.addEventListener('click', () => {
-    triggerAdClick('post_video_ai', 'nud3_video', 'preroll', activeTag);
+  const openOffer = () => {
+    triggerAdClick('post_video_ai', offer.id, 'preroll', activeTag);
     finish();
-  });
+  };
+  ctaBtn.addEventListener('click', openOffer);
+  if (cardEl) cardEl.addEventListener('click', openOffer);
   skipBtn.addEventListener('click', finish);
   const timer = setInterval(() => {
     left -= 1;
@@ -1354,36 +1365,35 @@ function isStaticImagePost(post) {
 
 function pickAdultAdArtwork(idx = 0) {
   const fbItem = ADULT_FALLBACK_THUMBS[Math.floor(idx / 3) % ADULT_FALLBACK_THUMBS.length];
-  const guaranteedFallback = `/api/media?url=${encodeURIComponent(fbItem.thumb)}&referer=${encodeURIComponent('https://xbooru.com/')}`;
+  const guaranteedThumb = `/api/media?url=${encodeURIComponent(fbItem.thumb)}&referer=${encodeURIComponent('https://xbooru.com/')}`;
+  const proxyFull = `/api/media?url=${encodeURIComponent(fbItem.full)}&referer=${encodeURIComponent('https://xbooru.com/')}`;
 
   const explicitImages = (state.posts || []).filter(p => p.rating === 'e' && isStaticImagePost(p));
   if (explicitImages.length) {
     const chosen = explicitImages[(idx * 3 + 1) % explicitImages.length];
     const shown = cardStill(chosen);
     const charTag = (chosen.characterTags && chosen.characterTags[0]) || (chosen.tags && chosen.tags[0]) || fbItem.tag;
+    const primarySrc = shown.proxy || chosen.proxiedSampleUrl || chosen.proxiedPreviewUrl || shown.src || proxyFull;
     return {
-      src: shown.src || guaranteedFallback,
-      proxy: shown.proxy || chosen.proxiedPreviewUrl || guaranteedFallback,
-      fallback: guaranteedFallback,
+      src: primarySrc,
+      proxy: chosen.proxiedPreviewUrl || guaranteedThumb,
+      fallback: guaranteedThumb,
       tag: charTag
     };
   }
 
-  const proxyFull = `/api/media?url=${encodeURIComponent(fbItem.full)}&referer=${encodeURIComponent('https://xbooru.com/')}`;
   return {
-    src: fbItem.full,
-    proxy: proxyFull,
-    fallback: guaranteedFallback,
+    src: proxyFull,
+    proxy: guaranteedThumb,
+    fallback: guaranteedThumb,
     tag: fbItem.tag
   };
 }
 
 function buildSponsoredCardHTML(idx = 12) {
-  const aadsId = String((state.adsConfig && state.adsConfig.aads && state.adsConfig.aads.unitId) || '2460259');
   const art = pickAdultAdArtwork(idx);
-  const exoZoneId = String((state.adsConfig && state.adsConfig.exoclick && state.adsConfig.exoclick.zoneId) || '6068261');
   const offers = [
-    { id: 'brazzers_hd', name: 'BRAZZERS 18+', badgeBg: '#f59e0b', badgeInk: '#000', title: 'Brazzers 18+ 4K Exclusive Adult Network & Uncensored Videos', cta: 'Watch 18+ HD' },
+    { id: 'brazzers_hd', name: 'BRAZZERS 18+', badgeBg: '#f59e0b', badgeInk: '#000', title: 'Brazzers 18+ 4K Exclusive Adult Scenes & Uncensored Videos', cta: 'Watch 18+ HD' },
     { id: 'nutaku_games', name: 'NUTAKU 18+', badgeBg: '#e11d48', badgeInk: '#fff', title: 'Top 18+ Uncensored Hentai RPG & Adult Gacha Games', cta: 'Play 18+ Game' },
     { id: 'candy_ai', name: 'CANDY.AI 18+', badgeBg: '#e11d48', badgeInk: '#fff', title: 'Uncensored 18+ NSFW AI Waifu Sex Chat & Voice', cta: 'Chat 18+' },
     { id: 'nud3_video', name: 'NUD3.ME 18+', badgeBg: '#9333ea', badgeInk: '#fff', title: 'AI Undress & 18+ Hentai Video Animator', cta: 'Animate 18+' },
@@ -1405,14 +1415,11 @@ function buildSponsoredCardHTML(idx = 12) {
           onerror="useAdFallback(this)"
         />
         <div class="card-float">
-          <span class="pill" style="background:${offer.badgeBg || '#e11d48'};color:${offer.badgeInk || '#fff'};font-weight:900;letter-spacing:0.03em;">${esc(offer.name)}</span>
+          <span class="pill" style="background:${offer.badgeBg};color:${offer.badgeInk};font-weight:900;letter-spacing:0.03em;">${esc(offer.name)}</span>
           <span class="pill" style="background:rgba(225,29,72,0.92);color:#fff;font-weight:700;">🔞 18+ AD</span>
         </div>
-        <div style="position:absolute;left:0;right:0;bottom:0;padding:20px 8px 8px;background:linear-gradient(180deg,transparent,rgba(9,9,11,0.95) 45%,#09090b 100%);display:flex;flex-direction:column;gap:6px;">
-          <div style="color:#fff;font-size:12px;font-weight:700;line-height:1.25;pointer-events:none;">${esc(offer.title)}</div>
-          <div style="width:100%;height:50px;overflow:hidden;border-radius:6px;background:rgba(0,0,0,0.75);border:1px solid rgba(255,255,255,0.12);" onclick="event.stopPropagation()">
-            <iframe data-aa="${esc(aadsId)}" src="//acceptable.a-ads.com/${esc(aadsId)}" style="border:0px;padding:0;width:100%;height:50px;overflow:hidden;background-color:transparent;" loading="lazy" title="Sponsored 18+ Banner"></iframe>
-          </div>
+        <div style="position:absolute;left:0;right:0;bottom:0;padding:28px 10px 10px;background:linear-gradient(180deg,transparent,rgba(9,9,11,0.94));color:#fff;font-size:12px;font-weight:700;line-height:1.3;pointer-events:none;">
+          ${esc(offer.title)}
         </div>
       </div>
       <div class="card-body">
@@ -1685,8 +1692,6 @@ function bindReelsLoader() {
 }
 
 function buildNativeReelAdHtml(idx) {
-  const aadsId = String((state.adsConfig && state.adsConfig.aads && state.adsConfig.aads.unitId) || '2460259');
-  const exoZoneId = String((state.adsConfig && state.adsConfig.exoclick && state.adsConfig.exoclick.zoneId) || '6068261');
   const art = pickAdultAdArtwork(idx);
   const activeTag = parseTagTokens()[0] || art.tag || 'hentai';
   const offers = [
@@ -1746,7 +1751,7 @@ function buildNativeReelAdHtml(idx) {
   return `
     <article class="reel post-card is-ad" data-kind="ad" data-ad-slot="${idx}">
       <div class="reel-stage is-still" style="position:relative;background:#09090b;overflow:hidden;">
-        <div style="position:relative;aspect-ratio:4 / 5;max-height:520px;width:100%;overflow:hidden;cursor:pointer;" onclick="triggerAdClick('infeed_native','${esc(offer.id)}','reel-ad-${idx}','${esc(activeTag)}')">
+        <div style="position:relative;aspect-ratio:4 / 5;max-height:540px;width:100%;overflow:hidden;cursor:pointer;" onclick="triggerAdClick('infeed_native','${esc(offer.id)}','reel-ad-${idx}','${esc(activeTag)}')">
           <img
             class="reel-still"
             style="width:100%;height:100%;object-fit:cover;display:block;filter:contrast(1.05);"
@@ -1758,31 +1763,20 @@ function buildNativeReelAdHtml(idx) {
             onerror="useAdFallback(this)"
           />
           <div style="position:absolute;top:12px;left:12px;right:12px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
-            <span class="pill" style="background:rgba(225,29,72,0.92);color:#fff;font-weight:700;padding:4px 10px;border-radius:999px;font-size:11px;letter-spacing:0.04em;">🔞 18+ NSFW SPONSORED POST</span>
-            <span class="pill" style="background:rgba(9,9,11,0.8);color:#e4e4e7;padding:4px 10px;border-radius:999px;font-size:11px;">${esc(offer.partner)}</span>
+            <span class="pill" style="background:${offer.badgeBg};color:${offer.badgeInk};font-weight:900;padding:4px 10px;border-radius:999px;font-size:11px;letter-spacing:0.04em;">${esc(offer.partner)}</span>
+            <span class="pill" style="background:rgba(225,29,72,0.92);color:#fff;font-weight:700;padding:4px 10px;border-radius:999px;font-size:11px;">🔞 18+ NSFW AD</span>
           </div>
-          <div style="position:absolute;left:0;right:0;bottom:0;padding:48px 16px 16px;background:linear-gradient(180deg,transparent 0%,rgba(9,9,11,0.88) 45%,#09090b 100%);">
-            <h3 style="margin:0 0 6px;font-size:18px;color:#fff;font-weight:700;line-height:1.25;">${esc(offer.title)}</h3>
+          <div style="position:absolute;left:0;right:0;bottom:0;padding:54px 16px 16px;background:linear-gradient(180deg,transparent 0%,rgba(9,9,11,0.88) 42%,#09090b 100%);">
+            <h3 style="margin:0 0 6px;font-size:18px;color:#fff;font-weight:800;line-height:1.25;">${esc(offer.title)}</h3>
             <p style="margin:0 0 12px;font-size:13px;color:#d4d4d8;line-height:1.45;">${esc(offer.sub)}</p>
             <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">
               ${offer.tags.map(t => `<span class="meta-badge" style="margin:0;background:rgba(225,29,72,0.18);border-color:rgba(225,29,72,0.4);color:#fda4af;font-size:11px;">#${esc(t)}</span>`).join('')}
             </div>
             <div style="display:flex;gap:8px;">
-              <button type="button" class="btn btn-primary" style="flex:1;background:#e11d48;color:#fff;font-weight:700;" onclick="event.stopPropagation();triggerAdClick('infeed_native','${esc(offer.id)}','reel-ad-${idx}','${esc(activeTag)}')">${esc(offer.cta)}</button>
+              <button type="button" class="btn btn-primary" style="flex:1;background:#e11d48;color:#fff;font-weight:800;" onclick="event.stopPropagation();triggerAdClick('infeed_native','${esc(offer.id)}','reel-ad-${idx}','${esc(activeTag)}')">${esc(offer.cta)}</button>
               <button type="button" class="btn btn-ghost" onclick="event.stopPropagation();openProModal()">Hide 18+ Ads</button>
             </div>
           </div>
-        </div>
-        <div style="width:100%;padding:10px 12px;background:#09090b;border-top:1px solid var(--line);display:flex;flex-direction:column;align-items:center;gap:8px;">
-          <div style="position:relative;width:300px;height:250px;border-radius:10px;overflow:hidden;border:1px solid rgba(245,158,11,0.45);background:#121218;">
-            <div onclick="triggerAdClick('infeed_native','${esc(offer.id)}','exo-fallback-${idx}','${esc(activeTag)}')" style="position:absolute;inset:0;cursor:pointer;display:flex;flex-direction:column;justify-content:flex-end;padding:12px;background:linear-gradient(180deg,rgba(9,9,11,0.1) 0%,rgba(9,9,11,0.92) 72%,#09090b 100%),url('${esc(art.src)}') center/cover no-repeat;">
-              <span style="position:absolute;top:8px;left:8px;background:${offer.badgeBg || '#f59e0b'};color:${offer.badgeInk || '#000'};font-weight:900;font-size:10px;padding:2px 7px;border-radius:4px;">${esc(offer.partner)}</span>
-              <div style="color:#fff;font-weight:800;font-size:13px;line-height:1.2;margin-bottom:6px;">${esc(offer.title)}</div>
-              <span style="display:inline-block;background:#e11d48;color:#fff;font-weight:800;font-size:11px;padding:6px 10px;border-radius:6px;text-align:center;">${esc(offer.cta)}</span>
-            </div>
-            <iframe src="https://a.magsrv.com/iframe.php?idzone=${esc(exoZoneId)}&size=300x250" width="300" height="250" scrolling="no" marginwidth="0" marginheight="0" frameborder="0" style="position:relative;z-index:2;background:transparent;" loading="lazy" title="ExoClick 18+ Ad"></iframe>
-          </div>
-          <iframe data-aa="${esc(aadsId)}" src="//acceptable.a-ads.com/${esc(aadsId)}" style="border:0px;padding:0;width:100%;max-width:468px;height:60px;overflow:hidden;background-color:transparent;" loading="lazy" title="A-ADS 18+"></iframe>
         </div>
       </div>
       <div class="reel-bar">

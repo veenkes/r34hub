@@ -96,7 +96,6 @@ body.mode-grid .topnav {
   backdrop-filter: blur(16px) saturate(1.8);
   border-bottom: 1px solid var(--line);
 }
-body.mode-home .brand,
 body.mode-home #open-search-btn { visibility: hidden; }
 .topnav-inner {
   width: min(760px, calc(100% - 12px));
