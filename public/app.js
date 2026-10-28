@@ -1118,9 +1118,10 @@ function maybeShowVideoPreroll(containerEl, onComplete) {
   const art = pickAdultAdArtwork(videoPlayCount);
   const activeTag = parseTagTokens()[0] || art.tag || 'hentai';
   const prerollOffers = [
-    { id: 'brazzers_hd', badge: 'BRAZZERS 18+ 4K', badgeBg: '#f59e0b', badgeInk: '#000', title: 'Brazzers 18+ Exclusive 4K Adult Scenes', sub: 'Stream 10,000+ full-length uncensored 4K videos & daily releases.', cta: '🔞 Watch Brazzers 18+ →' },
     { id: 'nud3_video', badge: 'NUD3.ME 18+ AI', badgeBg: '#9333ea', badgeInk: '#fff', title: 'Uncensored 18+ AI Undress & Hentai Video Animator', sub: 'Turn any character into an explicit 60fps 18+ animation in one click.', cta: '🔞 Open 18+ AI Studio →' },
-    { id: 'candy_ai', badge: 'CANDY.AI 18+', badgeBg: '#e11d48', badgeInk: '#fff', title: 'Uncensored 18+ AI Waifu Sex Chat & Voice', sub: 'Roleplay without filters and receive live 18+ NSFW photos.', cta: '🔞 Start 18+ Chat →' }
+    { id: 'candy_ai', badge: 'CANDY.AI 18+', badgeBg: '#e11d48', badgeInk: '#fff', title: 'Uncensored 18+ AI Waifu Sex Chat & Voice', sub: 'Roleplay without filters and receive live 18+ NSFW photos.', cta: '🔞 Start 18+ Chat →' },
+    { id: 'crushon_ai', badge: 'CRUSHON.AI 18+', badgeBg: '#f59e0b', badgeInk: '#000', title: 'Zero-Filter 18+ Hentai & Erotic Roleplay AI', sub: 'No censorship, no NSFW blocks. Chat with 200,000+ adult anime characters.', cta: '🔞 Start 18+ Roleplay →' },
+    { id: 'spicychat_ai', badge: 'SPICYCHAT.AI 18+', badgeBg: '#e11d48', badgeInk: '#fff', title: 'Uncensored 18+ Character AI Chatbot', sub: 'Instant browser NSFW roleplay with your favorite Booru characters.', cta: '🔞 Chat 18+ Now →' }
   ];
   const offer = prerollOffers[videoPlayCount % prerollOffers.length];
   const overlay = document.createElement('div');
@@ -1393,11 +1394,10 @@ function pickAdultAdArtwork(idx = 0) {
 function buildSponsoredCardHTML(idx = 12) {
   const art = pickAdultAdArtwork(idx);
   const offers = [
-    { id: 'brazzers_hd', name: 'BRAZZERS 18+', badgeBg: '#f59e0b', badgeInk: '#000', title: 'Brazzers 18+ 4K Exclusive Adult Scenes & Uncensored Videos', cta: 'Watch 18+ HD' },
-    { id: 'nutaku_games', name: 'NUTAKU 18+', badgeBg: '#e11d48', badgeInk: '#fff', title: 'Top 18+ Uncensored Hentai RPG & Adult Gacha Games', cta: 'Play 18+ Game' },
     { id: 'candy_ai', name: 'CANDY.AI 18+', badgeBg: '#e11d48', badgeInk: '#fff', title: 'Uncensored 18+ NSFW AI Waifu Sex Chat & Voice', cta: 'Chat 18+' },
     { id: 'nud3_video', name: 'NUD3.ME 18+', badgeBg: '#9333ea', badgeInk: '#fff', title: 'AI Undress & 18+ Hentai Video Animator', cta: 'Animate 18+' },
-    { id: 'chaturbate_cams', name: 'LIVE CAMS 18+', badgeBg: '#f59e0b', badgeInk: '#000', title: 'Live 18+ Cosplay & Adult Cam Girls Streaming Now', cta: 'Watch Live 18+' }
+    { id: 'crushon_ai', name: 'CRUSHON.AI 18+', badgeBg: '#f59e0b', badgeInk: '#000', title: 'Zero-Filter 18+ Hentai & Erotic Roleplay AI', cta: 'Roleplay 18+' },
+    { id: 'spicychat_ai', name: 'SPICYCHAT 18+', badgeBg: '#e11d48', badgeInk: '#fff', title: 'No-Filter 18+ Adult Character AI & Voice Chat', cta: 'Chat 18+' }
   ];
   const slotNum = idx <= 4 ? 0 : Math.floor((idx - 4) / 10) + 1;
   const offer = offers[slotNum % offers.length];
@@ -1696,26 +1696,6 @@ function buildNativeReelAdHtml(idx) {
   const activeTag = parseTagTokens()[0] || art.tag || 'hentai';
   const offers = [
     {
-      id: 'brazzers_hd',
-      partner: 'BRAZZERS 18+ NETWORK',
-      badgeBg: '#f59e0b',
-      badgeInk: '#000',
-      title: 'Brazzers 18+ 4K Exclusive Adult Scenes & Uncensored Pass',
-      sub: 'Watch 10,000+ full-length 4K adult videos, cosplay scenes, and exclusive daily 18+ releases.',
-      cta: '🔞 Watch Brazzers 18+ HD →',
-      tags: ['brazzers_18+', '4k_adult', 'uncensored', 'exclusive_hd']
-    },
-    {
-      id: 'nutaku_games',
-      partner: 'NUTAKU 18+ HENTAI GAMES',
-      badgeBg: '#e11d48',
-      badgeInk: '#fff',
-      title: 'Top 18+ Uncensored Hentai RPG & Adult Gacha Games (Browser / Mobile)',
-      sub: 'No install needed. Unlock explicit 18+ character scenes & claim 2,000 free gems.',
-      cta: '🔞 Play 18+ Hentai Game →',
-      tags: ['nutaku_18+', 'hentai_rpg', 'uncensored_game', 'browser_18+']
-    },
-    {
       id: 'candy_ai',
       partner: 'CANDY.AI 18+ NSFW',
       badgeBg: '#e11d48',
@@ -1723,7 +1703,7 @@ function buildNativeReelAdHtml(idx) {
       title: `Uncensored 18+ AI Sex Chat & Voice with ${activeTag.replace(/_/g, ' ')}`,
       sub: 'Send explicit prompts, custom kinks, and receive live 18+ NSFW photos & voice messages.',
       cta: '🔞 Start 18+ Uncensored Chat →',
-      tags: ['18+_nsfw', 'uncensored_ai', 'sex_chat', 'custom_waifu']
+      tags: ['candy_ai_18+', 'uncensored_ai', 'sex_chat', 'custom_waifu']
     },
     {
       id: 'nud3_video',
@@ -1733,17 +1713,27 @@ function buildNativeReelAdHtml(idx) {
       title: '18+ AI Undress & Hentai Video Generator',
       sub: 'Turn any Rule34 or anime image into an explicit 60fps 18+ animated video in one click.',
       cta: '🔞 Animate / Undress 18+ Now →',
-      tags: ['18+_video', 'ai_undress', 'animated_nsfw', 'rule34_ai']
+      tags: ['nud3_18+', 'ai_undress', 'animated_nsfw', 'rule34_ai']
     },
     {
-      id: 'chaturbate_cams',
-      partner: 'CHATURBATE 18+ LIVE CAMS',
+      id: 'crushon_ai',
+      partner: 'CRUSHON.AI 18+ UNFILTERED',
       badgeBg: '#f59e0b',
       badgeInk: '#000',
-      title: 'Live 18+ Cosplay & Anime Cam Models Streaming Now',
-      sub: 'Join interactive live 18+ streams and private shows — free instant browser access.',
-      cta: '🔞 Watch Live 18+ Cams →',
-      tags: ['live_cams_18+', 'cosplay_18+', 'interactive', 'nsfw_live']
+      title: 'Zero-Filter 18+ Hentai & Erotic Roleplay AI',
+      sub: 'No censorship, no NSFW blocks. Roleplay any scenario with 200,000+ adult anime characters.',
+      cta: '🔞 Play 18+ Roleplay Free →',
+      tags: ['crushon_18+', 'no_filter', 'hentai_chat', 'explicit']
+    },
+    {
+      id: 'spicychat_ai',
+      partner: 'SPICYCHAT.AI 18+ NSFW',
+      badgeBg: '#e11d48',
+      badgeInk: '#fff',
+      title: 'Uncensored 18+ Character AI Chatbot & Roleplay',
+      sub: 'Chat freely with 150,000+ community-created 18+ NSFW anime & gaming characters.',
+      cta: '🔞 Open SpicyChat 18+ →',
+      tags: ['spicychat_18+', 'nsfw_ai', 'character_chat', 'uncensored']
     }
   ];
   const slotNum = idx <= 4 ? 0 : Math.floor((idx - 4) / AD_INTERVAL) + 1;
