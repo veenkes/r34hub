@@ -3,10 +3,13 @@ const cors = require('cors');
 const compression = require('compression');
 const path = require('path');
 const crypto = require('crypto');
+const dns = require('dns').promises;
+const net = require('net');
 const { Readable } = require('stream');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+app.set('trust proxy', 1);
 
 app.use(cors());
 app.use(compression());
@@ -97,18 +100,39 @@ function putMediaCache(url, buf, contentType) {
 }
 
 function isBlockedMediaHost(hostname) {
-  const host = String(hostname || '').toLowerCase().replace(/^\[|\]$/g, '');
+  let host = String(hostname || '').toLowerCase().replace(/^\[|\]$/g, '').replace(/\.$/, '');
   if (!host || host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local')) return true;
-  if (host === '::1' || host === '0.0.0.0') return true;
+  if (host === '::1' || host === '::' || host === '0.0.0.0' || host === 'metadata.google.internal') return true;
+  const mapped = host.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
+  if (mapped) host = mapped[1];
+  if (/^\d+$/.test(host)) return true;
   const ipv4 = host.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
-  if (!ipv4) return false;
-  const a = Number(ipv4[1]);
-  const b = Number(ipv4[2]);
-  if (a === 10 || a === 127 || a === 0) return true;
-  if (a === 169 && b === 254) return true;
-  if (a === 192 && b === 168) return true;
-  if (a === 172 && b >= 16 && b <= 31) return true;
+  if (ipv4) {
+    const a = Number(ipv4[1]);
+    const b = Number(ipv4[2]);
+    if (a === 10 || a === 127 || a === 0) return true;
+    if (a === 169 && b === 254) return true;
+    if (a === 192 && b === 168) return true;
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    if (a >= 224) return true;
+    return false;
+  }
+  if (host.includes(':')) {
+    const head = host.split(':')[0];
+    if (/^f[cd]/.test(head) || /^fe[89ab]/.test(head)) return true;
+  }
   return false;
+}
+
+async function resolvesToBlockedHost(hostname) {
+  if (isBlockedMediaHost(hostname)) return true;
+  if (net.isIP(hostname)) return false;
+  try {
+    const records = await dns.lookup(hostname, { all: true });
+    return records.some(record => isBlockedMediaHost(record.address));
+  } catch (err) {
+    return false;
+  }
 }
 
 // Runtime Config & Monetization State
@@ -1066,6 +1090,34 @@ app.get('/api/tags', async (req, res) => {
   }
 });
 
+// Follow a few public redirects. A public host must not bounce the proxy onto a private address.
+async function fetchMediaUpstream(startUrl, headers) {
+  let current = startUrl;
+  for (let hop = 0; hop < 4; hop++) {
+    let parsed;
+    try {
+      parsed = new URL(current);
+    } catch (err) {
+      return { blocked: true };
+    }
+    if (!/^https?:$/.test(parsed.protocol) || await resolvesToBlockedHost(parsed.hostname)) {
+      return { blocked: true };
+    }
+    const upstream = await fetchWithTimeout(current, { headers, redirect: 'manual' }, 12000);
+    if (upstream.status >= 300 && upstream.status < 400) {
+      const location = upstream.headers.get('location');
+      if (upstream.body && typeof upstream.body.cancel === 'function') {
+        upstream.body.cancel().catch(() => {});
+      }
+      if (!location) return { blocked: true };
+      current = new URL(location, current).href;
+      continue;
+    }
+    return { upstream, finalUrl: current };
+  }
+  return { blocked: true };
+}
+
 // Streams upstream media. Small previews are cached; large files are not buffered first.
 app.get('/api/media', async (req, res) => {
   const targetUrl = String(req.query.url || '');
@@ -1098,8 +1150,17 @@ app.get('/api/media', async (req, res) => {
   };
   if (req.headers.range) headers.Range = req.headers.range;
 
+  let fetched;
   try {
-    const upstream = await fetchWithTimeout(targetUrl, { headers }, 12000);
+    fetched = await fetchMediaUpstream(targetUrl, headers);
+  } catch (err) {
+    if (!res.headersSent) res.redirect(targetUrl);
+    return;
+  }
+  if (!fetched || fetched.blocked) return res.status(400).send('Invalid media URL');
+  const upstream = fetched.upstream;
+
+  try {
     if (!upstream.ok && upstream.status !== 206) {
       return res.redirect(targetUrl);
     }
@@ -1175,6 +1236,7 @@ app.get('/api/monetization/config', (req, res) => {
 });
 
 app.post('/api/monetization/config', (req, res) => {
+  if (!requireAdmin(req, res)) return;
   const { activeBrandId, adsEnabled, adFrequency, aiButtonOnPosts, r34UserId, r34ApiKey, gelUserId, gelApiKey } = req.body || {};
   if (activeBrandId && appConfig.brands.some(b => b.id === activeBrandId)) {
     appConfig.activeBrandId = activeBrandId;
@@ -1211,9 +1273,9 @@ function loadMonetizationDb() {
   }
   return {
     owner: {
-      email: "emildv.work@gmail.com",
-      adminToken: "R34HUB-ADMIN-9F4A8821-EMIL",
-      webhookSecret: "whsec_r34hub_live_8f92a4c7e1b093d6f5a2c8e4",
+      email: "",
+      adminToken: "",
+      webhookSecret: "",
       primaryDomain: "r34hub.app",
       decoyDomain: "hubcloud.dev"
     },
@@ -1222,6 +1284,12 @@ function loadMonetizationDb() {
     licenses: [],
     orders: []
   };
+}
+
+function paymentConfigForAdmin(config) {
+  const copy = Object.assign({}, config || {});
+  delete copy.nowPaymentsApiKey;
+  return copy;
 }
 
 function saveMonetizationDb(db) {
@@ -1234,6 +1302,33 @@ function saveMonetizationDb(db) {
 }
 
 let monDb = loadMonetizationDb();
+
+function secretMatches(sent, expected) {
+  const a = Buffer.from(String(sent || ''));
+  const b = Buffer.from(String(expected || ''));
+  if (!b.length || a.length !== b.length) return false;
+  return crypto.timingSafeEqual(a, b);
+}
+
+function requireAdmin(req, res) {
+  const sent = String(req.get('x-admin-token') || req.query.token || '').trim();
+  const expected = process.env.R34HUB_ADMIN_TOKEN || (monDb.owner && monDb.owner.adminToken) || '';
+  if (!secretMatches(sent, expected)) {
+    res.status(401).json({ ok: false, error: 'Admin token required' });
+    return false;
+  }
+  return true;
+}
+
+function requireWebhook(req, res) {
+  const sent = String(req.get('x-webhook-secret') || (req.body && req.body.secret) || '').trim();
+  const expected = process.env.R34HUB_WEBHOOK_SECRET || (monDb.owner && monDb.owner.webhookSecret) || '';
+  if (!secretMatches(sent, expected)) {
+    res.status(401).json({ ok: false, error: 'Webhook secret required' });
+    return false;
+  }
+  return true;
+}
 
 function generateLicenseKeyString(prefix = "SHOP2", tierCode = "PRO") {
   const cleanPrefix = ["SHOP2", "PATREON", "SLX"].includes(String(prefix).toUpperCase())
@@ -1274,32 +1369,13 @@ app.post("/api/licenses/activate", (req, res) => {
   monDb = loadMonetizationDb();
   const rawKey = String((req.body && (req.body.key || req.body.licenseKey)) || "").trim().toUpperCase();
   if (!rawKey) {
-    return res.status(400).json({ ok: false, valid: false, error: "Please enter a license key (e.g. SHOP2-OWNER-VIP-9F4A-8821)." });
+    return res.status(400).json({ ok: false, valid: false, error: "Please enter a license key." });
   }
 
-  let record = monDb.licenses.find(l => l.key.toUpperCase() === rawKey);
-
-  // Also support any newly minted valid format key if not yet in array
-  if (!record && (rawKey.startsWith("SHOP2-") || rawKey.startsWith("PATREON-") || rawKey.startsWith("SLX-")) && rawKey.length >= 12) {
-    record = {
-      key: rawKey,
-      prefix: rawKey.split("-")[0],
-      tier: rawKey.includes("LIFE") || rawKey.includes("OWNER") ? "lifetime" : rawKey.includes("ANNUAL") ? "annual" : "monthly",
-      planName: "Pro VIP Member",
-      priceEur: 59.99,
-      email: "member@r34hub.app",
-      status: "active",
-      devicesUsed: 0,
-      maxDevices: 5,
-      createdAt: new Date().toISOString(),
-      expiresAt: new Date(Date.now() + 365 * 86400000).toISOString(),
-      notes: "Auto-registered valid key"
-    };
-    monDb.licenses.unshift(record);
-  }
+  const record = monDb.licenses.find(l => l.key.toUpperCase() === rawKey);
 
   if (!record) {
-    return res.status(404).json({ ok: false, valid: false, error: "License key not found. Check your SHOP2- / PATREON- / SLX- key." });
+    return res.status(404).json({ ok: false, valid: false, error: "License key not found." });
   }
   if (record.status === "revoked") {
     return res.status(403).json({ ok: false, valid: false, error: "This license key has been revoked by the administrator." });
@@ -1365,44 +1441,41 @@ app.get("/api/licenses/verify", (req, res) => {
 
 // Backwards-compatible verify endpoint
 app.post("/api/monetization/verify-license", (req, res) => {
-  req.body = req.body || {};
-  req.body.key = req.body.licenseKey || req.body.key;
-  const rawKey = String(req.body.key || "").trim().toUpperCase();
+  monDb = loadMonetizationDb();
+  const rawKey = String((req.body && (req.body.licenseKey || req.body.key)) || "").trim().toUpperCase();
   const record = monDb.licenses.find(l => l.key.toUpperCase() === rawKey);
-  if (record && record.status === "active") {
-    record.devicesUsed = Math.min(record.maxDevices || 5, (record.devicesUsed || 0) + 1);
-    saveMonetizationDb(monDb);
-    return res.json({
-      valid: true,
-      licenseKey: record.key,
-      platform: record.prefix === "SLX" ? "Sell.app Crypto" : "HubCloud.dev (Stripe EUR)",
-      plan: record.planName,
-      tier: record.tier,
-      email: record.email,
-      expiresAt: record.expiresAt
-    });
+  if (!record || record.status !== "active") {
+    return res.status(401).json({ valid: false, error: "Invalid or revoked license key." });
   }
-  if (rawKey.startsWith("SHOP2-") || rawKey.startsWith("PATREON-") || rawKey.startsWith("SLX-")) {
-    return res.json({
-      valid: true,
-      licenseKey: rawKey,
-      platform: "HubCloud.dev (Stripe EUR)",
-      plan: "Pro VIP",
-      tier: "annual",
-      email: "member@r34hub.app"
-    });
+  if (record.expiresAt && new Date(record.expiresAt).getTime() < Date.now()) {
+    return res.status(401).json({ valid: false, error: "This license key has expired." });
   }
-  return res.status(401).json({ valid: false, error: "Invalid or revoked license key. Try SHOP2-OWNER-VIP-9F4A-8821" });
+  if ((record.devicesUsed || 0) >= (record.maxDevices || 5)) {
+    return res.status(403).json({ valid: false, error: "Device limit reached." });
+  }
+  record.devicesUsed = Math.min(record.maxDevices || 5, (record.devicesUsed || 0) + 1);
+  record.lastActivatedAt = new Date().toISOString();
+  saveMonetizationDb(monDb);
+  return res.json({
+    valid: true,
+    licenseKey: record.key,
+    platform: record.prefix === "SLX" ? "Sell.app Crypto" : "HubCloud.dev (Stripe EUR)",
+    plan: record.planName,
+    tier: record.tier,
+    email: record.email,
+    expiresAt: record.expiresAt
+  });
 });
 
 // Admin: Generate 1 to 50 keys
 app.post("/api/admin/licenses/generate", (req, res) => {
   monDb = loadMonetizationDb();
+  if (!requireAdmin(req, res)) return;
   const {
     count = 1,
     plan = "annual",
     prefix = "SHOP2",
-    email = "emildv.work@gmail.com",
+    email = "",
     notes = "Generated in Admin Control Center"
   } = req.body || {};
 
@@ -1429,7 +1502,7 @@ app.post("/api/admin/licenses/generate", (req, res) => {
       tier: chosen.tier,
       planName: chosen.name,
       priceEur: chosen.priceEur,
-      email: String(email).trim() || "emildv.work@gmail.com",
+      email: String(email).trim() || "buyer@r34hub.app",
       status: "active",
       devicesUsed: 0,
       maxDevices: 5,
@@ -1463,6 +1536,7 @@ app.post("/api/admin/licenses/generate", (req, res) => {
 // Admin: Revoke or Reactivate a key
 app.post("/api/admin/licenses/revoke", (req, res) => {
   monDb = loadMonetizationDb();
+  if (!requireAdmin(req, res)) return;
   const { key = "", action = "toggle" } = req.body || {};
   const cleanKey = String(key).trim().toUpperCase();
   const record = monDb.licenses.find(l => l.key.toUpperCase() === cleanKey);
@@ -1478,8 +1552,11 @@ app.post("/api/admin/licenses/revoke", (req, res) => {
 
 // 2. Payment Webhooks & Checkout Simulation (/api/checkout/create & /api/webhooks/payment)
 app.post("/api/checkout/create", (req, res) => {
-  monDb = loadMonetizationDb();
-  const { plan = "annual", provider = "stripe", email = "emildv.work@gmail.com", cryptoCurrency = "XMR" } = req.body || {};
+  const body = req.body || {};
+  const plan = body.plan || "annual";
+  const provider = body.provider || "stripe";
+  const email = String(body.email || "").trim();
+  const cryptoCurrency = body.cryptoCurrency || "XMR";
   const planLookup = {
     monthly: { id: "monthly", name: "Monthly Pro", tier: "monthly", amountEur: 7.00, days: 30 },
     yearly: { id: "annual", name: "Annual Pro (€4.97/mo)", tier: "annual", amountEur: 59.99, days: 365 },
@@ -1505,17 +1582,18 @@ app.post("/api/checkout/create", (req, res) => {
     currency: "EUR",
     cryptoDiscountApplied: isCrypto ? "20% OFF" : null,
     statementDescriptor: "HUBCLOUD.DEV * CLOUD SYNC",
-    checkoutUrl: `/hubcloud?session=${sessionId}&plan=${selected.id}&provider=${provider}&email=${encodeURIComponent(email)}`
+    checkoutUrl: `/hubcloud?session=${sessionId}&plan=${selected.id}&provider=${encodeURIComponent(provider)}&email=${encodeURIComponent(email)}`
   });
 });
 
 app.post("/api/webhooks/payment", (req, res) => {
   monDb = loadMonetizationDb();
+  if (!requireWebhook(req, res)) return;
   const {
     provider = "stripe_hubcloud",
     event = "checkout.session.completed",
     plan = "annual",
-    email = "emildv.work@gmail.com",
+    email = "",
     amountEur
   } = req.body || {};
 
@@ -1544,7 +1622,7 @@ app.post("/api/webhooks/payment", (req, res) => {
     tier: chosen.tier,
     planName: chosen.name,
     priceEur: finalPrice,
-    email: String(email).trim() || "emildv.work@gmail.com",
+    email: String(email).trim() || "buyer@r34hub.app",
     status: "active",
     devicesUsed: 1,
     maxDevices: 5,
@@ -1591,7 +1669,8 @@ app.post("/api/webhooks/payment", (req, res) => {
 
 // Keep checkout-demo routed to webhook minting
 app.post("/api/monetization/checkout-demo", (req, res) => {
-  const { planId = "annual", method = "stripe", email = "emildv.work@gmail.com" } = req.body || {};
+  if (!requireWebhook(req, res)) return;
+  const { planId = "annual", method = "stripe", email = "" } = req.body || {};
   req.body = {
     provider: method === "crypto" ? "nowpayments_xmr" : "stripe_hubcloud",
     event: method === "crypto" ? "payment_status:finished" : "checkout.session.completed",
@@ -1647,8 +1726,7 @@ app.get("/api/ads/config", (req, res) => {
   monDb = loadMonetizationDb();
   res.json({
     ok: true,
-    adsConfig: monDb.adsConfig,
-    paymentConfig: monDb.paymentConfig
+    adsConfig: monDb.adsConfig
   });
 });
 
@@ -1708,6 +1786,7 @@ app.post("/api/ads/click", (req, res) => {
 
 app.post("/api/admin/ads/update", (req, res) => {
   monDb = loadMonetizationDb();
+  if (!requireAdmin(req, res)) return;
   const body = req.body || {};
 
   if (typeof body.adsEnabled === "boolean") monDb.adsConfig.adsEnabled = body.adsEnabled;
@@ -1742,12 +1821,13 @@ app.post("/api/admin/ads/update", (req, res) => {
   res.json({
     ok: true,
     adsConfig: monDb.adsConfig,
-    paymentConfig: monDb.paymentConfig
+    paymentConfig: paymentConfigForAdmin(monDb.paymentConfig)
   });
 });
 
 app.get("/api/admin/stats", (req, res) => {
   monDb = loadMonetizationDb();
+  if (!requireAdmin(req, res)) return;
   const activeLicenses = monDb.licenses.filter(l => l.status === "active");
   const subRevenue = monDb.orders.reduce((acc, o) => acc + (Number(o.amountEur) || 0), 0);
   const cpaRev = (monDb.adsConfig.telemetry && monDb.adsConfig.telemetry.estimatedCpaRevenueEur) || 0;
@@ -1755,7 +1835,11 @@ app.get("/api/admin/stats", (req, res) => {
 
   res.json({
     ok: true,
-    owner: monDb.owner,
+    owner: {
+      email: monDb.owner && monDb.owner.email,
+      primaryDomain: monDb.owner && monDb.owner.primaryDomain,
+      decoyDomain: monDb.owner && monDb.owner.decoyDomain
+    },
     summary: {
       totalLicenses: monDb.licenses.length,
       activeLicenses: activeLicenses.length,
@@ -1768,7 +1852,7 @@ app.get("/api/admin/stats", (req, res) => {
       estimatedBannerRevenueEur: Number(bannerRev.toFixed(2)),
       totalRevenueEur: Number((subRevenue + cpaRev + bannerRev).toFixed(2))
     },
-    paymentConfig: monDb.paymentConfig,
+    paymentConfig: paymentConfigForAdmin(monDb.paymentConfig),
     adsConfig: monDb.adsConfig,
     licenses: monDb.licenses,
     orders: monDb.orders
@@ -1786,6 +1870,20 @@ app.get("/hubcloud", (req, res) => {
 
 app.get("/posts/:source", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
+app.get("/api/health", (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  res.json({ ok: true, service: "r34hub" });
+});
+
+app.use((err, req, res, next) => {
+  if (res.headersSent) return next(err);
+  const status = Number(err.status || err.statusCode) || 500;
+  res.status(status).json({
+    ok: false,
+    error: status >= 500 ? "Server error" : "Request failed"
+  });
 });
 
 if (require.main === module) {

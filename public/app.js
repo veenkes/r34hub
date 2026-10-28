@@ -1756,25 +1756,17 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   document.getElementById('sim-crypto-checkout-btn').addEventListener('click', async () => {
-    const res = await fetch('/api/webhooks/payment', {
+    const res = await fetch('/api/checkout/create', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        provider: 'nowpayments_xmr',
-        event: 'payment_status:finished',
-        plan: state.selectedPlan,
-        email: 'emildv.work@gmail.com'
-      })
+      body: JSON.stringify({ plan: state.selectedPlan, provider: 'crypto' })
     });
-    const data = await res.json();
-    if (data.ok) {
-      state.isPro = true;
-      state.licenseKey = data.licenseKey;
-      localStorage.setItem('bp_license', data.licenseKey);
-      closeProModal();
-      updateProUI();
-      showToast('Crypto key is active.');
+    const data = await res.json().catch(() => ({}));
+    if (data.checkoutUrl) {
+      location.href = data.checkoutUrl;
+      return;
     }
+    showToast('Checkout did not start');
   });
 
   document.getElementById('save-blacklist-btn').addEventListener('click', () => {

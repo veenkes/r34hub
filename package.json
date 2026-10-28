@@ -1,8 +1,11 @@
 {
-  "name": "booru-pulse",
+  "name": "r34hub",
   "version": "1.0.0",
-  "description": "BooruPulse Multi-Booru Aggregator & Reels Engine",
+  "description": "R34Hub multi-booru aggregator",
   "main": "server.js",
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "start": "node server.js"
   },
