@@ -541,7 +541,7 @@
       <div class="top-actions">
         <span id="header-pro-pill" class="pro-active-pill hidden">● PRO ACTIVE</span>
         <button id="header-signin-btn" type="button" class="pill-btn" onclick="document.getElementById('license-section').scrollIntoView({behavior:'smooth'});document.getElementById('page-license-input').focus();">Sign In with Key</button>
-        <button id="header-logout-btn" type="button" class="pill-btn hidden" style="color:var(--danger);border-color:rgba(251,113,133,0.35);" onclick="logoutFromPremium()">Log Out</button>
+        <button id="header-logout-btn" type="button" class="pill-btn hidden" style="color:#fff;background:#e11d48;border-color:#e11d48;font-weight:800;" onclick="logoutFromPremium()">LOG OUT</button>
         <a href="/" class="pill-btn">← Back to R34Hub</a>
       </div>
     </div>
@@ -556,8 +556,8 @@
           <h2 style="margin:4px 0 0;font-size:20px;font-weight:800;">You are signed in to R34Hub Premium</h2>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <a href="/posts/rule34.xxx" class="btn-activate" style="display:inline-flex;align-items:center;padding:0 16px;">Open Ad-Free Feed →</a>
-          <button type="button" class="btn-ghost-sm" style="color:var(--danger);border-color:rgba(251,113,133,0.35);" onclick="logoutFromPremium()">Log Out</button>
+          <a href="/posts/rule34.xxx" class="btn-activate" style="display:inline-flex;align-items:center;padding:0 16px;">← Back to Ad-Free Feed</a>
+          <button type="button" class="btn-ghost-sm" style="color:#fff;background:#e11d48;border-color:#e11d48;font-weight:800;letter-spacing:0.04em;padding:9px 16px;" onclick="logoutFromPremium()">LOG OUT</button>
         </div>
       </div>
       <div class="membership-grid">
@@ -583,6 +583,7 @@
       </div>
     </section>
 
+    <div id="logged-out-view">
     <!-- HERO -->
     <section class="hero">
       <div class="hero-badge">✦ R34Hub Premium • Instant Email &amp; On-Screen Key Delivery</div>
@@ -782,6 +783,8 @@
       </div>
     </section>
 
+    </div><!-- /#logged-out-view -->
+
     <footer class="footer-links">
       <span>© 2026 R34Hub • Ad-Free Multi-Board Indexer</span>
       <div style="display:flex;gap:14px;">
@@ -858,6 +861,8 @@
       document.getElementById('header-logout-btn').classList.toggle('hidden', !isLogged);
       document.getElementById('header-signin-btn').classList.toggle('hidden', isLogged);
       document.getElementById('active-membership-card').classList.toggle('hidden', !isLogged);
+      const loggedOutView = document.getElementById('logged-out-view');
+      if (loggedOutView) loggedOutView.classList.toggle('hidden', isLogged);
 
       if (isLogged) {
         document.getElementById('active-key-text').textContent = key;

@@ -1,3 +1,22 @@
+function readStoredProMeta() {
+  try {
+    return JSON.parse(localStorage.getItem('r34hub_pro_meta') || localStorage.getItem('booru_pulse_pro_v1') || 'null');
+  } catch (_) {
+    return null;
+  }
+}
+
+function readStoredProKey() {
+  const direct = (localStorage.getItem('bp_license') || localStorage.getItem('r34hub_license_key') || '').trim();
+  if (direct) return direct;
+  const meta = readStoredProMeta();
+  if (meta && meta.key) return String(meta.key).trim();
+  return '';
+}
+
+const initialProKey = readStoredProKey();
+const initialIsPro = Boolean(initialProKey || localStorage.getItem('r34hub_pro_v1') === '1');
+
 const state = {
   activeTab: 'home',
   source: 'rule34xxx',
@@ -12,12 +31,12 @@ const state = {
   sources: [],
   trendingTags: [],
   adsConfig: null,
-  isPro: false,
-  licenseKey: localStorage.getItem('bp_license') || localStorage.getItem('r34hub_license_key') || '',
-  proMeta: JSON.parse(localStorage.getItem('r34hub_pro_meta') || 'null'),
+  isPro: initialIsPro,
+  licenseKey: initialProKey,
+  proMeta: readStoredProMeta(),
   savedPosts: JSON.parse(localStorage.getItem('bp_saved') || '[]'),
   blacklist: JSON.parse(localStorage.getItem('bp_blacklist') || '["lowres","watermark"]'),
-  showAdsPreview: true,
+  showAdsPreview: !initialIsPro,
   selectedPlan: 'annual',
   activePost: null,
   queryToken: 0,
@@ -120,8 +139,19 @@ function placeSearch(where) {
   if (block && mount && block.parentElement !== mount) mount.appendChild(block);
 }
 
+function scrollFeedToTop() {
+  try {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  } catch (_) {
+    window.scrollTo(0, 0);
+  }
+  if (document.documentElement) document.documentElement.scrollTop = 0;
+  if (document.body) document.body.scrollTop = 0;
+}
+
 function showBrowseAndReload() {
   state.page = 1;
+  scrollFeedToTop();
   const sheet = document.getElementById('search-sheet');
   const keepSearch = Boolean(sheet && !sheet.classList.contains('hidden'));
   if (!browsingPosts()) {
@@ -130,7 +160,7 @@ function showBrowseAndReload() {
   }
   if (!keepSearch) closeSearchMenu();
   syncUrlBarInPlace();
-  if (!state.isLoading) loadPosts(false);
+  loadPosts(false);
 }
 
 function syncUrlBarInPlace() {
@@ -240,13 +270,31 @@ function syncChrome() {
 }
 
 function saveProSession(key, meta = {}) {
+  const cleanKey = String(key || '').trim().toUpperCase();
+  if (!cleanKey) return;
   state.isPro = true;
-  state.licenseKey = key;
-  state.proMeta = Object.assign({ key, plan: meta.plan || 'Pro Membership', tier: meta.tier || 'annual', email: meta.email || '', expiresAt: meta.expiresAt || '' }, meta);
-  localStorage.setItem('bp_license', key);
-  localStorage.setItem('r34hub_license_key', key);
+  state.licenseKey = cleanKey;
+  state.showAdsPreview = false;
+  state.proMeta = Object.assign({ key: cleanKey, plan: meta.plan || 'Annual Pro', tier: meta.tier || 'annual', email: meta.email || '', expiresAt: meta.expiresAt || '' }, meta);
+  localStorage.setItem('bp_license', cleanKey);
+  localStorage.setItem('r34hub_license_key', cleanKey);
   localStorage.setItem('r34hub_pro_v1', '1');
   localStorage.setItem('r34hub_pro_meta', JSON.stringify(state.proMeta));
+}
+
+function syncProStateFromStorage() {
+  const storedKey = readStoredProKey();
+  const proFlag = localStorage.getItem('r34hub_pro_v1') === '1';
+  if (storedKey || proFlag) {
+    state.isPro = true;
+    state.licenseKey = storedKey || state.licenseKey || 'R34PRO-ACTIVE';
+    state.proMeta = readStoredProMeta() || state.proMeta;
+    state.showAdsPreview = false;
+  } else {
+    state.isPro = false;
+    state.licenseKey = '';
+    state.proMeta = null;
+  }
 }
 
 window.logoutPro = function() {
@@ -258,6 +306,7 @@ window.logoutPro = function() {
   localStorage.removeItem('r34hub_license_key');
   localStorage.removeItem('r34hub_pro_v1');
   localStorage.removeItem('r34hub_pro_meta');
+  localStorage.removeItem('booru_pulse_pro_v1');
   const licInput = document.getElementById('license-input');
   if (licInput) licInput.value = '';
   updateProUI();
@@ -267,6 +316,7 @@ window.logoutPro = function() {
 };
 
 function updateProUI() {
+  syncProStateFromStorage();
   const btn = document.getElementById('pro-cta-btn');
   const txt = document.getElementById('pro-cta-text');
   const topAd = document.getElementById('top-ad-banner');
@@ -277,31 +327,35 @@ function updateProUI() {
   const sideKeyLbl = document.getElementById('side-pro-key-label');
   const activeProPanel = document.getElementById('active-pro-panel');
   const proPurchaseBlock = document.getElementById('pro-purchase-block');
+  const proSigninForm = document.getElementById('pro-signin-form');
   const modalProKey = document.getElementById('modal-pro-key');
   const modalProPlan = document.getElementById('modal-pro-plan');
 
   if (state.isPro) {
-    const keyStr = state.licenseKey || 'R34PRO-VIP';
-    const shortKey = keyStr.length > 12 ? `${keyStr.slice(0, 11)}…` : keyStr;
-    if (txt) txt.textContent = `✓ Pro Active · ${shortKey}`;
-    if (btn) btn.classList.add('is-vip');
+    const keyStr = state.licenseKey || 'R34PRO-ACTIVE';
+    if (btn) btn.classList.add('hidden');
     if (navBadge) navBadge.classList.remove('hidden');
     if (sideAcc) sideAcc.classList.remove('hidden');
     if (sideKeyLbl) sideKeyLbl.textContent = keyStr;
     if (activeProPanel) activeProPanel.classList.remove('hidden');
     if (proPurchaseBlock) proPurchaseBlock.classList.add('hidden');
+    if (proSigninForm) proSigninForm.classList.add('hidden');
     if (modalProKey) modalProKey.textContent = keyStr;
     if (modalProPlan) modalProPlan.textContent = (state.proMeta && state.proMeta.plan) || 'Pro Active';
     state.showAdsPreview = false;
     if (topAd) topAd.classList.add('hidden');
     if (aadsSlot) aadsSlot.classList.add('hidden');
   } else {
-    if (txt) txt.textContent = 'Pro · €4.97';
-    if (btn) btn.classList.remove('is-vip');
+    if (txt) txt.textContent = 'Premium · €3.99';
+    if (btn) {
+      btn.classList.remove('hidden');
+      btn.classList.remove('is-vip');
+    }
     if (navBadge) navBadge.classList.add('hidden');
     if (sideAcc) sideAcc.classList.add('hidden');
     if (activeProPanel) activeProPanel.classList.add('hidden');
     if (proPurchaseBlock) proPurchaseBlock.classList.remove('hidden');
+    if (proSigninForm) proSigninForm.classList.remove('hidden');
     if (aadsSlot) aadsSlot.classList.remove('hidden');
   }
   syncChrome();
@@ -664,6 +718,7 @@ window.selectSourceInPlace = function(src, locked) {
 function setRating(rating, reload = true) {
   state.rating = rating;
   state.page = 1;
+  scrollFeedToTop();
   paintChoice('.rating-btn', 'rating', rating);
   if (reload && browsingPosts()) showBrowseAndReload();
   else if (browsingPosts()) syncUrlBarInPlace();
@@ -672,6 +727,7 @@ function setRating(rating, reload = true) {
 window.setSortInPlace = function(sort) {
   state.sort = sort;
   state.page = 1;
+  scrollFeedToTop();
   paintChoice('.sort-btn', 'sort', sort);
   if (browsingPosts()) showBrowseAndReload();
 };
@@ -764,7 +820,7 @@ function useProxy(img) {
 window.useProxy = useProxy;
 
 async function loadPosts(append = false, silent = false) {
-  if (state.isLoading) return;
+  if (state.isLoading && (append || silent)) return;
   if (silent && state.page !== 1) return;
   state.isLoading = true;
   if (!silent) {
@@ -857,10 +913,16 @@ async function loadPosts(append = false, silent = false) {
       const prefix = slides.length > 0 && slides.every((slide, index) => rawPosts[index] && slide.dataset.id === String(rawPosts[index].id));
       state.posts = rawPosts;
       if (!rawPosts.length && !data.partial) state.hasMore = false;
-      if (!same && state.activeTab === 'gallery') renderGallery();
+      if (!same && state.activeTab === 'gallery') {
+        renderGallery();
+        if (!silent) scrollFeedToTop();
+      }
       if (state.activeTab === 'reels') {
         if (silent && prefix) appendReels(rawPosts.slice(slides.length));
-        else if (!same) renderReels();
+        else if (!same) {
+          renderReels();
+          if (!silent) scrollFeedToTop();
+        }
       }
     }
 
@@ -873,6 +935,7 @@ async function loadPosts(append = false, silent = false) {
     if (scrollText) {
       scrollText.textContent = state.hasMore ? 'Scroll to load more' : `End of this feed · ${state.posts.length} posts`;
     }
+    if (spinner) spinner.classList.toggle('is-done', !state.hasMore);
     paintReelsStatus();
   } catch (err) {
     if (!append && !silent && feedEl) {
@@ -1212,9 +1275,7 @@ function playCardVideo(media) {
   video.preload = 'auto';
   media.appendChild(video);
   media.classList.add('is-playing');
-  maybeShowVideoPreroll(media, () => {
-    loadVideo(video, media.dataset.file || '', media.dataset.proxyFile || '', true);
-  });
+  loadVideo(video, media.dataset.file || '', media.dataset.proxyFile || '', true);
 }
 
 function toggleCardVideo(media) {
@@ -1224,71 +1285,130 @@ function toggleCardVideo(media) {
 }
 
 const ADULT_FALLBACK_THUMBS = [
-  'https://xbooru.com/images/257/66ade81490698aa620f16b9eddc415ef.jpeg',
-  'https://xbooru.com/images/105/513ed2466c54fe4feaea546d8e33519c.jpeg',
-  'https://xbooru.com/images/136/276a23befae5fb9d516c394229ece0c7.png',
-  'https://xbooru.com/images/129/693397d7d43639a89e9bcaab439c2d6b.png',
-  'https://xbooru.com/images/131/6e67b0bbe2adfeba20fb28cbff1e4dbb.jpeg',
-  'https://xbooru.com/images/105/27d2e5faf95f990fd83a597d4b6b6c89.jpeg'
+  {
+    full: 'https://img.xbooru.com/images/257/66ade81490698aa620f16b9eddc415ef.jpeg',
+    thumb: 'https://xbooru.com/thumbnails/257/thumbnail_66ade81490698aa620f16b9eddc415ef.jpg',
+    tag: '1girl'
+  },
+  {
+    full: 'https://img.xbooru.com/images/457/513ed2466c54fe4feaea546d8e33519c.jpeg',
+    thumb: 'https://xbooru.com/thumbnails/457/thumbnail_513ed2466c54fe4feaea546d8e33519c.jpg',
+    tag: 'beach'
+  },
+  {
+    full: 'https://img.xbooru.com/images/457/27d2e5faf95f990fd83a597d4b6b6c89.jpeg',
+    thumb: 'https://xbooru.com/thumbnails/457/thumbnail_27d2e5faf95f990fd83a597d4b6b6c89.jpg',
+    tag: 'anime'
+  },
+  {
+    full: 'https://img.xbooru.com/images/197/97326a8dbb4c7e078cee43925c28a1cf.jpeg',
+    thumb: 'https://xbooru.com/thumbnails/197/thumbnail_97326a8dbb4c7e078cee43925c28a1cf.jpg',
+    tag: 'raven'
+  },
+  {
+    full: 'https://img.xbooru.com/images/596/11ca5c595d31212d56d2dd0f0f23357a.jpeg',
+    thumb: 'https://xbooru.com/thumbnails/596/thumbnail_11ca5c595d31212d56d2dd0f0f23357a.jpg',
+    tag: 'waifu'
+  },
+  {
+    full: 'https://img.xbooru.com/images/539/705acd796bbb6d0bf5fa34c1f049d335.jpeg',
+    thumb: 'https://xbooru.com/thumbnails/539/thumbnail_705acd796bbb6d0bf5fa34c1f049d335.jpg',
+    tag: 'fantasy'
+  },
+  {
+    full: 'https://img.xbooru.com/images/684/c98c0125b12a8ec6d7beedcd224c930c.jpeg',
+    thumb: 'https://xbooru.com/thumbnails/684/thumbnail_c98c0125b12a8ec6d7beedcd224c930c.jpg',
+    tag: 'anthro'
+  }
 ];
 
+window.useAdFallback = function(img) {
+  if (!img) return;
+  const proxy = img.getAttribute('data-proxy');
+  if (proxy && img.dataset.proxied !== '1') {
+    img.dataset.proxied = '1';
+    img.src = proxy;
+    return;
+  }
+  const fb = img.getAttribute('data-fallback');
+  if (fb && img.dataset.fbUsed !== '1') {
+    img.dataset.fbUsed = '1';
+    img.src = fb;
+  }
+};
+
+function isStaticImagePost(post) {
+  if (!post || post.mediaType !== 'image') return false;
+  const ext = String(post.fileExt || '').toLowerCase();
+  if (['mp4', 'webm', 'gif', 'mov', 'mkv', 'm4v', 'zip'].includes(ext)) return false;
+  const still = cardStill(post);
+  if (!still || !still.src || looksLikeVideo(still.src)) return false;
+  // Require a static image extension on either previewUrl, sampleUrl, or fileUrl so extensionless video streams are never picked
+  const checkUrl = post.previewUrl || post.sampleUrl || post.fileUrl || '';
+  return /\.(jpe?g|png|webp)(\?|$)/i.test(checkUrl);
+}
+
 function pickAdultAdArtwork(idx = 0) {
-  // Only use feed posts if they are explicitly rated 'e'; otherwise always use our dedicated 18+ adult artwork pool so ads are 18+ even when the feed is on Safe ('s') default!
-  const explicitPosts = (state.posts || []).filter(p => p && p.rating === 'e' && !looksLikeVideo(cardStill(p).src));
-  if (explicitPosts.length) {
-    const chosen = explicitPosts[(idx * 3 + 1) % explicitPosts.length];
+  const fbItem = ADULT_FALLBACK_THUMBS[Math.floor(idx / 3) % ADULT_FALLBACK_THUMBS.length];
+  const guaranteedFallback = `/api/media?url=${encodeURIComponent(fbItem.thumb)}&referer=${encodeURIComponent('https://xbooru.com/')}`;
+
+  const explicitImages = (state.posts || []).filter(p => p.rating === 'e' && isStaticImagePost(p));
+  if (explicitImages.length) {
+    const chosen = explicitImages[(idx * 3 + 1) % explicitImages.length];
     const shown = cardStill(chosen);
-    const charTag = (chosen.characterTags && chosen.characterTags[0]) || (chosen.tags && chosen.tags[0]) || 'waifu';
+    const charTag = (chosen.characterTags && chosen.characterTags[0]) || (chosen.tags && chosen.tags[0]) || fbItem.tag;
     return {
-      src: shown.src,
-      proxy: shown.proxy || chosen.proxiedPreviewUrl || '',
+      src: shown.src || guaranteedFallback,
+      proxy: shown.proxy || chosen.proxiedPreviewUrl || guaranteedFallback,
+      fallback: guaranteedFallback,
       tag: charTag
     };
   }
-  const rawUrl = ADULT_FALLBACK_THUMBS[Math.floor(idx / 3) % ADULT_FALLBACK_THUMBS.length];
-  const proxied = `/api/media?url=${encodeURIComponent(rawUrl)}&referer=${encodeURIComponent('https://xbooru.com/')}`;
-  return { src: rawUrl, proxy: proxied, tag: 'hentai_waifu' };
+
+  const proxyFull = `/api/media?url=${encodeURIComponent(fbItem.full)}&referer=${encodeURIComponent('https://xbooru.com/')}`;
+  return {
+    src: fbItem.full,
+    proxy: proxyFull,
+    fallback: guaranteedFallback,
+    tag: fbItem.tag
+  };
 }
 
 function buildSponsoredCardHTML(idx = 12) {
-  const aadsId = String((state.adsConfig && state.adsConfig.aads && state.adsConfig.aads.unitId) || '2460259');
-  const exoZoneId = String((state.adsConfig && state.adsConfig.exoclick && state.adsConfig.exoclick.zoneId) || '6068261');
   const art = pickAdultAdArtwork(idx);
   const offers = [
-    { id: 'candy_ai', name: 'Candy.ai 18+', title: 'Uncensored 18+ NSFW AI Waifu Sex Chat', cta: 'Chat 18+ Uncensored' },
-    { id: 'nud3_video', name: 'Nud3.me 18+', title: 'AI Undress & 18+ Hentai Video Animator', cta: 'Undress / Animate 18+' },
-    { id: 'spicychat_ai', name: 'SpicyChat 18+', title: 'No-Filter 18+ Adult Roleplay & Voice AI', cta: 'Start 18+ Roleplay' }
+    { id: 'candy_ai', name: 'Candy.ai 18+', title: 'Uncensored 18+ NSFW AI Waifu Sex Chat', cta: 'Chat 18+' },
+    { id: 'nud3_video', name: 'Nud3.me 18+', title: 'AI Undress & 18+ Hentai Video Animator', cta: 'Animate 18+' },
+    { id: 'spicychat_ai', name: 'SpicyChat 18+', title: 'No-Filter 18+ Adult Roleplay & Voice AI', cta: 'Roleplay 18+' }
   ];
   const offer = offers[Math.floor(idx / 12) % offers.length];
   return `
-    <article class="masonry-item card is-in is-ad-card" style="--d:${idx % 8}">
+    <article class="masonry-item card is-in sponsored-card" style="--d:${idx % 8}">
       <div class="card-media" onclick="triggerAdClick('infeed_native','${esc(offer.id)}','grid-ad-${idx}','${esc(art.tag)}')">
         <img
           src="${esc(art.src)}"
           data-proxy="${esc(art.proxy)}"
+          data-fallback="${esc(art.fallback)}"
           alt=""
           loading="lazy"
           decoding="async"
           referrerpolicy="no-referrer"
-          onerror="useProxy(this)"
+          onerror="useAdFallback(this)"
         />
         <div class="card-float">
-          <span class="pill" style="background:rgba(225,29,72,0.88);color:#fff;font-weight:700;">18+ NSFW AD</span>
+          <span class="pill" style="background:rgba(225,29,72,0.92);color:#fff;font-weight:700;">🔞 18+ AD</span>
           <span class="pill">${esc(offer.name)}</span>
         </div>
-        <div style="position:absolute;left:0;right:0;bottom:0;padding:24px 10px 10px;background:linear-gradient(180deg,transparent,rgba(0,0,0,0.92));color:#fff;font-size:12px;font-weight:650;line-height:1.3;">
+        <div style="position:absolute;left:0;right:0;bottom:0;padding:24px 10px 10px;background:linear-gradient(180deg,transparent,rgba(0,0,0,0.92));color:#fff;font-size:12px;font-weight:650;line-height:1.3;pointer-events:none;">
           ${esc(offer.title)}
         </div>
-      </div>
-      <div style="width:100%;height:250px;overflow:hidden;background:#09090b;border-top:1px solid var(--line);display:flex;align-items:center;justify-content:center;">
-        <iframe src="https://syndication.exdynsrv.com/ads-iframe-display.php?idzone=${esc(exoZoneId)}&output=noscript&type=300x250" width="300" height="250" scrolling="no" marginwidth="0" marginheight="0" frameborder="0" loading="lazy" title="ExoClick 18+ Ad"></iframe>
       </div>
       <div class="card-body">
         <button type="button" class="btn btn-tiny btn-primary" onclick="triggerAdClick('infeed_native','${esc(offer.id)}','grid-ad-${idx}','${esc(art.tag)}')">
           ${icon('spark')}<span class="btn-label">${esc(offer.cta)}</span>
         </button>
         <button type="button" class="btn btn-tiny btn-ghost" onclick="openProModal()">
-          <span class="btn-label">Hide ads</span>
+          <span class="btn-label">No ads</span>
         </button>
       </div>
     </article>
@@ -1347,7 +1467,7 @@ function buildPostCardHTML(post, idx) {
           referrerpolicy="no-referrer"
           onerror="useProxy(this)"
         />
-        ${isVideo ? `<button type="button" class="play-badge" data-preview aria-label="Play preview">${icon('play')}</button>` : ''}
+        ${isVideo ? `<span class="play-badge" aria-hidden="true" style="pointer-events:none;display:inline-grid;place-items:center;">${icon('play')}</span>` : ''}
         <div class="card-float">
           <span class="pill">${esc(post.sourceName || 'Board')}</span>
           <span class="pill">${isVideo ? icon('play') : ''}${icon('star')} ${esc(formatScore(post.score))}</span>
@@ -1473,7 +1593,10 @@ function paintReelsStatus() {
   const status = document.getElementById('reels-status');
   const spinner = document.getElementById('reels-spinner');
   if (counter) counter.textContent = `${state.posts.length} posts`;
-  if (spinner) spinner.classList.toggle('is-on', state.isLoading && state.activeTab === 'reels');
+  if (spinner) {
+    spinner.classList.toggle('is-on', state.isLoading && state.activeTab === 'reels');
+    spinner.classList.toggle('is-done', !state.hasMore);
+  }
   if (!status) return;
   if (state.isLoading && state.activeTab === 'reels' && state.posts.length) status.textContent = 'Loading more…';
   else if (!state.hasMore) status.textContent = 'End of this feed';
@@ -1546,8 +1669,6 @@ function bindReelsLoader() {
 }
 
 function buildNativeReelAdHtml(idx) {
-  const aadsId = (state.adsConfig && state.adsConfig.aads && state.adsConfig.aads.unitId) || '2460259';
-  const exoZoneId = (state.adsConfig && state.adsConfig.exoclick && state.adsConfig.exoclick.zoneId) || '6068261';
   const art = pickAdultAdArtwork(idx);
   const activeTag = parseTagTokens()[0] || art.tag || 'hentai';
   const offers = [
@@ -1580,15 +1701,16 @@ function buildNativeReelAdHtml(idx) {
   return `
     <article class="reel post-card is-ad" data-kind="ad" data-ad-slot="${idx}">
       <div class="reel-stage is-still" style="position:relative;background:#09090b;overflow:hidden;">
-        <div style="position:relative;aspect-ratio:4 / 5;max-height:520px;width:100%;overflow:hidden;cursor:pointer;" onclick="triggerAdClick('infeed_native','${esc(offer.id)}','reel-ad-${idx}','${esc(activeTag)}')">
+        <div style="position:relative;aspect-ratio:4 / 5;max-height:540px;width:100%;overflow:hidden;cursor:pointer;" onclick="triggerAdClick('infeed_native','${esc(offer.id)}','reel-ad-${idx}','${esc(activeTag)}')">
           <img
             class="reel-still"
-            style="width:100%;height:100%;object-fit:cover;display:block;filter: contrast(1.05);"
+            style="width:100%;height:100%;object-fit:cover;display:block;filter:contrast(1.05);"
             src="${esc(art.src)}"
             data-proxy="${esc(art.proxy)}"
+            data-fallback="${esc(art.fallback)}"
             alt=""
             referrerpolicy="no-referrer"
-            onerror="useProxy(this)"
+            onerror="useAdFallback(this)"
           />
           <div style="position:absolute;top:12px;left:12px;right:12px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
             <span class="pill" style="background:rgba(225,29,72,0.92);color:#fff;font-weight:700;padding:4px 10px;border-radius:999px;font-size:11px;letter-spacing:0.04em;">🔞 18+ NSFW SPONSORED POST</span>
@@ -1605,10 +1727,6 @@ function buildNativeReelAdHtml(idx) {
               <button type="button" class="btn btn-ghost" onclick="event.stopPropagation();openProModal()">Hide 18+ Ads</button>
             </div>
           </div>
-        </div>
-        <div style="width:100%;padding:10px 0;background:#09090b;border-top:1px solid var(--line);display:flex;flex-direction:column;align-items:center;gap:8px;">
-          <iframe src="https://syndication.exdynsrv.com/ads-iframe-display.php?idzone=${esc(exoZoneId)}&output=noscript&type=300x250" width="300" height="250" scrolling="no" marginwidth="0" marginheight="0" frameborder="0" loading="lazy" title="ExoClick 18+ Ad"></iframe>
-          <iframe data-aa="${esc(aadsId)}" src="//acceptable.a-ads.com/${esc(aadsId)}" style="border:0px;padding:0;width:100%;max-width:468px;height:60px;overflow:hidden;background-color:transparent;" loading="lazy" title="A-ADS 18+"></iframe>
         </div>
       </div>
       <div class="reel-bar">
@@ -1898,7 +2016,7 @@ window.closePostModal = function() {
 };
 
 window.openProModal = function() {
-  document.getElementById('pro-modal').classList.remove('hidden');
+  location.assign('/premium');
 };
 
 window.closeProModal = function() {
@@ -1971,6 +2089,7 @@ window.sharePost = async function(postId) {
 function applyPage(tabId, opts = {}) {
   if (!['home', 'gallery', 'reels', 'saved', 'settings'].includes(tabId)) tabId = 'home';
   state.activeTab = tabId;
+  scrollFeedToTop();
   const mode = tabId === 'gallery' ? 'mode-grid' : tabId === 'reels' ? 'mode-reels' : tabId === 'saved' ? 'mode-saved' : tabId === 'home' ? 'mode-home' : '';
   document.body.className = mode;
   document.documentElement.dataset.page = tabId;
@@ -2053,7 +2172,7 @@ async function initApp() {
     const urlParams = new URLSearchParams(window.location.search);
     const magicKey = urlParams.get('activate_key');
     if (magicKey) {
-      state.licenseKey = magicKey.trim().toUpperCase();
+      saveProSession(magicKey.trim().toUpperCase(), { plan: 'Pro Membership' });
       urlParams.delete('activate_key');
       const cleanQs = urlParams.toString();
       try {
@@ -2074,10 +2193,15 @@ async function initApp() {
             });
             updateProUI();
             if (magicKey) showToast('Pro membership activated!');
+          } else if (verifyRes && (verifyRes.status === 'revoked' || verifyRes.status === 'expired')) {
+            logoutPro();
           }
         })
         .catch(() => {});
     }
+    window.addEventListener('storage', () => updateProUI());
+    window.addEventListener('pageshow', () => updateProUI());
+    window.addEventListener('focus', () => updateProUI());
     const sentinel = document.getElementById('infinite-scroll-sentinel');
     if (tab === 'gallery' && sentinel && 'IntersectionObserver' in window) {
       const observer = new IntersectionObserver(entries => {
@@ -2274,6 +2398,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('clear-search-btn').classList.add('hidden');
     state.tags = '';
     state.page = 1;
+    scrollFeedToTop();
     syncUrlBarInPlace();
     loadPosts(false);
   });

@@ -64,7 +64,7 @@
         <span class="mark">R34</span>
       </a>
       <div class="nav-actions" id="navbar-actions">
-        <button id="nav-pro-badge" class="btn btn-tiny hidden" type="button" onclick="openProModal()" style="background:rgba(16,185,129,0.16);border:1px solid rgba(16,185,129,0.4);color:#34d399;font-weight:700;padding:5px 10px;border-radius:999px;">✓ PRO</button>
+        <button id="nav-pro-badge" class="btn btn-tiny hidden" type="button" onclick="location.assign('/premium')" style="background:rgba(16,185,129,0.16);border:1px solid rgba(16,185,129,0.4);color:#34d399;font-weight:700;padding:5px 10px;border-radius:999px;">● PRO ACTIVE</button>
         <button id="open-search-btn" class="icon-btn bare nav-search" type="button" aria-label="Search posts" onclick="openSearchMenu()">
           <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-search"/></svg>
           <span id="search-dot" class="dot-mark hidden"></span>
@@ -100,14 +100,14 @@
           <button class="sort-btn" type="button" data-sort="no_ai">No AI</button>
         </div>
       </div> -->
-      <button id="pro-cta-btn" class="side-link side-pro" type="button" onclick="closeSideMenu(); openProModal()"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-spark"/></svg><span id="pro-cta-text">Pro · €4.97</span></button>
+      <a id="pro-cta-btn" class="side-link side-pro" href="/premium"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-spark"/></svg><span id="pro-cta-text">Premium · €3.99</span></a>
       <div id="side-pro-account" class="hidden" style="padding:10px 12px;border-radius:12px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);display:grid;gap:6px;font-size:12px;">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
           <strong style="color:#34d399;font-size:11px;text-transform:uppercase;letter-spacing:0.04em;">● Pro Active</strong>
           <a href="/premium" style="color:#a0a0b0;text-decoration:underline;font-size:11px;">Account</a>
         </div>
         <div id="side-pro-key-label" style="font-family:monospace;color:#f3f3f7;font-size:11px;overflow:hidden;text-overflow:ellipsis;">R34PRO-••••</div>
-        <button id="side-logout-btn" type="button" class="btn btn-tiny btn-ghost" style="width:100%;margin-top:2px;" onclick="logoutPro()">Log out</button>
+        <button id="side-logout-btn" type="button" class="btn btn-tiny btn-ghost" style="width:100%;margin-top:4px;color:#fb7185;border-color:rgba(251,113,133,0.4);font-weight:800;letter-spacing:0.04em;" onclick="logoutPro()">LOG OUT</button>
       </div>
       <div class="side-gap"></div>
     </div>

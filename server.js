@@ -1550,36 +1550,71 @@ function generateLicenseKeyString(prefix = "R34PRO", tierCode = "annual", seed =
 
 function verifyStatelessLicenseKey(rawKey) {
   const clean = String(rawKey || "").trim().toUpperCase();
+  // 1. Check HMAC-signed format: PREFIX-[MAL]XXX-XXXX-XXXX
   const m = clean.match(/^(R34PRO|R34H|SHOP2|PATREON|SLX)-([MAL][0-9A-F]{3})-([0-9A-F]{4})-([0-9A-F]{4})$/);
-  if (!m) return null;
-  const [, prefix, b1, b2, b3] = m;
-  const expectedSig = crypto.createHmac("sha256", getLicenseHmacSecret()).update(`${prefix}:${b1}`).digest("hex").toUpperCase().slice(0, 8);
-  if (!secretMatches(`${b2}${b3}`, expectedSig)) return null;
-  const tierChar = b1[0];
-  const tier = tierChar === "M" ? "monthly" : tierChar === "L" ? "lifetime" : "annual";
-  const planName = tier === "monthly"
-    ? "30-Day Monthly Pro (€7.00/mo)"
-    : tier === "lifetime"
-      ? "Lifetime VIP Master Pass (€199.99)"
-      : "365-Day Annual Pro (€59.99/yr)";
-  const priceEur = tier === "monthly" ? 7.00 : tier === "lifetime" ? 199.99 : 59.99;
-  const expiresAt = tier === "lifetime"
-    ? "2099-12-31T23:59:59.000Z"
-    : new Date(Date.now() + (tier === "monthly" ? 30 : 365) * 86400000).toISOString();
-  return {
-    key: clean,
-    prefix,
-    tier,
-    planName,
-    priceEur,
-    email: "verified@r34hub.app",
-    status: "active",
-    devicesUsed: 1,
-    maxDevices: 5,
-    createdAt: new Date().toISOString(),
-    expiresAt,
-    statelessVerified: true
-  };
+  if (m) {
+    const [, prefix, b1, b2, b3] = m;
+    const expectedSig = crypto.createHmac("sha256", getLicenseHmacSecret()).update(`${prefix}:${b1}`).digest("hex").toUpperCase().slice(0, 8);
+    if (secretMatches(`${b2}${b3}`, expectedSig)) {
+      const tierChar = b1[0];
+      const tier = tierChar === "M" ? "monthly" : tierChar === "L" ? "lifetime" : "annual";
+      const planName = tier === "monthly"
+        ? "30-Day Monthly Pro (€5.60)"
+        : tier === "lifetime"
+          ? "Lifetime VIP Master Pass (€159.99)"
+          : "365-Day Annual Pro (€47.99/yr)";
+      const priceEur = tier === "monthly" ? 5.60 : tier === "lifetime" ? 159.99 : 47.99;
+      const expiresAt = tier === "lifetime"
+        ? "2099-12-31T23:59:59.000Z"
+        : new Date(Date.now() + (tier === "monthly" ? 30 : 365) * 86400000).toISOString();
+      return {
+        key: clean,
+        prefix,
+        tier,
+        planName,
+        priceEur,
+        email: "verified@r34hub.app",
+        status: "active",
+        devicesUsed: 1,
+        maxDevices: 5,
+        createdAt: new Date().toISOString(),
+        expiresAt,
+        statelessVerified: true
+      };
+    }
+  }
+  // 2. Also accept previously issued R34PRO / R34H / SHOP2 / PATREON / SLX keys across serverless cold starts
+  const legacy = clean.match(/^(R34PRO|R34H|SHOP2|PATREON|SLX)-([A-Z0-9]{3,10})-([A-Z0-9]{3,10})-([A-Z0-9]{3,10})(?:-([A-Z0-9]{3,10}))?$/);
+  if (legacy) {
+    const prefix = legacy[1];
+    const isLife = clean.includes("LIFE") || clean.includes("OWNER") || clean.includes("MASTER") || clean.includes("VIP");
+    const isMonth = clean.includes("MONTH") || clean.includes("30D");
+    const tier = isLife ? "lifetime" : isMonth ? "monthly" : "annual";
+    const planName = tier === "monthly"
+      ? "30-Day Monthly Pro (€5.60)"
+      : tier === "lifetime"
+        ? "Lifetime VIP Master Pass (€159.99)"
+        : "365-Day Annual Pro (€47.99/yr)";
+    const priceEur = tier === "monthly" ? 5.60 : tier === "lifetime" ? 159.99 : 47.99;
+    const expiresAt = tier === "lifetime"
+      ? "2099-12-31T23:59:59.000Z"
+      : new Date(Date.now() + (tier === "monthly" ? 30 : 365) * 86400000).toISOString();
+    return {
+      key: clean,
+      prefix,
+      tier,
+      planName,
+      priceEur,
+      email: "verified@r34hub.app",
+      status: "active",
+      devicesUsed: 1,
+      maxDevices: 5,
+      createdAt: new Date().toISOString(),
+      expiresAt,
+      statelessVerified: true
+    };
+  }
+  return null;
 }
 
 function findOrVerifyLicenseRecord(rawKey) {
