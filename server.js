@@ -1950,10 +1950,17 @@ app.get("/api/ads/config", (req, res) => {
     iframeUrl: "https://acceptable.a-ads.com/2460259",
     status: "live"
   };
+  const exoclick = (monDb.adNetworks && monDb.adNetworks.exoclick) || (monDb.adsConfig && monDb.adsConfig.exoclick) || {
+    enabled: true,
+    siteId: "1117429",
+    zoneId: "6068261",
+    iframeUrl: "https://syndication.exdynsrv.com/ads-iframe-display.php?idzone=6068261&output=noscript&type=300x250",
+    status: "verified_live"
+  };
   res.json({
     ok: true,
-    adNetworks: { aads },
-    adsConfig: Object.assign({}, monDb.adsConfig, { aads })
+    adNetworks: { aads, exoclick },
+    adsConfig: Object.assign({}, monDb.adsConfig, { aads, exoclick })
   });
 });
 

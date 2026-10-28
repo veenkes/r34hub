@@ -153,16 +153,16 @@
       "zone_desktop_top": {
         "id": "zone_desktop_top",
         "network": "ExoClick",
-        "zoneId": "5489210",
-        "format": "728×90 Leaderboard",
+        "zoneId": "6068261",
+        "format": "300×250 / Leaderboard",
         "cpmEur": 2.4,
         "enabled": true
       },
       "zone_infeed_native": {
         "id": "zone_infeed_native",
-        "network": "ExoClick / CrakRevenue",
-        "zoneId": "5489214",
-        "format": "Native Masonry Card (Every 8 Posts)",
+        "network": "ExoClick / A-ADS",
+        "zoneId": "6068261",
+        "format": "Native Post Card (Every 12 Posts)",
         "cpmEur": 3.8,
         "enabled": true
       },
@@ -177,23 +177,41 @@
       "zone_mobile_sticky": {
         "id": "zone_mobile_sticky",
         "network": "ExoClick",
-        "zoneId": "5489222",
-        "format": "300×50 Mobile Bottom Sticky",
+        "zoneId": "6068261",
+        "format": "Mobile Adult Banner",
         "cpmEur": 1.95,
+        "enabled": true
+      },
+      "zone_exoclick_300x250": {
+        "id": "zone_exoclick_300x250",
+        "network": "ExoClick (Site #1117429 Verified)",
+        "zoneId": "6068261",
+        "iframeUrl": "https://syndication.exdynsrv.com/ads-iframe-display.php?idzone=6068261&output=noscript&type=300x250",
+        "format": "300×250 Adult Banner (30s Refresh)",
+        "cpmEur": 3.8,
         "enabled": true
       }
     },
     "telemetry": {
-      "totalClicks": 149,
-      "estimatedCpaRevenueEur": 413.95,
+      "totalClicks": 150,
+      "estimatedCpaRevenueEur": 415.4,
       "estimatedBannerRevenueEur": 86.4,
       "byPlacement": {
         "post_chat_ai": 69,
         "post_video_ai": 44,
-        "infeed_native": 25,
+        "infeed_native": 26,
         "reels_cta": 11
       },
       "recentClicks": [
+        {
+          "id": "clk_a06844",
+          "placement": "infeed_native",
+          "offerId": "candy_ai",
+          "postId": "reel-ad-12",
+          "tag": "genshin_impact",
+          "targetUrl": "https://candy.ai/?aff=r34hub&subid=reel-ad-12&char=genshin_impact",
+          "timestamp": "2026-10-28T12:54:01.800Z"
+        },
         {
           "id": "clk_243409",
           "placement": "post_chat_ai",
@@ -231,9 +249,38 @@
       "status": "live",
       "payoutWallet": "TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX",
       "payoutNetwork": "USDTTRC20"
+    },
+    "exoclick": {
+      "enabled": true,
+      "siteId": "1117429",
+      "zoneId": "6068261",
+      "name": "R34Hub 300x250",
+      "format": "300x250 Adult Banner",
+      "iframeUrl": "https://syndication.exdynsrv.com/ads-iframe-display.php?idzone=6068261&output=noscript&type=300x250",
+      "scriptUrl": "https://a.magsrv.com/ad-provider.js",
+      "insClass": "eas6a97888e2",
+      "accountUsername": "veenkesr34hub",
+      "accountEmail": "emildv.work@gmail.com",
+      "payoutWallet": "TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX",
+      "payoutNetwork": "USDTTRC20",
+      "status": "verified_live"
     }
   },
   "licenses": [
+    {
+      "key": "SHOP2-5AEE-EB02-8407",
+      "prefix": "SHOP2",
+      "tier": "annual",
+      "planName": "365-Day Annual Pro (€59.99/yr)",
+      "priceEur": 59.99,
+      "email": "emildv.work@gmail.com",
+      "status": "active",
+      "devicesUsed": 1,
+      "maxDevices": 5,
+      "createdAt": "2026-10-28T13:14:51.807Z",
+      "expiresAt": "2027-10-28T13:14:51.807Z",
+      "notes": "Auto-minted via stripe_checkout (checkout.session.completed)"
+    },
     {
       "key": "R34H-8653-FAF9-058A",
       "prefix": "R34H",
@@ -490,6 +537,67 @@
   ],
   "orders": [
     {
+      "orderId": "ord_stripe_test",
+      "provider": "stripe_checkout",
+      "event": "checkout.session.completed",
+      "email": "emildv.work@gmail.com",
+      "plan": "annual",
+      "planName": "365-Day Annual Pro (€59.99/yr)",
+      "amountEur": 59.99,
+      "currency": "EUR",
+      "licenseKey": "SHOP2-5AEE-EB02-8407",
+      "status": "paid",
+      "createdAt": "2026-10-28T13:14:51.807Z"
+    },
+    {
+      "orderId": "ord_52029e5550",
+      "sessionId": "ord_52029e5550",
+      "provider": "stripe_bridge",
+      "event": "stripe.checkout.created",
+      "email": "emildv.work@gmail.com",
+      "plan": "annual",
+      "tier": "annual",
+      "planName": "HubCloud Annual Pro (365 Days)",
+      "amountEur": 59.99,
+      "amountUsd": 64.99,
+      "currency": "EUR",
+      "walletAddress": "TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX",
+      "licenseKey": null,
+      "status": "pending_payment",
+      "stripeSessionUrl": null,
+      "cardCheckoutUrl": "https://guardarian.com/calculator?from_currency=EUR&to_currency=USDT&to_network=TRX&from_amount=59.99&payout_address=TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX",
+      "cardToCryptoUrls": {
+        "guardarian": "https://guardarian.com/calculator?from_currency=EUR&to_currency=USDT&to_network=TRX&from_amount=59.99&payout_address=TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX",
+        "mercuryo": "https://exchange.mercuryo.io/?fiat_currency=EUR&fiat_amount=59.99&currency=USDT&network=TRON&address=TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX",
+        "changenow": "https://changenow.io/?from=eur&to=usdttrc20&fiatMode=true&amount=59.99&recipient=TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX"
+      },
+      "createdAt": "2026-10-28T13:14:30.407Z"
+    },
+    {
+      "orderId": "ord_9a2f8cdb05",
+      "sessionId": "ord_9a2f8cdb05",
+      "provider": "stripe_hubcloud",
+      "event": "order.created",
+      "email": "emildv.work@gmail.com",
+      "plan": "annual",
+      "tier": "annual",
+      "planName": "Annual Pro (€4.97/mo)",
+      "amountEur": 59.99,
+      "amountUsd": 64.99,
+      "currency": "EUR",
+      "cryptoCurrency": null,
+      "walletAddress": null,
+      "txHash": "CARD_RECEIPT:changenow_test_991",
+      "licenseKey": null,
+      "status": "verifying_tx",
+      "invoice_url": "https://nowpayments.io/payment/?iid=5113014242",
+      "nowPaymentsInvoiceId": "5113014242",
+      "nowPaymentsError": null,
+      "externalCheckoutUrl": "https://changenow.io/?from=eur&to=usdttrc20&fiatMode=true&amount=59.99&recipient=TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX",
+      "createdAt": "2026-10-28T12:54:01.416Z",
+      "updatedAt": "2026-10-28T12:54:01.635Z"
+    },
+    {
       "orderId": "ord_62166a1686",
       "sessionId": "ord_62166a1686",
       "provider": "nowpayments_usdttrc20",
@@ -581,6 +689,21 @@
       "status": "live",
       "payoutWallet": "TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX",
       "payoutNetwork": "USDTTRC20"
+    },
+    "exoclick": {
+      "enabled": true,
+      "siteId": "1117429",
+      "zoneId": "6068261",
+      "name": "R34Hub 300x250",
+      "format": "300x250 Adult Banner",
+      "iframeUrl": "https://syndication.exdynsrv.com/ads-iframe-display.php?idzone=6068261&output=noscript&type=300x250",
+      "scriptUrl": "https://a.magsrv.com/ad-provider.js",
+      "insClass": "eas6a97888e2",
+      "accountUsername": "veenkesr34hub",
+      "accountEmail": "emildv.work@gmail.com",
+      "payoutWallet": "TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX",
+      "payoutNetwork": "USDTTRC20",
+      "status": "verified_live"
     }
   },
   "cryptoWallets": {

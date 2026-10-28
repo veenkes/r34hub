@@ -991,6 +991,7 @@ function maybeShowVideoPreroll(containerEl, onComplete) {
   }
   if (containerEl.querySelector('.preroll-overlay')) return;
   const aadsId = (state.adsConfig && state.adsConfig.aads && state.adsConfig.aads.unitId) || '2460259';
+  const exoZoneId = (state.adsConfig && state.adsConfig.exoclick && state.adsConfig.exoclick.zoneId) || '6068261';
   const art = pickAdultAdArtwork(videoPlayCount);
   const activeTag = parseTagTokens()[0] || art.tag || 'hentai';
   const overlay = document.createElement('div');
@@ -1000,8 +1001,8 @@ function maybeShowVideoPreroll(containerEl, onComplete) {
     <span class="meta-badge" style="margin:0;background:rgba(225,29,72,0.22);border-color:rgba(225,29,72,0.55);color:#fda4af;font-weight:700;">🔞 18+ NSFW AD · Video starts in <b data-preroll-sec>3</b>s</span>
     <div style="font-size:16px;font-weight:700;color:#fff;">Uncensored 18+ AI Undress & Hentai Video Chat</div>
     <div style="font-size:12px;color:#d4d4d8;max-width:320px;">Turn any character into an explicit 18+ interactive animation or roleplay chat.</div>
-    <div style="width:100%;max-width:320px;height:90px;overflow:hidden;border-radius:8px;border:1px solid var(--line);background:#000;">
-      <iframe data-aa="${esc(aadsId)}" src="//acceptable.a-ads.com/${esc(aadsId)}" style="border:0;width:100%;height:90px;overflow:hidden;" title="Sponsored 18+"></iframe>
+    <div style="width:300px;height:250px;overflow:hidden;border-radius:10px;border:1px solid var(--line);background:#000;display:flex;align-items:center;justify-content:center;">
+      <iframe src="https://syndication.exdynsrv.com/ads-iframe-display.php?idzone=${esc(exoZoneId)}&output=noscript&type=300x250" width="300" height="250" scrolling="no" marginwidth="0" marginheight="0" frameborder="0" title="ExoClick 18+ Pre-Roll"></iframe>
     </div>
     <div style="display:flex;gap:8px;margin-top:4px;">
       <button type="button" class="btn btn-primary btn-tiny" style="background:#e11d48;color:#fff;font-weight:700;" data-preroll-cta>🔞 Open 18+ AI Studio →</button>
@@ -1220,8 +1221,8 @@ function buildSponsoredCardHTML(idx = 12) {
           ${esc(offer.title)}
         </div>
       </div>
-      <div style="width:100%;height:60px;overflow:hidden;background:#09090b;border-top:1px solid var(--line);">
-        <iframe data-aa="${esc(aadsId)}" src="//acceptable.a-ads.com/${esc(aadsId)}" style="border:0px;padding:0;width:100%;height:60px;overflow:hidden;background-color:transparent;" loading="lazy" title="Sponsored 18+"></iframe>
+      <div style="width:100%;height:250px;overflow:hidden;background:#09090b;border-top:1px solid var(--line);display:flex;align-items:center;justify-content:center;">
+        <iframe src="https://syndication.exdynsrv.com/ads-iframe-display.php?idzone=${esc(exoZoneId)}&output=noscript&type=300x250" width="300" height="250" scrolling="no" marginwidth="0" marginheight="0" frameborder="0" loading="lazy" title="ExoClick 18+ Ad"></iframe>
       </div>
       <div class="card-body">
         <button type="button" class="btn btn-tiny btn-primary" onclick="triggerAdClick('infeed_native','${esc(offer.id)}','grid-ad-${idx}','${esc(art.tag)}')">
@@ -1478,6 +1479,7 @@ function bindReelsLoader() {
 
 function buildNativeReelAdHtml(idx) {
   const aadsId = (state.adsConfig && state.adsConfig.aads && state.adsConfig.aads.unitId) || '2460259';
+  const exoZoneId = (state.adsConfig && state.adsConfig.exoclick && state.adsConfig.exoclick.zoneId) || '6068261';
   const art = pickAdultAdArtwork(idx);
   const activeTag = parseTagTokens()[0] || art.tag || 'hentai';
   const offers = [
@@ -1536,8 +1538,9 @@ function buildNativeReelAdHtml(idx) {
             </div>
           </div>
         </div>
-        <div style="width:100%;height:90px;overflow:hidden;background:#09090b;border-top:1px solid var(--line);">
-          <iframe data-aa="${esc(aadsId)}" src="//acceptable.a-ads.com/${esc(aadsId)}" style="border:0px;padding:0;width:100%;height:90px;overflow:hidden;background-color:transparent;" loading="lazy" title="Sponsored 18+"></iframe>
+        <div style="width:100%;padding:10px 0;background:#09090b;border-top:1px solid var(--line);display:flex;flex-direction:column;align-items:center;gap:8px;">
+          <iframe src="https://syndication.exdynsrv.com/ads-iframe-display.php?idzone=${esc(exoZoneId)}&output=noscript&type=300x250" width="300" height="250" scrolling="no" marginwidth="0" marginheight="0" frameborder="0" loading="lazy" title="ExoClick 18+ Ad"></iframe>
+          <iframe data-aa="${esc(aadsId)}" src="//acceptable.a-ads.com/${esc(aadsId)}" style="border:0px;padding:0;width:100%;max-width:468px;height:60px;overflow:hidden;background-color:transparent;" loading="lazy" title="A-ADS 18+"></iframe>
         </div>
       </div>
       <div class="reel-bar">
