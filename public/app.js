@@ -46,10 +46,17 @@ function showToast(msg) {
   window.__toastTimer = setTimeout(() => el.classList.add('hidden'), 3200);
 }
 
-function formatTook(ms) {
-  const n = Number(ms) || 0;
-  if (n < 1000) return `${n} ms`;
-  return `${(n / 1000).toFixed(1)} s`;
+function formatScore(value) {
+  const n = Number(value) || 0;
+  const abs = Math.abs(n);
+  const sign = n < 0 ? '-' : '';
+  if (abs < 10000) return String(n);
+  if (abs < 1000000) {
+    const text = (abs / 1000).toFixed(abs >= 100000 ? 0 : 1).replace(/\.0$/, '');
+    return `${sign}${text}k`;
+  }
+  const text = (abs / 1000000).toFixed(abs >= 100000000 ? 0 : 1).replace(/\.0$/, '');
+  return `${sign}${text}m`;
 }
 
 function sourceLabel() {
@@ -212,7 +219,7 @@ function updateProUI() {
     adToggle.disabled = state.isPro;
   }
   renderSourcePills();
-  if (state.posts.length) renderGallery();
+  if (state.activeTab === 'gallery' && state.posts.length) renderGallery();
 }
 
 function renderSourcePills() {
@@ -237,7 +244,7 @@ function renderSourcePills() {
   if (homeBoards) {
     homeBoards.innerHTML = state.sources.map(s => {
       const locked = Boolean(s.isPremiumSource && !state.isPro);
-      return `<button type="button" class="chip" onclick="selectSourceInPlace('${esc(s.id)}', ${locked})">${esc(s.name)}${locked ? ' · Pro' : ''}</button>`;
+      return `<button type="button" class="menu-row" onclick="selectSourceInPlace('${esc(s.id)}', ${locked})"><span>${esc(s.name)}${locked ? ' · Pro' : ''}</span>${icon('chevron')}</button>`;
     }).join('');
   }
   if (drawerList) {
@@ -386,11 +393,17 @@ async function loadPosts(append = false, silent = false) {
   if (spinner) spinner.classList.add('is-on');
   const previousCount = state.posts.length;
 
-  if (!append && !silent && feedEl) {
+  if (!append && !silent) {
     state.page = 1;
     state.hasMore = true;
-    feedEl.innerHTML = Array.from({ length: 8 }, () => '<div class="masonry-item skel"></div>').join('');
     if (summaryEl) summaryEl.textContent = 'Asking the boards…';
+    if (state.activeTab === 'gallery' && feedEl) {
+      feedEl.innerHTML = Array.from({ length: 8 }, () => '<div class="masonry-item skel"></div>').join('');
+    }
+    const reelBox = document.getElementById('reels-feed');
+    if (state.activeTab === 'reels' && reelBox) {
+      reelBox.innerHTML = '<div class="reel skel-reel"></div><div class="reel skel-reel"></div>';
+    }
   } else if (append && scrollText) {
     scrollText.textContent = 'Loading more…';
   }
@@ -417,7 +430,7 @@ async function loadPosts(append = false, silent = false) {
       const fresh = rawPosts.filter(p => !existingIds.has(p.id));
       state.posts = state.posts.concat(fresh);
       if (fresh.length === 0 && !data.partial) state.hasMore = false;
-      renderGallery({ appendFrom: previousCount });
+      if (state.activeTab === 'gallery') renderGallery({ appendFrom: previousCount });
       if (state.activeTab === 'reels' && fresh.length) appendReels(fresh);
     } else {
       const same = silent
@@ -427,7 +440,7 @@ async function loadPosts(append = false, silent = false) {
       const prefix = slides.length > 0 && slides.every((slide, index) => rawPosts[index] && slide.dataset.id === String(rawPosts[index].id));
       state.posts = rawPosts;
       if (!rawPosts.length && !data.partial) state.hasMore = false;
-      if (!same) renderGallery();
+      if (!same && state.activeTab === 'gallery') renderGallery();
       if (state.activeTab === 'reels') {
         if (silent && prefix) appendReels(rawPosts.slice(slides.length));
         else if (!same) renderReels();
@@ -436,10 +449,8 @@ async function loadPosts(append = false, silent = false) {
 
     if (summaryEl) {
       const bits = [`${state.posts.length} posts`, SORT_LABEL[state.sort] || state.sort, RATING_LABEL[state.rating] || state.rating];
-      if (data.cached) bits.push('cached');
-      else if (data.tookMs) bits.push(formatTook(data.tookMs));
       summaryEl.textContent = data.partial && state.posts.length < 8
-        ? `${state.posts.length} posts · still loading slower boards`
+        ? `${state.posts.length} posts · still loading`
         : bits.join(' · ');
     }
     if (scrollText) {
@@ -731,7 +742,6 @@ function buildPostCardHTML(post, idx) {
           src="${esc(preview)}"
           data-proxy="${esc(proxy)}"
           alt=""
-          style="${ratioStyle(post)}"
           loading="${eager ? 'eager' : 'lazy'}"
           decoding="async"
           ${eager ? 'fetchpriority="high"' : ''}
@@ -741,7 +751,7 @@ function buildPostCardHTML(post, idx) {
         ${isVideo ? `<button type="button" class="play-badge" data-preview aria-label="Play preview">${icon('play')}</button>` : ''}
         <div class="card-float">
           <span class="pill">${esc(post.sourceName || 'Board')}</span>
-          <span class="pill">${isVideo ? icon('play') : ''}${icon('star')} ${esc(post.score || 0)}</span>
+          <span class="pill">${isVideo ? icon('play') : ''}${icon('star')} ${esc(formatScore(post.score))}</span>
         </div>
       </div>
       <div class="card-body">
@@ -789,6 +799,12 @@ function frameStyle(post) {
   return ratio || 'aspect-ratio:3 / 4';
 }
 
+function tallPost(post) {
+  const w = Number(post.width) || 0;
+  const h = Number(post.height) || 0;
+  return w > 1 && h / w > 1.35;
+}
+
 function reelSlideHtml(post, index) {
   const isVideo = post.mediaType === 'video';
   const still = stillUrl(post);
@@ -796,17 +812,13 @@ function reelSlideHtml(post, index) {
   const eager = index < 2;
   const saved = state.savedPosts.some(s => s.id === post.id);
   const tags = post.tags || [];
-  const shown = tags.slice(0, 8);
   const charTag = (post.characterTags && post.characterTags[0]) || tags[0] || 'character';
   const imageProxy = eager ? (sharpProxy(post) || post.proxiedPreviewUrl || '') : (post.proxiedPreviewUrl || '');
   const media = isVideo
     ? `<div class="player">${playerInner(eager ? (sharp || still) : still, eager ? (sharpProxy(post) || post.proxiedPreviewUrl || '') : (post.proxiedPreviewUrl || ''))}</div>`
     : `<img class="reel-still" src="${esc(eager ? (sharp || still) : still)}" data-proxy="${esc(imageProxy)}" alt="" referrerpolicy="no-referrer" onerror="useProxy(this)" />`;
-  const extra = tags.length > shown.length
-    ? `<button type="button" class="reel-tag" data-tag-sheet="${esc(post.id)}">+${tags.length - shown.length}</button>`
-    : '';
   return `
-    <article class="reel" data-id="${esc(post.id)}" data-kind="${isVideo ? 'video' : 'image'}" data-file="${esc(post.fileUrl || '')}" data-proxy-file="${esc(post.proxiedFileUrl || '')}" data-full="${esc(sharp)}" data-proxy-full="${esc(sharpProxy(post))}" data-still="${esc(still)}" data-proxy-still="${esc(post.proxiedPreviewUrl || '')}">
+    <article class="reel${tallPost(post) ? ' is-tall' : ''}" data-id="${esc(post.id)}" data-kind="${isVideo ? 'video' : 'image'}" data-file="${esc(post.fileUrl || '')}" data-proxy-file="${esc(post.proxiedFileUrl || '')}" data-full="${esc(sharp)}" data-proxy-full="${esc(sharpProxy(post))}" data-still="${esc(still)}" data-proxy-still="${esc(post.proxiedPreviewUrl || '')}">
       <div class="reel-stage" style="${frameStyle(post)}"${isVideo ? '' : ` data-open="${esc(post.id)}"`}>
         ${media}
       </div>
@@ -816,12 +828,8 @@ function reelSlideHtml(post, index) {
         <a class="icon-btn" href="${esc(post.originalPostUrl || '#')}" target="_blank" rel="noopener" aria-label="Source">${icon('external')}</a>
         <button type="button" class="icon-btn" data-share="${esc(post.id)}" aria-label="Share">${icon('share')}</button>
         <button type="button" class="icon-btn accent" aria-label="AI chat" onclick="triggerAdClick('reels_cta','candy_ai','${esc(post.id)}','${esc(charTag)}')">${icon('spark')}</button>
-        <span class="pill">${icon('star')} ${esc(post.score || 0)}</span>
-        <button type="button" class="btn btn-tiny btn-ghost grow" data-tag-sheet="${esc(post.id)}">${icon('tag')}<span class="btn-label">Tags ${tags.length}</span></button>
-      </div>
-      <div class="reel-tags">
-        ${shown.map(t => `<button type="button" class="reel-tag" data-include="${esc(t)}">${esc(t)}</button>`).join('')}
-        ${extra}
+        <span class="reel-meta">${icon('star')}<span>${esc(formatScore(post.score))}</span><span class="src">${esc(post.sourceName || '')}</span></span>
+        <button type="button" class="tags-toggle" data-tag-sheet="${esc(post.id)}">${icon('tag')}<span>${tags.length}</span></button>
       </div>
     </article>`;
 }
@@ -1222,6 +1230,7 @@ window.switchTab = function(tabId) {
   if (tabId !== 'reels') document.querySelectorAll('#reels-feed .reel').forEach(deactivateReel);
   stopAllCardVideos();
   if (tabId === 'saved') renderSavedPosts();
+  if (tabId === 'gallery' && state.posts.length) renderGallery();
   if (tabId === 'reels' && state.posts.length) renderReels();
   if (browsingPosts()) {
     syncUrlBarInPlace();
