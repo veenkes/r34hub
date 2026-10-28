@@ -1126,7 +1126,7 @@ function maybeShowVideoPreroll(containerEl, onComplete) {
     <div style="font-size:16px;font-weight:700;color:#fff;">Uncensored 18+ AI Undress & Hentai Video Chat</div>
     <div style="font-size:12px;color:#d4d4d8;max-width:320px;">Turn any character into an explicit 18+ interactive animation or roleplay chat.</div>
     <div style="width:300px;height:250px;overflow:hidden;border-radius:10px;border:1px solid var(--line);background:#000;display:flex;align-items:center;justify-content:center;">
-      <iframe src="https://syndication.exdynsrv.com/ads-iframe-display.php?idzone=${esc(exoZoneId)}&output=noscript&type=300x250" width="300" height="250" scrolling="no" marginwidth="0" marginheight="0" frameborder="0" title="ExoClick 18+ Pre-Roll"></iframe>
+      <iframe src="https://a.magsrv.com/iframe.php?idzone=${esc(exoZoneId)}&size=300x250" width="300" height="250" scrolling="no" marginwidth="0" marginheight="0" frameborder="0" title="ExoClick 18+ Pre-Roll"></iframe>
     </div>
     <div style="display:flex;gap:8px;margin-top:4px;">
       <button type="button" class="btn btn-primary btn-tiny" style="background:#e11d48;color:#fff;font-weight:700;" data-preroll-cta>🔞 Open 18+ AI Studio →</button>
@@ -1381,10 +1381,13 @@ function pickAdultAdArtwork(idx = 0) {
 function buildSponsoredCardHTML(idx = 12) {
   const aadsId = String((state.adsConfig && state.adsConfig.aads && state.adsConfig.aads.unitId) || '2460259');
   const art = pickAdultAdArtwork(idx);
+  const exoZoneId = String((state.adsConfig && state.adsConfig.exoclick && state.adsConfig.exoclick.zoneId) || '6068261');
   const offers = [
-    { id: 'candy_ai', name: 'Candy.ai 18+', title: 'Uncensored 18+ NSFW AI Waifu Sex Chat', cta: 'Chat 18+' },
-    { id: 'nud3_video', name: 'Nud3.me 18+', title: 'AI Undress & 18+ Hentai Video Animator', cta: 'Animate 18+' },
-    { id: 'spicychat_ai', name: 'SpicyChat 18+', title: 'No-Filter 18+ Adult Roleplay & Voice AI', cta: 'Roleplay 18+' }
+    { id: 'brazzers_hd', name: 'BRAZZERS 18+', badgeBg: '#f59e0b', badgeInk: '#000', title: 'Brazzers 18+ 4K Exclusive Adult Network & Uncensored Videos', cta: 'Watch 18+ HD' },
+    { id: 'nutaku_games', name: 'NUTAKU 18+', badgeBg: '#e11d48', badgeInk: '#fff', title: 'Top 18+ Uncensored Hentai RPG & Adult Gacha Games', cta: 'Play 18+ Game' },
+    { id: 'candy_ai', name: 'CANDY.AI 18+', badgeBg: '#e11d48', badgeInk: '#fff', title: 'Uncensored 18+ NSFW AI Waifu Sex Chat & Voice', cta: 'Chat 18+' },
+    { id: 'nud3_video', name: 'NUD3.ME 18+', badgeBg: '#9333ea', badgeInk: '#fff', title: 'AI Undress & 18+ Hentai Video Animator', cta: 'Animate 18+' },
+    { id: 'chaturbate_cams', name: 'LIVE CAMS 18+', badgeBg: '#f59e0b', badgeInk: '#000', title: 'Live 18+ Cosplay & Adult Cam Girls Streaming Now', cta: 'Watch Live 18+' }
   ];
   const slotNum = idx <= 4 ? 0 : Math.floor((idx - 4) / 10) + 1;
   const offer = offers[slotNum % offers.length];
@@ -1402,8 +1405,8 @@ function buildSponsoredCardHTML(idx = 12) {
           onerror="useAdFallback(this)"
         />
         <div class="card-float">
+          <span class="pill" style="background:${offer.badgeBg || '#e11d48'};color:${offer.badgeInk || '#fff'};font-weight:900;letter-spacing:0.03em;">${esc(offer.name)}</span>
           <span class="pill" style="background:rgba(225,29,72,0.92);color:#fff;font-weight:700;">🔞 18+ AD</span>
-          <span class="pill">${esc(offer.name)}</span>
         </div>
         <div style="position:absolute;left:0;right:0;bottom:0;padding:20px 8px 8px;background:linear-gradient(180deg,transparent,rgba(9,9,11,0.95) 45%,#09090b 100%);display:flex;flex-direction:column;gap:6px;">
           <div style="color:#fff;font-size:12px;font-weight:700;line-height:1.25;pointer-events:none;">${esc(offer.title)}</div>
@@ -1688,28 +1691,54 @@ function buildNativeReelAdHtml(idx) {
   const activeTag = parseTagTokens()[0] || art.tag || 'hentai';
   const offers = [
     {
+      id: 'brazzers_hd',
+      partner: 'BRAZZERS 18+ NETWORK',
+      badgeBg: '#f59e0b',
+      badgeInk: '#000',
+      title: 'Brazzers 18+ 4K Exclusive Adult Scenes & Uncensored Pass',
+      sub: 'Watch 10,000+ full-length 4K adult videos, cosplay scenes, and exclusive daily 18+ releases.',
+      cta: '🔞 Watch Brazzers 18+ HD →',
+      tags: ['brazzers_18+', '4k_adult', 'uncensored', 'exclusive_hd']
+    },
+    {
+      id: 'nutaku_games',
+      partner: 'NUTAKU 18+ HENTAI GAMES',
+      badgeBg: '#e11d48',
+      badgeInk: '#fff',
+      title: 'Top 18+ Uncensored Hentai RPG & Adult Gacha Games (Browser / Mobile)',
+      sub: 'No install needed. Unlock explicit 18+ character scenes & claim 2,000 free gems.',
+      cta: '🔞 Play 18+ Hentai Game →',
+      tags: ['nutaku_18+', 'hentai_rpg', 'uncensored_game', 'browser_18+']
+    },
+    {
       id: 'candy_ai',
-      partner: 'Candy.ai 18+ NSFW',
+      partner: 'CANDY.AI 18+ NSFW',
+      badgeBg: '#e11d48',
+      badgeInk: '#fff',
       title: `Uncensored 18+ AI Sex Chat & Voice with ${activeTag.replace(/_/g, ' ')}`,
       sub: 'Send explicit prompts, custom kinks, and receive live 18+ NSFW photos & voice messages.',
-      cta: 'Start 18+ Uncensored Chat →',
+      cta: '🔞 Start 18+ Uncensored Chat →',
       tags: ['18+_nsfw', 'uncensored_ai', 'sex_chat', 'custom_waifu']
     },
     {
       id: 'nud3_video',
-      partner: 'Nud3.me 18+ AI Studio',
+      partner: 'NUD3.ME 18+ AI STUDIO',
+      badgeBg: '#9333ea',
+      badgeInk: '#fff',
       title: '18+ AI Undress & Hentai Video Generator',
       sub: 'Turn any Rule34 or anime image into an explicit 60fps 18+ animated video in one click.',
-      cta: 'Animate / Undress 18+ Now →',
+      cta: '🔞 Animate / Undress 18+ Now →',
       tags: ['18+_video', 'ai_undress', 'animated_nsfw', 'rule34_ai']
     },
     {
-      id: 'crushon_ai',
-      partner: 'CrushOn.ai 18+ Unfiltered',
-      title: 'Zero-Filter 18+ Hentai & Erotic Roleplay AI',
-      sub: 'No censorship, no NSFW blocks. Roleplay any scenario with 200,000+ adult anime characters.',
-      cta: 'Play 18+ Roleplay Free →',
-      tags: ['18+_roleplay', 'no_filter', 'hentai_chat', 'explicit']
+      id: 'chaturbate_cams',
+      partner: 'CHATURBATE 18+ LIVE CAMS',
+      badgeBg: '#f59e0b',
+      badgeInk: '#000',
+      title: 'Live 18+ Cosplay & Anime Cam Models Streaming Now',
+      sub: 'Join interactive live 18+ streams and private shows — free instant browser access.',
+      cta: '🔞 Watch Live 18+ Cams →',
+      tags: ['live_cams_18+', 'cosplay_18+', 'interactive', 'nsfw_live']
     }
   ];
   const slotNum = idx <= 4 ? 0 : Math.floor((idx - 4) / AD_INTERVAL) + 1;
@@ -1744,8 +1773,15 @@ function buildNativeReelAdHtml(idx) {
             </div>
           </div>
         </div>
-        <div style="width:100%;padding:10px 0;background:#09090b;border-top:1px solid var(--line);display:flex;flex-direction:column;align-items:center;gap:8px;">
-          <iframe src="https://syndication.exdynsrv.com/ads-iframe-display.php?idzone=${esc(exoZoneId)}&output=noscript&type=300x250" width="300" height="250" scrolling="no" marginwidth="0" marginheight="0" frameborder="0" loading="lazy" title="ExoClick 18+ Ad"></iframe>
+        <div style="width:100%;padding:10px 12px;background:#09090b;border-top:1px solid var(--line);display:flex;flex-direction:column;align-items:center;gap:8px;">
+          <div style="position:relative;width:300px;height:250px;border-radius:10px;overflow:hidden;border:1px solid rgba(245,158,11,0.45);background:#121218;">
+            <div onclick="triggerAdClick('infeed_native','${esc(offer.id)}','exo-fallback-${idx}','${esc(activeTag)}')" style="position:absolute;inset:0;cursor:pointer;display:flex;flex-direction:column;justify-content:flex-end;padding:12px;background:linear-gradient(180deg,rgba(9,9,11,0.1) 0%,rgba(9,9,11,0.92) 72%,#09090b 100%),url('${esc(art.src)}') center/cover no-repeat;">
+              <span style="position:absolute;top:8px;left:8px;background:${offer.badgeBg || '#f59e0b'};color:${offer.badgeInk || '#000'};font-weight:900;font-size:10px;padding:2px 7px;border-radius:4px;">${esc(offer.partner)}</span>
+              <div style="color:#fff;font-weight:800;font-size:13px;line-height:1.2;margin-bottom:6px;">${esc(offer.title)}</div>
+              <span style="display:inline-block;background:#e11d48;color:#fff;font-weight:800;font-size:11px;padding:6px 10px;border-radius:6px;text-align:center;">${esc(offer.cta)}</span>
+            </div>
+            <iframe src="https://a.magsrv.com/iframe.php?idzone=${esc(exoZoneId)}&size=300x250" width="300" height="250" scrolling="no" marginwidth="0" marginheight="0" frameborder="0" style="position:relative;z-index:2;background:transparent;" loading="lazy" title="ExoClick 18+ Ad"></iframe>
+          </div>
           <iframe data-aa="${esc(aadsId)}" src="//acceptable.a-ads.com/${esc(aadsId)}" style="border:0px;padding:0;width:100%;max-width:468px;height:60px;overflow:hidden;background-color:transparent;" loading="lazy" title="A-ADS 18+"></iframe>
         </div>
       </div>
