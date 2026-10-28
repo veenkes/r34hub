@@ -1193,7 +1193,8 @@ function pickAdultAdArtwork(idx = 0) {
 }
 
 function buildSponsoredCardHTML(idx = 12) {
-  const aadsId = (state.adsConfig && state.adsConfig.aads && state.adsConfig.aads.unitId) || '2460259';
+  const aadsId = String((state.adsConfig && state.adsConfig.aads && state.adsConfig.aads.unitId) || '2460259');
+  const exoZoneId = String((state.adsConfig && state.adsConfig.exoclick && state.adsConfig.exoclick.zoneId) || '6068261');
   const art = pickAdultAdArtwork(idx);
   const offers = [
     { id: 'candy_ai', name: 'Candy.ai 18+', title: 'Uncensored 18+ NSFW AI Waifu Sex Chat', cta: 'Chat 18+ Uncensored' },
