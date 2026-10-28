@@ -289,11 +289,22 @@ window.dismissTopAdBanner = function() {
   syncChrome();
 };
 
+function servePartnerAdZones() {
+  if (state.isPro || !state.showAdsPreview) return;
+  try {
+    (window.AdProvider = window.AdProvider || []).push({ serve: {} });
+  } catch (_) {}
+}
+
 function syncChrome() {
   const topAd = document.getElementById('top-ad-banner');
+  const modalAd = document.getElementById('modal-partner-ad-slot');
   const posts = document.getElementById('posts-chrome');
   if (posts) posts.classList.toggle('hidden', !browsingPosts());
-  if (topAd) topAd.classList.add('hidden');
+  const hideAds = Boolean(state.isPro || !state.showAdsPreview || sessionStorage.getItem('bp_top_ad_dismissed') === '1');
+  if (topAd) topAd.classList.toggle('hidden', hideAds);
+  if (modalAd) modalAd.classList.toggle('hidden', Boolean(state.isPro || !state.showAdsPreview));
+  if (!hideAds) servePartnerAdZones();
 }
 
 function saveProSession(key, meta = {}) {
@@ -375,7 +386,7 @@ function updateProUI() {
     if (topAd) topAd.classList.add('hidden');
     if (aadsSlot) aadsSlot.classList.add('hidden');
   } else {
-    if (txt) txt.textContent = 'Premium · €3.99';
+    if (txt) txt.textContent = 'Premium · €1.99/mo';
     if (btn) {
       btn.classList.remove('hidden');
       btn.classList.remove('is-vip');
@@ -874,7 +885,7 @@ window.triggerAdClick = async function(placement, offerId, postId, tag, mediaUrl
       return;
     }
   } catch (_) {}
-  window.open('https://candy.ai/?aff=r34hub', '_blank', 'noopener');
+  window.open('https://acceptable.a-ads.com/2460259', '_blank', 'noopener');
 };
 
 window.toggleCardTags = function(postId, button) {
@@ -1345,57 +1356,8 @@ function playerSource(root) {
 let videoPlayCount = 0;
 let lastPrerollAt = 0;
 
-function maybeShowVideoPreroll(containerEl, onComplete) {
+function maybeShowVideoPreroll(_containerEl, onComplete) {
   onComplete();
-  return;
-  const now = Date.now();
-  // Show pre-roll at most once every 5 minutes so video browsing stays smooth
-  if (lastPrerollAt > 0 && now - lastPrerollAt < 300000) {
-    onComplete();
-    return;
-  }
-  videoPlayCount += 1;
-  lastPrerollAt = now;
-  if (containerEl.querySelector('.preroll-overlay')) return;
-  trackAdImpression('video_preroll');
-  const activeTag = parseTagTokens()[0] || 'hentai';
-  const overlay = document.createElement('div');
-  overlay.className = 'preroll-overlay';
-  overlay.style.cssText = 'position:absolute;inset:0;z-index:6;background:rgba(9,9,11,0.94);backdrop-filter:blur(10px);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;text-align:center;gap:10px;';
-  overlay.innerHTML = `
-    <span class="meta-badge" style="margin:0;background:rgba(225,29,72,0.22);border-color:rgba(225,29,72,0.55);color:#fda4af;font-weight:700;">18+ Sponsored · Video starts in <b data-preroll-sec>2</b>s</span>
-    ${buildAnimated300x250BannerHtml(videoPlayCount, { id: 'nud3_video', partner: 'NUD3.ME 18+ AI', title: '18+ AI Undress & Hentai Video Animator', cta: 'Open 18+ AI Studio →' }, activeTag)}
-    <div style="display:flex;gap:8px;margin-top:4px;">
-      <button type="button" class="btn btn-primary btn-tiny" style="background:#e11d48;color:#fff;font-weight:700;" data-preroll-cta>${icon('spark')} Open 18+ AI Studio</button>
-      <button type="button" class="btn btn-ghost btn-tiny" data-preroll-skip>Skip (2)</button>
-    </div>
-  `;
-  overlay.addEventListener('click', e => e.stopPropagation());
-  containerEl.appendChild(overlay);
-
-  const secEl = overlay.querySelector('[data-preroll-sec]');
-  const skipBtn = overlay.querySelector('[data-preroll-skip]');
-  const ctaBtn = overlay.querySelector('[data-preroll-cta]');
-  let left = 2;
-  const finish = () => {
-    clearInterval(timer);
-    overlay.remove();
-    onComplete();
-  };
-  ctaBtn.addEventListener('click', () => {
-    triggerAdClick('post_video_ai', 'nud3_video', 'preroll', activeTag);
-    finish();
-  });
-  skipBtn.addEventListener('click', finish);
-  const timer = setInterval(() => {
-    left -= 1;
-    if (secEl) secEl.textContent = String(Math.max(0, left));
-    if (left <= 0) {
-      finish();
-    } else if (skipBtn) {
-      skipBtn.textContent = `Skip (${left})`;
-    }
-  }, 1000);
 }
 
 function togglePlayer(root) {
@@ -1669,182 +1631,41 @@ function observeGridVideos() {
   // Grid videos use preload="none" and only load/play when the user explicitly clicks the Play button
 }
 
-const ADULT_FALLBACK_THUMBS = [
-  {
-    full: 'https://img.xbooru.com/images/257/66ade81490698aa620f16b9eddc415ef.jpeg',
-    thumb: 'https://xbooru.com/thumbnails/257/thumbnail_66ade81490698aa620f16b9eddc415ef.jpg',
-    tag: '1girl'
-  },
-  {
-    full: 'https://img.xbooru.com/images/457/513ed2466c54fe4feaea546d8e33519c.jpeg',
-    thumb: 'https://xbooru.com/thumbnails/457/thumbnail_513ed2466c54fe4feaea546d8e33519c.jpg',
-    tag: 'beach'
-  },
-  {
-    full: 'https://img.xbooru.com/images/457/27d2e5faf95f990fd83a597d4b6b6c89.jpeg',
-    thumb: 'https://xbooru.com/thumbnails/457/thumbnail_27d2e5faf95f990fd83a597d4b6b6c89.jpg',
-    tag: 'anime'
-  },
-  {
-    full: 'https://img.xbooru.com/images/197/97326a8dbb4c7e078cee43925c28a1cf.jpeg',
-    thumb: 'https://xbooru.com/thumbnails/197/thumbnail_97326a8dbb4c7e078cee43925c28a1cf.jpg',
-    tag: 'raven'
-  },
-  {
-    full: 'https://img.xbooru.com/images/596/11ca5c595d31212d56d2dd0f0f23357a.jpeg',
-    thumb: 'https://xbooru.com/thumbnails/596/thumbnail_11ca5c595d31212d56d2dd0f0f23357a.jpg',
-    tag: 'waifu'
-  },
-  {
-    full: 'https://img.xbooru.com/images/539/705acd796bbb6d0bf5fa34c1f049d335.jpeg',
-    thumb: 'https://xbooru.com/thumbnails/539/thumbnail_705acd796bbb6d0bf5fa34c1f049d335.jpg',
-    tag: 'fantasy'
-  },
-  {
-    full: 'https://img.xbooru.com/images/684/c98c0125b12a8ec6d7beedcd224c930c.jpeg',
-    thumb: 'https://xbooru.com/thumbnails/684/thumbnail_c98c0125b12a8ec6d7beedcd224c930c.jpg',
-    tag: 'anthro'
-  }
-];
+const AD_INTERVAL = 12;
+const REEL_AD_INTERVAL = 8;
 
-window.useAdFallback = function(img) {
-  if (!img) return;
-  const proxy = img.getAttribute('data-proxy');
-  if (proxy && img.dataset.proxied !== '1') {
-    img.dataset.proxied = '1';
-    img.src = proxy;
-    return;
-  }
-  const fb = img.getAttribute('data-fallback');
-  if (fb && img.dataset.fbUsed !== '1') {
-    img.dataset.fbUsed = '1';
-    img.src = fb;
-  }
-};
-
-function isStaticImagePost(post) {
-  if (!post || post.mediaType !== 'image') return false;
-  const ext = String(post.fileExt || '').toLowerCase();
-  if (['mp4', 'webm', 'gif', 'mov', 'mkv', 'm4v', 'zip'].includes(ext)) return false;
-  const still = cardStill(post);
-  if (!still || !still.src || looksLikeVideo(still.src)) return false;
-  // Require a static image extension on either previewUrl, sampleUrl, or fileUrl so extensionless video streams are never picked
-  const checkUrl = post.previewUrl || post.sampleUrl || post.fileUrl || '';
-  return /\.(jpe?g|png|webp)(\?|$)/i.test(checkUrl);
+function trackAdImpression(placement = 'infeed_native') {
+  if (state.isPro) return;
+  fetch('/api/ads/impression', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ placement, board: state.source || 'rule34xxx' })
+  }).catch(() => {});
 }
 
-function pickAdultAdArtwork(idx = 0) {
-  const fbItem = ADULT_FALLBACK_THUMBS[Math.floor(idx / 3) % ADULT_FALLBACK_THUMBS.length];
-  const guaranteedThumb = `/api/media?url=${encodeURIComponent(fbItem.thumb)}&referer=${encodeURIComponent('https://xbooru.com/')}`;
-  const proxyFull = `/api/media?url=${encodeURIComponent(fbItem.full)}&referer=${encodeURIComponent('https://xbooru.com/')}`;
-
-  const explicitImages = (state.posts || []).filter(p => p.rating === 'e' && isStaticImagePost(p));
-  if (explicitImages.length) {
-    const chosen = explicitImages[(idx * 3 + 1) % explicitImages.length];
-    const shown = cardStill(chosen);
-    const charTag = (chosen.characterTags && chosen.characterTags[0]) || (chosen.tags && chosen.tags[0]) || fbItem.tag;
-    const primarySrc = shown.proxy || chosen.proxiedSampleUrl || chosen.proxiedPreviewUrl || shown.src || proxyFull;
-    return {
-      src: primarySrc,
-      proxy: chosen.proxiedPreviewUrl || guaranteedThumb,
-      fallback: guaranteedThumb,
-      tag: charTag
-    };
-  }
-
-  return {
-    src: proxyFull,
-    proxy: guaranteedThumb,
-    fallback: guaranteedThumb,
-    tag: fbItem.tag
-  };
-}
-
-
-const ADULT_ANIMATED_GIFS = [
-  'https://img.xbooru.com/images/614/4cafc8978d09a231f587490fd6e704a0.gif',
-  'https://img.xbooru.com/images/643/18d4f0c2765ec4da5f31aed92a8b691c.gif',
-  'https://img.xbooru.com/images/634/cfe2ba342ff9f37834b4ff831a148c9d.gif',
-  'https://img.xbooru.com/images/161/47cbdfdc948fdb36eaa94fc76816a545.gif',
-  'https://img.xbooru.com/images/23/68905846ed0393f8ae89bb4fbb390fe3.gif',
-  'https://img.xbooru.com/images/307/8b0670db3dfd97069177a13b5780a865.gif',
-  'https://img.xbooru.com/images/514/5801ffe974b24cbb229c65c08d9b768f.gif'
-];
-
-function pickAnimated18PlusGif(idx = 0) {
-  // Also check if current feed has any explicit .gif posts
-  const feedGifs = (state.posts || []).filter(p => p && p.rating === 'e' && String(p.fileExt || '').toLowerCase() === 'gif' && p.fileUrl);
-  if (feedGifs.length) {
-    const chosen = feedGifs[idx % feedGifs.length];
-    const proxy = chosen.proxiedFileUrl || `/api/media?url=${encodeURIComponent(chosen.fileUrl)}&referer=${encodeURIComponent('https://xbooru.com/')}`;
-    return { src: chosen.fileUrl, proxy };
-  }
-  const rawGif = ADULT_ANIMATED_GIFS[idx % ADULT_ANIMATED_GIFS.length];
-  const proxyGif = `/api/media?url=${encodeURIComponent(rawGif)}&referer=${encodeURIComponent('https://xbooru.com/')}`;
-  return { src: rawGif, proxy: proxyGif };
-}
-
-function buildAnimated300x250BannerHtml(idx, offer, activeTag) {
-  const anim = pickAnimated18PlusGif(idx);
-  const badgeText = (offer && (offer.partner || offer.name)) || 'NUD3.ME 18+ AI';
-  const titleText = (offer && offer.title) || '18+ AI Undress & Hentai Video Animator';
-  const ctaText = (offer && offer.cta) || 'Open 18+ Partner →';
-  const offerId = (offer && offer.id) || 'nud3_video';
+function buildSponsoredCardHTML(idx = 12) {
   return `
-    <div onclick="triggerAdClick('infeed_native','${esc(offerId)}','anim-300x250-${idx}','${esc(activeTag || 'hentai')}')" style="position:relative;width:300px;height:250px;overflow:hidden;border-radius:10px;border:1px solid rgba(225,29,72,0.5);background:#09090b;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,0.45);">
-      <img
-        src="${esc(anim.src)}"
-        data-proxy="${esc(anim.proxy)}"
-        alt="18+ Animated Ad"
-        referrerpolicy="no-referrer"
-        onerror="useProxy(this)"
-        style="width:100%;height:100%;object-fit:cover;display:block;"
-      />
-      <div style="position:absolute;top:8px;left:8px;right:8px;display:flex;align-items:center;justify-content:space-between;gap:6px;pointer-events:none;">
-        <span style="background:rgba(225,29,72,0.94);color:#fff;font-weight:900;font-size:10px;padding:2px 8px;border-radius:4px;letter-spacing:0.04em;">18+ ANIMATED AD</span>
-        <span style="background:rgba(9,9,11,0.85);color:#f4f4f5;font-weight:700;font-size:10px;padding:2px 7px;border-radius:4px;">${esc(badgeText)}</span>
+    <article class="masonry-item card sponsor-card is-in is-ad-card" style="--d:${idx % 8};border-color:rgba(255,255,255,0.1);background:#12131a;">
+      <div class="partner-card-top">
+        <span class="pill" style="background:rgba(16,185,129,0.14);color:#34d399;border:1px solid rgba(16,185,129,0.35);font-weight:700;">Sponsored · A-ADS #2460259</span>
+        <button type="button" class="btn btn-tiny btn-ghost" style="min-height:28px;padding:2px 8px;font-size:11px;" onclick="openProModal()">No Ads</button>
       </div>
-      <div style="position:absolute;left:0;right:0;bottom:0;padding:28px 10px 10px;background:linear-gradient(180deg,transparent 0%,rgba(9,9,11,0.92) 55%,#09090b 100%);display:flex;flex-direction:column;gap:6px;pointer-events:none;">
-        <div style="color:#fff;font-weight:800;font-size:12px;line-height:1.25;text-align:left;">${esc(titleText)}</div>
-        <span style="display:block;background:#e11d48;color:#fff;font-weight:800;font-size:11px;padding:6px 10px;border-radius:6px;text-align:center;">${esc(ctaText)}</span>
-      </div>
-    </div>`;
-}
-
-function buildSponsoredCardHTML(idx = 16) {
-  const anim = pickAnimated18PlusGif(idx);
-  const offers = [
-    { id: 'candy_ai', name: 'Candy.ai', title: 'Interactive AI Character Chat & Roleplay', cta: 'Open Chat' },
-    { id: 'nud3_video', name: 'Nud3 Studio', title: 'AI Character Motion & Video Animator', cta: 'Try Studio' },
-    { id: 'spicychat_ai', name: 'SpicyChat', title: 'Community Character AI Roleplay', cta: 'Explore' }
-  ];
-  const offer = offers[Math.floor(idx / AD_INTERVAL) % offers.length];
-  return `
-    <article class="masonry-item card is-in is-ad-card" style="--d:${idx % 8};border-color:rgba(255,255,255,0.08);background:#12131a;">
-      <div class="card-media" onclick="triggerAdClick('infeed_native','${esc(offer.id)}','grid-ad-${idx}','anime')">
-        <img
-          src="${esc(anim.src)}"
-          data-proxy="${esc(anim.proxy)}"
-          alt=""
+      <div class="partner-card-stage">
+        <iframe
+          data-aa="2460259"
+          src="https://acceptable.a-ads.com/2460259?size=Adaptive&background_color=12131a&text_color=f4f4f6&title_color=10b981&link_color=10b981"
+          scrolling="no"
+          style="width:100%;height:250px;border:0;padding:0;overflow:hidden;background-color:transparent;display:block;"
+          allowtransparency="true"
           loading="lazy"
-          decoding="async"
-          referrerpolicy="no-referrer"
-          onerror="useProxy(this)"
-        />
-        <div class="card-float">
-          <span class="pill" style="background:rgba(17,17,24,0.82);color:#a1a1aa;font-weight:600;">Sponsored</span>
-          <span class="pill">${esc(offer.name)}</span>
-        </div>
-        <div style="position:absolute;left:0;right:0;bottom:0;padding:20px 10px 8px;background:linear-gradient(180deg,transparent,rgba(9,9,13,0.92));color:#e4e4e7;font-size:12px;font-weight:600;line-height:1.3;">
-          ${esc(offer.title)}
-        </div>
+          title="A-ADS Partner Slot #2460259"
+        ></iframe>
+        <ins class="eas6a97888e2" data-zoneid="6068261"></ins>
       </div>
-      <div class="card-body">
-        <button type="button" class="btn btn-tiny btn-ghost" onclick="triggerAdClick('infeed_native','${esc(offer.id)}','grid-ad-${idx}','anime')">
-          ${icon('spark')}<span class="btn-label">${esc(offer.cta)}</span>
-        </button>
-        <button type="button" class="btn btn-tiny btn-primary" style="background:rgba(16,185,129,0.18);border-color:rgba(16,185,129,0.45);color:#34d399;" onclick="openProModal()" title="Unlock R34Hub Pro — Zero Ads & Original HD">
-          <span class="btn-label">Go Pro · No Ads</span>
+      <div class="card-body" style="justify-content:space-between;">
+        <span style="font-size:11px;color:var(--muted);">Partner Network · ExoClick &amp; A-ADS</span>
+        <button type="button" class="btn btn-tiny btn-primary" style="background:rgba(16,185,129,0.18);border-color:rgba(16,185,129,0.45);color:#34d399;" onclick="openProModal()">
+          <span class="btn-label">Go Pro · €1.99/mo</span>
         </button>
       </div>
     </article>
@@ -1972,22 +1793,14 @@ function buildPostCardHTML(post, idx) {
   `;
 }
 
-const AD_INTERVAL = 16;
-function trackAdImpression(placement = 'infeed_native') {
-  if (state.isPro) return;
-  fetch('/api/ads/impression', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ placement, board: state.source || 'rule34xxx' })
-  }).catch(() => {});
-}
+
 
 
 function cardsHtml(posts, offset) {
   const parts = [];
   posts.forEach((post, i) => {
     const idx = offset + i;
-    if (state.showAdsPreview && !state.isPro && idx > 0 && idx % AD_INTERVAL === 0) { trackAdImpression("grid_native"); parts.push(buildSponsoredCardHTML(idx)); }
+    if (state.showAdsPreview && !state.isPro && idx > 0 && idx % REEL_AD_INTERVAL === 0) { trackAdImpression("grid_native"); parts.push(buildSponsoredCardHTML(idx)); }
     parts.push(buildPostCardHTML(post, idx));
   });
   return parts.join('');
@@ -2018,6 +1831,7 @@ function renderGallery(options = {}) {
   }
   rescueSlowImages();
   observeGridVideos();
+  servePartnerAdZones();
 }
 
 let galleryPumpQueued = false;
@@ -2164,55 +1978,23 @@ function bindReelsLoader() {
 }
 
 function buildNativeReelAdHtml(idx) {
-  const anim = pickAnimated18PlusGif(idx);
-  const activeTag = parseTagTokens()[0] || 'anime';
-  const offers = [
-    {
-      id: 'candy_ai',
-      partner: 'Candy.ai',
-      title: `Interactive Character Chat (${activeTag.replace(/_/g, ' ')})`,
-      sub: 'Roleplay and chat with custom anime & game characters in your browser.',
-      cta: 'Open Chat'
-    },
-    {
-      id: 'nud3_video',
-      partner: 'Nud3 Studio',
-      title: 'AI Character Motion & Video Studio',
-      sub: 'Turn static character illustrations into smooth 60fps animations.',
-      cta: 'Try Studio'
-    },
-    {
-      id: 'crushon_ai',
-      partner: 'CrushOn.ai',
-      title: 'Unfiltered Character Roleplay AI',
-      sub: 'Instant browser roleplay with 200,000+ community anime characters.',
-      cta: 'Explore'
-    }
-  ];
-  const offer = offers[Math.floor(idx / AD_INTERVAL) % offers.length];
   return `
-    <article class="reel post-card is-ad" data-kind="ad" data-ad-slot="${idx}">
-      <div class="native-ad-row" onclick="triggerAdClick('infeed_native','${esc(offer.id)}','reel-ad-${idx}','${esc(activeTag)}')">
-        <img
-          class="native-ad-thumb"
-          src="${esc(anim.src)}"
-          data-proxy="${esc(anim.proxy)}"
-          alt=""
-          referrerpolicy="no-referrer"
-          onerror="useProxy(this)"
-        />
-        <div class="native-ad-copy">
-          <div class="native-ad-kicker">
-            <span class="meta-badge" style="margin:0;background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.12);color:#a1a1aa;font-size:10px;font-weight:600;">Sponsored · ${esc(offer.partner)}</span>
-            <button type="button" class="btn btn-tiny btn-ghost" style="min-height:32px;padding:3px 8px;" onclick="event.stopPropagation();openProModal()">Hide ads</button>
-          </div>
-          <h3>${esc(offer.title)}</h3>
-          <p>${esc(offer.sub)}</p>
-          <div style="display:flex;gap:8px;margin-top:4px;">
-            <button type="button" class="btn btn-tiny btn-ghost" onclick="event.stopPropagation();triggerAdClick('infeed_native','${esc(offer.id)}','reel-ad-${idx}','${esc(activeTag)}')">${icon('spark')} <span>${esc(offer.cta)}</span></button>
-            <button type="button" class="btn btn-tiny btn-ghost" onclick="event.stopPropagation();openProModal()">Pro · No Ads</button>
-          </div>
-        </div>
+    <article class="reel post-card is-ad partner-reel-ad" data-kind="ad" data-ad-slot="${idx}">
+      <div class="partner-reel-head">
+        <span class="meta-badge" style="margin:0;background:rgba(16,185,129,0.14);border-color:rgba(16,185,129,0.35);color:#34d399;font-size:11px;font-weight:700;">Partner Advertisement · A-ADS #2460259 &amp; ExoClick #6068261</span>
+        <button type="button" class="btn btn-tiny btn-ghost" style="min-height:32px;padding:3px 10px;" onclick="event.stopPropagation();openProModal()">Hide Ads (Pro · €1.99/mo)</button>
+      </div>
+      <div class="partner-reel-stage">
+        <iframe
+          data-aa="2460259"
+          src="https://acceptable.a-ads.com/2460259?size=Adaptive&background_color=12131a&text_color=f4f4f6&title_color=10b981&link_color=10b981"
+          scrolling="no"
+          style="width:100%;max-width:728px;height:90px;border:0;padding:0;overflow:hidden;background-color:transparent;border-radius:8px;display:block;margin:0 auto;"
+          allowtransparency="true"
+          loading="lazy"
+          title="A-ADS Feed Partner Slot #2460259"
+        ></iframe>
+        <ins class="eas6a97888e2" data-zoneid="6068261"></ins>
       </div>
     </article>`;
 }
@@ -2238,6 +2020,7 @@ function appendReels(posts) {
   container.insertAdjacentHTML('beforeend', reelsHtmlWithAds(posts, start));
   observeReelSlides([...container.querySelectorAll('.reel[data-id]')].slice(start));
   paintReelsStatus();
+  servePartnerAdZones();
 }
 
 function renderReels() {
@@ -2260,6 +2043,7 @@ function renderReels() {
   container.innerHTML = reelsHtmlWithAds(state.posts, 0);
   observeReelSlides([...container.querySelectorAll('.reel[data-id]')]);
   bindReelsLoader();
+  servePartnerAdZones();
   paintReelsStatus();
   requestAnimationFrame(() => {
     syncActiveReel();
@@ -2920,10 +2704,8 @@ window.openPostModal = function(postId) {
       showToast(`Similar posts: ${query}`);
     };
   }
-  const aiChatBtn = document.getElementById('modal-ai-chat-btn');
-  if (aiChatBtn) aiChatBtn.onclick = () => triggerAdClick('post_chat_ai', 'candy_ai', post.id, charTag, post.fileUrl);
-  const aiVidBtn = document.getElementById('modal-ai-video-btn');
-  if (aiVidBtn) aiVidBtn.onclick = () => triggerAdClick('post_video_ai', 'nud3_video', post.id, charTag, post.fileUrl);
+  const modalAd = document.getElementById('modal-partner-ad-slot');
+  if (modalAd) modalAd.classList.toggle('hidden', Boolean(state.isPro || !state.showAdsPreview));
 
   const enc = encodeURIComponent(post.fileUrl || '');
   document.getElementById('modal-source-links').innerHTML = [

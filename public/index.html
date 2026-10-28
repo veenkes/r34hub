@@ -117,7 +117,7 @@
           <button class="sort-btn" type="button" data-sort="no_ai">No AI</button>
         </div>
       </div> -->
-      <a id="pro-cta-btn" class="side-link side-pro" href="/premium"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-spark"/></svg><span id="pro-cta-text">Premium · €1.99</span></a>
+      <a id="pro-cta-btn" class="side-link side-pro" href="/premium"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-spark"/></svg><span id="pro-cta-text">Premium · €1.99/mo</span></a>
       <div id="side-pro-account" class="hidden" style="padding:10px 12px;border-radius:12px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);display:grid;gap:6px;font-size:12px;">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
           <strong style="color:#34d399;font-size:11px;text-transform:uppercase;letter-spacing:0.04em;">● Pro Active</strong>
@@ -178,14 +178,17 @@
   </div>
 
   <main class="wrap">
-    <div id="top-ad-banner" class="adbar hidden">
-      <div class="adbar-inner">
-        <p><strong>Sponsored · 18+ AI Companion.</strong> Turn any character tag into an uncensored chat or video.</p>
-        <div class="ad-actions">
-          <button class="btn btn-tiny btn-primary" type="button" onclick="triggerAdClick('top_banner','candy_ai','header','anime')">Open AI</button>
-          <button class="btn btn-tiny btn-ghost" type="button" onclick="openProModal()">No Ads</button>
-          <button class="icon-btn bare" type="button" style="width:28px;height:28px;" aria-label="Dismiss banner" onclick="dismissTopAdBanner()"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-close"/></svg></button>
+    <div id="top-ad-banner" class="adbar partner-top-banner hidden">
+      <div class="partner-banner-head">
+        <span class="partner-kicker">Partner Advertisement · A-ADS #2460259 &amp; ExoClick #6068261</span>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <button class="btn btn-tiny btn-ghost" type="button" onclick="openProModal()" style="min-height:28px;padding:2px 10px;font-size:11px;">Hide Ads (Pro · €1.99/mo)</button>
+          <button class="icon-btn bare" type="button" style="width:28px;height:28px;min-width:28px;min-height:28px;" aria-label="Dismiss banner" onclick="dismissTopAdBanner()"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-close"/></svg></button>
         </div>
+      </div>
+      <div class="partner-banner-body">
+        <iframe data-aa="2460259" src="https://acceptable.a-ads.com/2460259?size=Adaptive&background_color=121217&text_color=f4f4f6&title_color=10b981&link_color=10b981" scrolling="no" style="width:100%;max-width:728px;height:90px;border:0;padding:0;overflow:hidden;background-color:transparent;border-radius:8px;" allowtransparency="true" title="A-ADS Partner Banner"></iframe>
+        <ins class="eas6a97888e2" data-zoneid="6068261"></ins>
       </div>
     </div>
 
@@ -604,6 +607,14 @@
             <div id="modal-related-posts" class="modal-related-grid"></div>
           </div>
 
+          <div id="modal-partner-ad-slot" class="modal-partner-ad">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+              <span class="kicker">Partner Ad · A-ADS #2460259</span>
+              <button type="button" class="linkish" style="font-size:11px;color:#34d399;" onclick="openProModal()">Remove Ads →</button>
+            </div>
+            <iframe data-aa="2460259" src="https://acceptable.a-ads.com/2460259?size=Adaptive&background_color=12151f&text_color=f4f4f6&title_color=10b981&link_color=10b981" scrolling="no" style="width:100%;height:90px;border:0;padding:0;overflow:hidden;background-color:transparent;border-radius:8px;" allowtransparency="true" title="A-ADS Modal Partner Banner"></iframe>
+          </div>
+
           <div class="modal-reverse-section">
             <div class="kicker">Reverse Image Search</div>
             <div id="modal-source-links" class="tag-row" style="margin-top:6px"></div>
@@ -640,22 +651,27 @@
           <li>Download a page</li>
         </ul>
         <div id="pro-purchase-block" style="display:grid;gap:14px;">
-          <div class="plans" role="radiogroup" aria-label="Plan">
+          <div class="plans" role="radiogroup" aria-label="Plan" style="grid-template-columns:repeat(2,1fr);">
+            <button class="plan" type="button" data-plan="starter7d">
+              <span>14 Days Starter</span>
+              <b>€11.99</b>
+              <small>14d full Pro pass</small>
+            </button>
             <button class="plan" type="button" data-plan="monthly">
-              <span>Monthly</span>
-              <b>€7</b>
-              <small>€5.60 in crypto</small>
+              <span>30 Days Access</span>
+              <b>€13.99</b>
+              <small>One-time 30d pass</small>
             </button>
             <button class="plan is-on" type="button" data-plan="annual">
-              <span class="save-flag">Save 29%</span>
-              <span>Yearly</span>
-              <b>€4.97</b>
+              <span class="save-flag">Save 60%</span>
+              <span>Annual Pro</span>
+              <b>€1.99/mo</b>
               <small>€23.99 / yr crypto</small>
             </button>
             <button class="plan" type="button" data-plan="lifetime">
-              <span>Lifetime</span>
-              <b>€79.99</b>
-              <small>€39.99 in crypto</small>
+              <span>Lifetime VIP</span>
+              <b>€39.99</b>
+              <small>Pay once, keep forever</small>
             </button>
           </div>
           <div class="pro-pay">
@@ -724,7 +740,6 @@
   </nav>
 
   <div id="toast" class="toast hidden" role="status"></div>
-  <div id="aads-unit-slot" style="width:1px;height:1px;overflow:hidden;opacity:0.01;pointer-events:none;position:absolute;bottom:0;left:0;" aria-hidden="true"><iframe data-aa='2460259' src='//acceptable.a-ads.com/2460259' style='border:0px;padding:0;width:1px;height:1px;overflow:hidden;background-color:transparent;'></iframe></div>
   <script async type="application/javascript" src="https://a.magsrv.com/ad-provider.js"></script>
   <script src="/app.js"></script>
 </body>

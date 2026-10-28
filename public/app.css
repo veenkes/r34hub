@@ -1802,7 +1802,6 @@ body.mode-reels #grid-density-bar { display: none !important; }
   /* Hide redundant text labels on ultra-narrow mobile top bar to prevent collisions */
   .hide-xs { display: none !important; }
   .view-mode-btn span { display: none; }
-  #top-ad-banner { display: none !important; }
 
   /* Mobile Grid S / M / L */
   body.grid-density-s .masonry-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 6px; }
@@ -2634,4 +2633,105 @@ body.domain-menu-open #feed-search-mount {
   .custom-player-bar .player-vol {
     display: none;
   }
+}
+
+
+/* ==========================================================================
+   REAL PARTNER AD UNITS (A-ADS #2460259 & ExoClick #6068261)
+   ========================================================================== */
+.partner-top-banner {
+  margin: 6px 0 12px;
+  padding: 8px 12px;
+  border-radius: 14px;
+  background: rgba(18, 19, 26, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.partner-banner-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.partner-kicker {
+  font-size: 10px;
+  font-weight: 700;
+  color: #71717a;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.partner-banner-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 90px;
+}
+
+.sponsor-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.partner-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 8px 10px 4px;
+}
+
+.partner-card-stage {
+  flex: 1;
+  min-height: 250px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px;
+  background: #0c0d12;
+  overflow: hidden;
+}
+
+.partner-reel-ad {
+  padding: 12px 14px !important;
+  border-radius: 16px !important;
+  background: #12131a !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.partner-reel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.partner-reel-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 90px;
+  background: #0c0d12;
+  border-radius: 10px;
+  padding: 6px;
+  overflow: hidden;
+}
+
+.modal-partner-ad {
+  padding: 10px;
+  border-radius: 12px;
+  background: #0b0d14;
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
