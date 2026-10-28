@@ -17,7 +17,7 @@
       var path = location.pathname;
       var page = 'home';
       if (path.indexOf('/posts/') === 0) page = 'reels';
-      else if (path === '/grid' || path.indexOf('/grid/') === 0) page = 'gallery';
+      else if (path === '/grid' || path.indexOf('/grid/') === 0 || path.indexOf('/tag/') === 0) page = 'gallery';
       else if (path === '/saved' || path.indexOf('/saved/') === 0) page = 'saved';
       else if (path === '/settings' || path.indexOf('/settings/') === 0) page = 'settings';
       document.documentElement.setAttribute('data-page', page);
@@ -582,6 +582,11 @@
             <select id="modal-collection-select" class="btn btn-ghost modal-folder-select" onchange="assignPostCollection(this.value)" aria-label="Collection folder" title="Save to Collection Folder"></select>
             <button id="modal-ai-prompt-btn" class="btn btn-tiny btn-ghost" type="button" title="Copy tags as AI prompt"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-spark"/></svg><span>Prompt</span></button>
             <button id="modal-ai-similar-btn" class="btn btn-tiny btn-ghost" type="button" title="Find similar posts by tags"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-search"/></svg><span>Similar</span></button>
+          </div>
+          <div class="modal-share-row" style="display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:center;">
+            <button id="modal-share-copy-btn" class="btn btn-tiny btn-ghost" type="button" onclick="shareActiveModalPost('copy')"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-share"/></svg><span>Copy Share Link</span></button>
+            <button id="modal-share-x-btn" class="btn btn-tiny btn-ghost" type="button" onclick="shareActiveModalPost('x')" title="Share on X / Twitter"><span>𝕏 Post</span></button>
+            <button id="modal-share-reddit-btn" class="btn btn-tiny btn-ghost" type="button" onclick="shareActiveModalPost('reddit')" title="Share on Reddit"><span>Reddit ↗</span></button>
           </div>
           <div id="modal-ai-prompt-box" class="hidden" style="padding:8px;border-radius:8px;background:#09090b;border:1px solid var(--line);font-family:monospace;font-size:11px;color:var(--muted);word-break:break-word;"></div>
         </div>

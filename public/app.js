@@ -110,7 +110,7 @@ function browsingPosts() {
 function pageForPath() {
   const path = location.pathname;
   if (path.startsWith('/posts/')) return 'reels';
-  if (path === '/grid' || path.startsWith('/grid/')) return 'gallery';
+  if (path === '/grid' || path.startsWith('/grid/') || path.startsWith('/tag/')) return 'gallery';
   if (path === '/saved' || path.startsWith('/saved/')) return 'saved';
   if (path === '/settings' || path.startsWith('/settings/')) return 'settings';
   return 'home';
@@ -197,6 +197,10 @@ function parseTagTokens() {
 }
 
 function readUrlState() {
+  const tagSlug = (location.pathname.match(/^\/tag\/([^/]+)/) || [])[1];
+  if (tagSlug) {
+    state.tags = decodeURIComponent(tagSlug).replace(/\+/g, ' ');
+  }
   const slug = (location.pathname.match(/^\/(?:posts|grid)\/([^/]+)/) || [])[1];
   if (slug) {
     const cleanSlug = decodeURIComponent(slug);
@@ -209,7 +213,8 @@ function readUrlState() {
   if (rating) state.rating = rating;
   const media = urlParams.get('media');
   if (media) state.media = media;
-  if (urlParams.get('tags')) state.tags = urlParams.get('tags');
+  const qTag = urlParams.get('tags') || urlParams.get('q');
+  if (qTag) state.tags = qTag;
   paintChoice('.media-btn', 'media', state.media);
   const input = document.getElementById('tag-search-input');
   if (input) input.value = state.tags;
@@ -1152,6 +1157,11 @@ async function loadPosts(append = false, silent = false) {
     }
     if (spinner) spinner.classList.toggle('is-done', !state.hasMore);
     paintReelsStatus();
+    const deepPostId = new URLSearchParams(location.search).get('post');
+    if (deepPostId && !state.deepPostOpened && state.posts.some(p => String(p.id) === String(deepPostId))) {
+      state.deepPostOpened = true;
+      setTimeout(() => openPostModal(deepPostId), 150);
+    }
   } catch (err) {
     if (err && err.name === 'AbortError') return;
     if (!append && !silent && feedEl) {
@@ -2609,6 +2619,7 @@ window.toggleSavePost = function(postId) {
   } else {
     state.savedPosts.unshift(post);
     showToast('Saved in this browser');
+    if (state.savedPosts.length === 3) maybeShowSmartProBooster('saved_3');
   }
   localStorage.setItem('bp_saved', JSON.stringify(state.savedPosts));
   paintSaveButtons(postId, idx < 0);
@@ -2807,6 +2818,59 @@ window.closeBoardsCompareModal = function() {
   if (modal) modal.classList.add('hidden');
 };
 
+
+let sessionModalOpens = 0;
+
+function maybeShowSmartProBooster(reason = 'power_user') {
+  if (state.isPro) return;
+  if (sessionStorage.getItem('r34hub_pro_booster_shown') === '1') return;
+  sessionStorage.setItem('r34hub_pro_booster_shown', '1');
+  const existing = document.getElementById('smart-pro-booster');
+  if (existing) existing.remove();
+  const card = document.createElement('aside');
+  card.id = 'smart-pro-booster';
+  card.style.cssText = 'position:fixed;right:16px;bottom:20px;z-index:2100;width:min(360px,calc(100vw - 32px));padding:14px 16px;border-radius:16px;background:linear-gradient(180deg,#141926,#0e111a);border:1.5px solid rgba(16,185,129,0.5);box-shadow:0 20px 50px rgba(0,0,0,0.75);color:#f3f4f6;display:flex;flex-direction:column;gap:8px;';
+  card.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+      <span style="font-size:11px;font-weight:800;color:#34d399;text-transform:uppercase;letter-spacing:0.05em;">⚡ R34Hub Pro — Power User Offer</span>
+      <button type="button" onclick="this.closest('#smart-pro-booster').remove()" style="border:0;background:transparent;color:#9ca3af;font-size:16px;line-height:1;padding:4px;cursor:pointer;" aria-label="Dismiss">×</button>
+    </div>
+    <div style="font-size:13px;font-weight:700;color:#fff;line-height:1.35;">Unlock 100% Ad-Free Browsing, Original 4K HD Streams & Unlimited Collections</div>
+    <div style="font-size:12px;color:#9ca3af;">Instant crypto key activation across 5 devices — from <strong style="color:#34d399;">€3.99/mo</strong> or <strong style="color:#fff;">€5.60 for 30 Days</strong>.</div>
+    <div style="display:flex;gap:8px;margin-top:4px;">
+      <a href="/premium" class="btn btn-tiny btn-primary" style="flex:1;justify-content:center;background:#10b981;color:#04130d;font-weight:800;min-height:38px;">Upgrade with Crypto →</a>
+      <button type="button" class="btn btn-tiny btn-ghost" style="min-height:38px;" onclick="this.closest('#smart-pro-booster').remove()">Later</button>
+    </div>
+  `;
+  document.body.appendChild(card);
+}
+
+window.shareActiveModalPost = async function(channel = 'copy') {
+  const post = state.activePost;
+  if (!post) return;
+  const boardSlug = encodeURIComponent((post.source === 'all' || post.source === 'rule34xxx') ? 'rule34.xxx' : (post.source || 'rule34.xxx'));
+  const topTag = (post.characterTags && post.characterTags[0]) || (post.copyrightTags && post.copyrightTags[0]) || (post.tags && post.tags[0]) || '';
+  const shareUrl = `${location.origin}/grid/${boardSlug}${topTag ? '?q=' + encodeURIComponent(topTag) + '&' : '?'}post=${encodeURIComponent(post.id)}`;
+  const shareTitle = `${topTag ? topTag.replace(/_/g, ' ') + ' — ' : ''}${shortBoardName(post)} HD on R34Hub`;
+
+  if (channel === 'x') {
+    const xUrl = `https://x.com/intent/post?text=${encodeURIComponent(shareTitle)}&url=${encodeURIComponent(shareUrl)}`;
+    window.open(xUrl, '_blank', 'noopener');
+    return;
+  }
+  if (channel === 'reddit') {
+    const rUrl = `https://www.reddit.com/submit?url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(shareTitle)}`;
+    window.open(rUrl, '_blank', 'noopener');
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(shareUrl);
+    showToast('Shareable deep link copied to clipboard!');
+  } catch (_) {
+    showToast(shareUrl);
+  }
+};
+
 window.openPostModal = function(postId) {
   const post = state.posts.find(p => p.id === postId) || state.savedPosts.find(p => p.id === postId);
   if (!post) return;
@@ -2886,6 +2950,8 @@ window.openPostModal = function(postId) {
   renderRelatedPostsInModal(post);
   document.getElementById('modal-tags-list').innerHTML = tagGroupsHtml(post);
   document.getElementById('post-modal').classList.remove('hidden');
+  sessionModalOpens += 1;
+  if (sessionModalOpens === 6) maybeShowSmartProBooster('modal_6');
 };
 
 window.closePostModal = function() {
@@ -2987,7 +3053,9 @@ function applyPage(tabId, opts = {}) {
   const heading = document.getElementById('feed-heading');
   if (heading) heading.textContent = tabId === 'gallery' ? 'Grid' : 'Posts';
   const titles = { home: 'R34Hub — Search every board in one feed', reels: 'Posts — R34Hub', gallery: 'Grid — R34Hub', saved: 'Saved — R34Hub', settings: 'Settings — R34Hub' };
-  document.title = titles[tabId] || titles.home;
+  if (!location.pathname.startsWith('/tag/') && !new URLSearchParams(location.search).get('q')) {
+    document.title = titles[tabId] || titles.home;
+  }
   if (tabId === 'home') placeSearch('home');
   else if (browsingPosts()) placeSearch('feed');
   const vReels = document.getElementById('view-btn-reels');

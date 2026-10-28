@@ -2868,7 +2868,7 @@ app.post("/api/hubcloud/submit-tx", async (req, res) => {
   });
 });
 
-// 5. Production SEO Endpoints (/robots.txt, /sitemap.xml & IndexNow verification)
+// 5. Production SEO Endpoints (/robots.txt, /sitemap.xml, IndexNow & SSR /tag/:slug)
 app.get("/6d05d9a7540ffc84889838dd34fd8554.html", (req, res) => {
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.setHeader("Cache-Control", "public, max-age=86400");
@@ -2881,6 +2881,49 @@ app.get("/r34hub9f4a8821emil2026.txt", (req, res) => {
   res.send("r34hub9f4a8821emil2026");
 });
 
+app.get("/r34hubindexnow2026key.txt", (req, res) => {
+  res.setHeader("Content-Type", "text/plain; charset=utf-8");
+  res.setHeader("Cache-Control", "public, max-age=86400");
+  res.send("r34hubindexnow2026key");
+});
+
+const SEO_HIGH_VOLUME_TAGS = [
+  "genshin_impact",
+  "blue_archive",
+  "hololive",
+  "zenless_zone_zero",
+  "honkai_star_rail",
+  "frieren",
+  "overwatch",
+  "nier_automata",
+  "cyberpunk_edgerunners",
+  "chainsaw_man",
+  "jujutsu_kaisen",
+  "one_piece",
+  "naruto",
+  "elden_ring",
+  "baldurs_gate_3",
+  "pokemon",
+  "league_of_legends",
+  "valorant",
+  "street_fighter",
+  "resident_evil",
+  "final_fantasy",
+  "nikke",
+  "wuthering_waves",
+  "azur_lane",
+  "fate_grand_order",
+  "animated",
+  "video",
+  "1girl",
+  "highres",
+  "raiden_shogun",
+  "2b_(nier:automata)",
+  "tifa_lockhart",
+  "makima_(chainsaw_man)",
+  "yor_forger"
+];
+
 app.get("/robots.txt", (req, res) => {
   const proto = req.get("x-forwarded-proto") || req.protocol || "https";
   const host = req.get("host") || "r34hub-five.vercel.app";
@@ -2892,6 +2935,8 @@ app.get("/robots.txt", (req, res) => {
     "Allow: /",
     "Allow: /posts/",
     "Allow: /grid/",
+    "Allow: /tag/",
+    "Allow: /premium",
     "Allow: /hubcloud",
     "Disallow: /api/admin/",
     "",
@@ -2907,47 +2952,26 @@ app.get("/sitemap.xml", (req, res) => {
 
   const coreRoutes = [
     { path: "/", priority: "1.0", changefreq: "hourly" },
-    { path: "/posts/rule34.xxx", priority: "0.95", changefreq: "hourly" },
+    { path: "/premium", priority: "0.95", changefreq: "daily" },
     { path: "/grid/rule34.xxx", priority: "0.95", changefreq: "hourly" },
-    { path: "/posts/danbooru", priority: "0.9", changefreq: "hourly" },
     { path: "/grid/danbooru", priority: "0.9", changefreq: "hourly" },
-    { path: "/posts/e621", priority: "0.9", changefreq: "hourly" },
     { path: "/grid/e621", priority: "0.9", changefreq: "hourly" },
+    { path: "/grid/yandere", priority: "0.88", changefreq: "daily" },
+    { path: "/grid/paheal", priority: "0.9", changefreq: "hourly" },
+    { path: "/grid/konachan", priority: "0.85", changefreq: "daily" },
+    { path: "/grid/safebooru", priority: "0.85", changefreq: "daily" },
+    { path: "/grid/sakugabooru", priority: "0.85", changefreq: "daily" },
+    { path: "/grid/xbooru", priority: "0.85", changefreq: "daily" },
+    { path: "/grid/tbib", priority: "0.85", changefreq: "daily" },
+    { path: "/grid/aibooru", priority: "0.85", changefreq: "daily" },
+    { path: "/posts/rule34.xxx", priority: "0.92", changefreq: "hourly" },
+    { path: "/posts/danbooru", priority: "0.88", changefreq: "hourly" },
+    { path: "/posts/e621", priority: "0.88", changefreq: "hourly" },
     { path: "/posts/yandere", priority: "0.85", changefreq: "daily" },
-    { path: "/grid/yandere", priority: "0.85", changefreq: "daily" },
     { path: "/posts/paheal", priority: "0.85", changefreq: "hourly" },
-    { path: "/grid/paheal", priority: "0.85", changefreq: "hourly" },
-    { path: "/posts/safebooru", priority: "0.8", changefreq: "daily" },
-    { path: "/posts/konachan", priority: "0.8", changefreq: "daily" },
-    { path: "/posts/sakugabooru", priority: "0.8", changefreq: "daily" },
     { path: "/saved", priority: "0.7", changefreq: "weekly" },
     { path: "/settings", priority: "0.6", changefreq: "monthly" },
-    { path: "/premium", priority: "0.9", changefreq: "weekly" },
-    { path: "/premium", priority: "0.9", changefreq: "weekly" },
     { path: "/hubcloud", priority: "0.85", changefreq: "weekly" }
-  ];
-
-  const seoTags = [
-    "genshin_impact",
-    "blue_archive",
-    "hololive",
-    "zenless_zone_zero",
-    "honkai:_star_rail",
-    "frieren",
-    "overwatch",
-    "cyberpunk",
-    "animated",
-    "1girl",
-    "naruto",
-    "one_piece",
-    "elden_ring",
-    "nier:_automata",
-    "pokemon",
-    "league_of_legends",
-    "valorant",
-    "chainsaw_man",
-    "jujutsu_kaisen",
-    "street_fighter"
   ];
 
   const urls = [];
@@ -2960,16 +2984,16 @@ app.get("/sitemap.xml", (req, res) => {
   </url>`);
   });
 
-  seoTags.forEach(tag => {
+  SEO_HIGH_VOLUME_TAGS.forEach(tag => {
     const enc = encodeURIComponent(tag);
     urls.push(`  <url>
-    <loc>${baseUrl}/posts/rule34.xxx?tags=${enc}</loc>
+    <loc>${baseUrl}/tag/${enc}</loc>
     <lastmod>${today}</lastmod>
     <changefreq>hourly</changefreq>
-    <priority>0.85</priority>
+    <priority>0.90</priority>
   </url>`);
     urls.push(`  <url>
-    <loc>${baseUrl}/grid/rule34.xxx?tags=${enc}</loc>
+    <loc>${baseUrl}/grid/rule34.xxx?q=${enc}</loc>
     <lastmod>${today}</lastmod>
     <changefreq>hourly</changefreq>
     <priority>0.85</priority>
@@ -2986,7 +3010,7 @@ ${urls.join("\n")}
   res.send(xml);
 });
 
-// HTML Page Routes for /admin, /hubcloud, and /posts/*
+// HTML Page Routes for /admin, /hubcloud, /tag/:slug, and /posts/*
 app.get("/admin", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "admin.html"));
 });
@@ -3015,12 +3039,63 @@ app.get("/apple-touch-icon.png", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "apple-touch-icon.png"));
 });
 
-function sendIndex(_req, res) {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
+function formatTagHeadline(raw) {
+  return String(raw || "")
+    .replace(/[_:+]+/g, " ")
+    .trim()
+    .replace(/\b\w/g, c => c.toUpperCase());
 }
 
-app.get("/posts/:source", sendIndex);
-app.get(["/posts", "/reels", "/grid", "/grid/:source", "/saved", "/settings"], sendIndex);
+function sendEnrichedIndex(req, res) {
+  trackVisitorHit(req, "seo_landing");
+  const proto = req.get("x-forwarded-proto") || req.protocol || "https";
+  const host = req.get("host") || "r34hub-five.vercel.app";
+  const baseUrl = `${proto}://${host}`;
+
+  const rawTag = req.params.slug || req.query.q || req.query.tags || "";
+  const rawBoard = req.params.source || "";
+  const rawIndex = fs.readFileSync(path.join(__dirname, "public", "index.html"), "utf8");
+
+  let pageTitle = "R34Hub — Multi-Board Rule 34 & Booru HD Video/Art Explorer";
+  let pageDesc = "Search and stream HD anime, Rule 34, and sakuga videos & artwork across 11 connected booru boards in one unified feed.";
+  let canonicalPath = req.path || "/";
+
+  if (rawTag) {
+    const cleanName = formatTagHeadline(decodeURIComponent(String(rawTag)));
+    pageTitle = `${cleanName} Rule 34 & Booru HD Videos/Art — R34Hub Multi-Board Explorer`;
+    pageDesc = `Browse high-resolution ${cleanName} Rule 34 videos, animated MP4/WebM clips, and anime fanart across Rule34.xxx, Danbooru, e621, Yande.re, and Sakugabooru on R34Hub.`;
+  } else if (rawBoard) {
+    const cleanBoard = formatTagHeadline(decodeURIComponent(String(rawBoard)));
+    pageTitle = `${cleanBoard} HD Grid & Video Feed — R34Hub Multi-Board Explorer`;
+    pageDesc = `Explore top trending and newest posts from ${cleanBoard} with instant tag autocomplete, inline video playback, and zero-clutter masonry grid.`;
+  }
+
+  const escAttr = s => String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const seoMetaBlock = [
+    `<title>${escAttr(pageTitle)}</title>`,
+    `<meta name="description" content="${escAttr(pageDesc)}" />`,
+    `<link rel="canonical" href="${escAttr(baseUrl + canonicalPath)}" />`,
+    `<meta property="og:type" content="website" />`,
+    `<meta property="og:site_name" content="R34Hub" />`,
+    `<meta property="og:title" content="${escAttr(pageTitle)}" />`,
+    `<meta property="og:description" content="${escAttr(pageDesc)}" />`,
+    `<meta property="og:url" content="${escAttr(baseUrl + req.originalUrl)}" />`,
+    `<meta property="og:image" content="${escAttr(baseUrl + "/apple-touch-icon.png?v=2")}" />`,
+    `<meta name="twitter:card" content="summary_large_image" />`,
+    `<meta name="twitter:title" content="${escAttr(pageTitle)}" />`,
+    `<meta name="twitter:description" content="${escAttr(pageDesc)}" />`,
+    `<meta name="twitter:image" content="${escAttr(baseUrl + "/apple-touch-icon.png?v=2")}" />`
+  ].join("\n  ");
+
+  const enriched = rawIndex.replace(/<title>.*?<\/title>/i, seoMetaBlock);
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  res.send(enriched);
+}
+
+app.get("/", sendEnrichedIndex);
+app.get("/tag/:slug", sendEnrichedIndex);
+app.get("/posts/:source", sendEnrichedIndex);
+app.get(["/posts", "/reels", "/grid", "/grid/:source", "/saved", "/settings"], sendEnrichedIndex);
 
 app.get("/api/health", (req, res) => {
   res.setHeader("Cache-Control", "no-store");
