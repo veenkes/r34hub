@@ -151,6 +151,10 @@
               <label class="block text-zinc-400 mb-1">Webhook Signing Secret (`x-webhook-secret`)</label>
               <input id="pay-webhook-secret" type="text" readonly value="whsec_r34hub_live_8f92a4c7e1b093d6f5a2c8e4" class="w-full bg-[#09090B] border subtle-border rounded-lg px-3 py-2 text-zinc-300 font-mono" />
             </div>
+            <div>
+              <label class="block text-zinc-400 mb-1">Stripe Secret Key (`sk_live_...` — Optional: enables direct Stripe Checkout API on `/ru/premium`)</label>
+              <input id="pay-stripe-secret" type="password" placeholder="sk_live_... (Leave blank to use Instant Card-to-USDT Bridge)" class="w-full bg-[#09090B] border subtle-border rounded-lg px-3 py-2 text-indigo-300 font-mono" />
+            </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div>
                 <label class="block text-zinc-400 mb-1">Stripe Monthly Link (€7.00/mo)</label>
@@ -517,7 +521,9 @@
     }
 
     async function savePaymentSettings() {
+      const stripeSecretVal = document.getElementById('pay-stripe-secret').value.trim();
       const paymentConfig = {
+        ...(stripeSecretVal ? { stripeSecretKey: stripeSecretVal } : {}),
         stripeMonthlyUrl: document.getElementById('pay-stripe-monthly').value.trim(),
         stripeAnnualUrl: document.getElementById('pay-stripe-annual').value.trim(),
         sellApp30dUrl: document.getElementById('pay-sellapp-30d').value.trim(),

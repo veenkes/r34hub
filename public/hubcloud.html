@@ -1,491 +1,999 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>HubCloud.dev — Cloud Media Indexing & Discord/Telegram Role Sync Engine</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b0b0e" />
+  <title>Premium | R34Hub</title>
   <style>
-    body { background: #09090B; color: #F4F4F5; font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif; }
-    .subtle-border { border-color: rgba(255,255,255,0.08); }
+    :root {
+      --bg: #0b0b0e;
+      --surface: #131318;
+      --surface-2: #1c1c24;
+      --line: rgba(255, 255, 255, 0.08);
+      --line-strong: rgba(255, 255, 255, 0.16);
+      --text: #f3f3f7;
+      --muted: #a0a0b0;
+      --faint: #6c6c7c;
+      --accent: #38bdf8;
+      --accent-ink: #04131d;
+      --good: #3dd68c;
+      --stripe: #635bff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      line-height: 1.5;
+    }
+    a { color: inherit; text-decoration: none; }
+    button, input, select { font: inherit; color: inherit; }
+    button { cursor: pointer; }
+    .hidden { display: none !important; }
+
+    /* Top Minimal Bar (matches r34.app/ru/premium) */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      background: rgba(11, 11, 14, 0.88);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--line);
+    }
+    .topbar-inner {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 0 18px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 750;
+      font-size: 16px;
+      letter-spacing: -0.02em;
+    }
+    .brand-mark {
+      display: inline-grid;
+      place-items: center;
+      padding: 3px 8px;
+      border-radius: 7px;
+      background: var(--text);
+      color: var(--bg);
+      font-weight: 800;
+      font-size: 13px;
+    }
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .pill-btn {
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .pill-btn:hover, .pill-btn.is-on {
+      color: var(--text);
+      border-color: var(--line-strong);
+      background: var(--surface-2);
+    }
+
+    /* Main Container */
+    .page {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 40px 18px 72px;
+    }
+
+    /* Hero */
+    .hero {
+      text-align: center;
+      max-width: 640px;
+      margin: 0 auto 28px;
+    }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 999px;
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.28);
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 650;
+      margin-bottom: 14px;
+    }
+    .hero h1 {
+      margin: 0 0 12px;
+      font-size: clamp(26px, 4.5vw, 38px);
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      line-height: 1.15;
+    }
+    .hero p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    /* Social Proof Quotes (r34.app/ru/premium style) */
+    .quotes {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 10px;
+      margin-bottom: 32px;
+    }
+    .quote {
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      font-size: 13px;
+      color: var(--text);
+    }
+    .quote span {
+      display: block;
+      margin-top: 6px;
+      color: var(--faint);
+      font-size: 11px;
+    }
+
+    /* Included Perks Strip */
+    .perks-box {
+      padding: 18px 20px;
+      border-radius: 16px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      margin-bottom: 24px;
+    }
+    .perks-title {
+      margin: 0 0 12px;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .perks-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 10px 16px;
+    }
+    .perk {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 550;
+    }
+    .perk i {
+      display: inline-grid;
+      place-items: center;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: rgba(61, 214, 140, 0.16);
+      color: var(--good);
+      font-style: normal;
+      font-size: 12px;
+      font-weight: 800;
+      flex: none;
+    }
+
+    /* 3 Clean Pricing Cards (like r34.app/ru/premium) */
+    .plans-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+    .plan-card {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 22px 20px;
+      border-radius: 18px;
+      background: var(--surface);
+      border: 1.5px solid var(--line);
+      transition: border-color 0.15s ease, transform 0.15s ease;
+      cursor: pointer;
+    }
+    .plan-card:hover {
+      border-color: var(--line-strong);
+    }
+    .plan-card.is-selected {
+      background: linear-gradient(180deg, rgba(56, 189, 248, 0.09) 0%, var(--surface) 100%);
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.35);
+    }
+    .plan-badge {
+      position: absolute;
+      top: -11px;
+      right: 16px;
+      padding: 3px 10px;
+      border-radius: 999px;
+      background: var(--accent);
+      color: var(--accent-ink);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+    .plan-name {
+      font-size: 16px;
+      font-weight: 700;
+      margin: 0 0 4px;
+    }
+    .plan-sub {
+      color: var(--muted);
+      font-size: 12px;
+      margin: 0 0 16px;
+    }
+    .plan-price {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+    .plan-price strong {
+      font-size: 34px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+    }
+    .plan-price span {
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .plan-strike {
+      color: var(--faint);
+      text-decoration: line-through;
+      font-size: 14px;
+      margin-right: 4px;
+    }
+    .plan-note {
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 18px;
+    }
+    .plan-select-indicator {
+      width: 100%;
+      padding: 10px 14px;
+      border-radius: 11px;
+      border: 1px solid var(--line);
+      background: var(--surface-2);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 650;
+      text-align: center;
+    }
+    .plan-card.is-selected .plan-select-indicator {
+      background: var(--accent);
+      color: var(--accent-ink);
+      border-color: transparent;
+      font-weight: 750;
+    }
+
+    /* Unified Clean Checkout Action Panel (Stripe + Crypto) */
+    .checkout-box {
+      padding: 24px;
+      border-radius: 18px;
+      background: var(--surface);
+      border: 1px solid var(--line-strong);
+      margin-bottom: 24px;
+    }
+    .checkout-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .checkout-head h2 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 750;
+    }
+    .checkout-head p {
+      margin: 2px 0 0;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .email-row {
+      margin-bottom: 14px;
+    }
+    .email-row label {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .field {
+      width: 100%;
+      padding: 11px 14px;
+      border-radius: 11px;
+      border: 1px solid var(--line-strong);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      outline: none;
+    }
+    .field:focus {
+      border-color: var(--accent);
+    }
+    .pay-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    @media (max-width: 640px) {
+      .pay-buttons { grid-template-columns: 1fr; }
+    }
+    .btn-stripe {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 14px 18px;
+      border-radius: 12px;
+      border: 0;
+      background: var(--stripe);
+      color: #fff;
+      font-size: 14px;
+      font-weight: 700;
+      box-shadow: 0 4px 18px rgba(99, 91, 255, 0.28);
+    }
+    .btn-stripe:hover { filter: brightness(1.08); }
+    .btn-crypto {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 14px 18px;
+      border-radius: 12px;
+      border: 1px solid rgba(61, 214, 140, 0.4);
+      background: rgba(61, 214, 140, 0.12);
+      color: #6ee7b7;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .btn-crypto:hover { background: rgba(61, 214, 140, 0.2); }
+
+    /* Expandable Status / Card / Crypto Drawer inside Checkout */
+    .drawer-box {
+      margin-top: 16px;
+      padding: 16px;
+      border-radius: 14px;
+      background: var(--bg);
+      border: 1px solid var(--line);
+    }
+    .gateway-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .gw-btn {
+      display: block;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: var(--surface-2);
+      border: 1px solid var(--line-strong);
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 650;
+      text-align: center;
+    }
+    .gw-btn:hover { border-color: var(--accent); }
+    .gw-btn.primary { background: var(--stripe); border-color: transparent; color: #fff; }
+
+    /* License Activation Box */
+    .license-box {
+      padding: 20px;
+      border-radius: 16px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      margin-bottom: 32px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+    }
+    .license-form {
+      display: flex;
+      gap: 8px;
+      flex: 1;
+      min-width: 260px;
+    }
+    .btn-activate {
+      padding: 0 18px;
+      border-radius: 11px;
+      border: 0;
+      background: var(--accent);
+      color: var(--accent-ink);
+      font-weight: 750;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    /* FAQ Section (r34.app/ru/premium style) */
+    .faq-section h3 {
+      font-size: 18px;
+      font-weight: 750;
+      margin: 0 0 14px;
+    }
+    .faq-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 12px;
+    }
+    .faq-card {
+      padding: 16px;
+      border-radius: 14px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+    }
+    .faq-card h4 {
+      margin: 0 0 6px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .faq-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 60;
+      padding: 11px 16px;
+      border-radius: 12px;
+      background: var(--surface-2);
+      border: 1px solid var(--line-strong);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 650;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+    }
   </style>
 </head>
-<body class="min-h-screen flex flex-col">
-  <!-- TOP SFW SAAS NAVBAR -->
-  <header class="border-b subtle-border bg-[#0D0D10]/90 backdrop-blur-md sticky top-0 z-40">
-    <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-      <div class="flex items-center gap-2.5">
-        <div class="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center font-bold text-sm text-white">HC</div>
-        <div>
-          <span class="font-bold text-base text-white">HubCloud.dev</span>
-          <span class="hidden sm:inline-block ml-2 px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 text-[11px]">B2B Cloud Media Sync & Membership Portal</span>
-        </div>
-      </div>
-      <div class="flex items-center gap-3 text-xs">
-        <a href="/" class="px-3 py-1.5 rounded-lg bg-[#121215] hover:bg-[#18181C] border subtle-border text-zinc-300">← Return to R34Hub.app</a>
-        <a href="/admin" class="px-3 py-1.5 rounded-lg bg-[#121215] hover:bg-[#18181C] border subtle-border text-zinc-400">Admin</a>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a href="/" class="brand">
+        <span class="brand-mark">R34</span>
+        <span>Hub Premium</span>
+      </a>
+      <div class="top-actions">
+        <button type="button" class="pill-btn is-on" id="lang-ru" onclick="setLang('ru')">RU</button>
+        <button type="button" class="pill-btn" id="lang-en" onclick="setLang('en')">EN</button>
+        <a href="/" class="pill-btn" id="nav-back">← На сайт</a>
       </div>
     </div>
   </header>
 
-  <main class="max-w-5xl w-full mx-auto px-4 py-10 space-y-10">
-    <!-- HERO SECTION (100% SFW Stripe-Compliant SaaS Copy, like refinedsoft.com) -->
-    <section class="text-center space-y-3 max-w-2xl mx-auto">
-      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/25 text-indigo-300 text-xs font-medium">
-        <span>Stripe EUR & Multi-Chain Crypto Portal • Automatic License Key Fulfillment</span>
-      </div>
-      <h1 class="text-3xl sm:text-4xl font-bold text-white tracking-tight">
-        Premium Cloud Features, Tag Sync & Discord Role Access
-      </h1>
-      <p class="text-sm text-zinc-400 leading-relaxed">
-        Instant digital license delivery (<code class="text-zinc-200 font-mono">SHOP2-XXXX-XXXX-XXXX</code> / <code class="text-zinc-200 font-mono">SLX-XXXX-XXXX-XXXX</code>) via email & live order status. Discreet bank statement descriptor: <strong class="text-zinc-200" id="hero-descriptor">HUBCLOUD.DEV * CLOUD SYNC</strong>.
-      </p>
+  <main class="page">
+    <!-- HERO -->
+    <section class="hero">
+      <div class="hero-badge" id="t-badge">✦ R34Hub Premium • Мгновенная выдача ключа</div>
+      <h1 id="t-title">Просмотр без рекламы и сохранение публикаций</h1>
+      <p id="t-subtitle">Сосредоточьтесь на контенте без отвлечений, открывайте все 11 бордов, скачивайте видео и страницы в 1 клик.</p>
     </section>
 
-    <!-- PRICING TIERS -->
-    <section class="grid grid-cols-1 md:grid-cols-4 gap-4">
-      <!-- Monthly -->
-      <div class="p-5 rounded-2xl bg-[#121215] border subtle-border flex flex-col justify-between space-y-5">
-        <div class="space-y-2">
-          <div class="text-xs font-semibold text-zinc-400 uppercase">Monthly Plan</div>
-          <div class="text-3xl font-bold text-white">€7.00<span class="text-xs font-normal text-zinc-500">/mo</span></div>
-          <p class="text-xs text-zinc-400">Billed monthly in EUR via Ghost Portal + Stripe Checkout or Crypto (-20%).</p>
-          <ul class="text-xs text-zinc-300 space-y-1.5 pt-2">
-            <li>✓ Ad-Free Cloud Interface</li>
-            <li>✓ All 11 Index Engines</li>
-            <li>✓ Up to 5 Active Devices</li>
-          </ul>
-        </div>
-        <button onclick="openCheckoutModal('monthly','stripe_hubcloud',7.00)" class="w-full py-2.5 rounded-xl bg-[#18181C] hover:bg-[#222228] border subtle-border text-xs font-semibold text-white">
-          Subscribe (€7.00/mo)
-        </button>
+    <!-- SOCIAL PROOF QUOTES -->
+    <section class="quotes">
+      <div class="quote">
+        <span id="q-1" style="color:var(--text);font-size:13px;margin:0;">«Пропускаешь всю рекламу и просто наслаждаешься лентой без баннеров»</span>
+        <span>Discord</span>
       </div>
-
-      <!-- Yearly (Featured) -->
-      <div class="p-5 rounded-2xl bg-[#18181C] border-2 border-indigo-500 flex flex-col justify-between space-y-5 relative">
-        <span class="absolute -top-2.5 right-4 px-2 py-0.5 rounded bg-indigo-600 text-[10px] font-bold text-white">MOST POPULAR • SAVE 29%</span>
-        <div class="space-y-2">
-          <div class="text-xs font-semibold text-indigo-300 uppercase">Annual Pro</div>
-          <div class="text-3xl font-bold text-white">€4.97<span class="text-xs font-normal text-zinc-400">/mo</span></div>
-          <p class="text-xs text-zinc-400">Billed €59.99/yr in EUR via Stripe Checkout (€47.99 with Crypto).</p>
-          <ul class="text-xs text-zinc-200 space-y-1.5 pt-2">
-            <li>✓ Everything in Monthly</li>
-            <li>✓ 1-Click Batch ZIP Archive</li>
-            <li>✓ Priority AI Video Queue</li>
-          </ul>
-        </div>
-        <button onclick="openCheckoutModal('annual','stripe_hubcloud',59.99)" class="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white shadow-lg">
-          Subscribe (€4.97/mo) →
-        </button>
+      <div class="quote">
+        <span id="q-2" style="color:var(--text);font-size:13px;margin:0;">«Фактически лучший поисковик и Reels-лента для телефона»</span>
+        <span id="q-2-src">Отзывы</span>
       </div>
-
-      <!-- 30-Day Pass -->
-      <div class="p-5 rounded-2xl bg-[#121215] border subtle-border flex flex-col justify-between space-y-5">
-        <div class="space-y-2">
-          <div class="text-xs font-semibold text-zinc-400 uppercase">30-Day Pass</div>
-          <div class="text-3xl font-bold text-white">€12.99</div>
-          <p class="text-xs text-zinc-400">One-time payment via Sell.app or Crypto. No recurring billing.</p>
-          <ul class="text-xs text-zinc-300 space-y-1.5 pt-2">
-            <li>✓ 30 Days Full Pro Access</li>
-            <li>✓ Zero Auto-Renewal</li>
-            <li>✓ Instant SHOP2- Key</li>
-          </ul>
-        </div>
-        <button onclick="openCheckoutModal('30d_pass','sellapp',12.99)" class="w-full py-2.5 rounded-xl bg-[#18181C] hover:bg-[#222228] border subtle-border text-xs font-semibold text-white">
-          Buy 30-Day Pass (€12.99)
-        </button>
+      <div class="quote">
+        <span id="q-3" style="color:var(--text);font-size:13px;margin:0;">«Скачивать видео в оригинале и пакетно сохранять страницы — топ»</span>
+        <span>Discord</span>
       </div>
-
-      <!-- Lifetime Pass -->
-      <div class="p-5 rounded-2xl bg-[#121215] border subtle-border flex flex-col justify-between space-y-5">
-        <div class="space-y-2">
-          <div class="text-xs font-semibold text-emerald-400 uppercase">Lifetime VIP</div>
-          <div class="text-3xl font-bold text-white">€199.99</div>
-          <p class="text-xs text-zinc-400">Pay once, keep forever. Extra 20% off with Crypto (USDT/BTC/SOL/ETH/TON).</p>
-          <ul class="text-xs text-zinc-300 space-y-1.5 pt-2">
-            <li>✓ Permanent VIP License</li>
-            <li>✓ 5 Devices Simultaneously</li>
-            <li>✓ Crypto Discount (€159.99)</li>
-          </ul>
-        </div>
-        <button onclick="openCheckoutModal('lifetime','crypto',199.99)" class="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-white">
-          Buy Lifetime (Card / Crypto)
-        </button>
+      <div class="quote">
+        <span id="q-4" style="color:var(--text);font-size:13px;margin:0;">«Дополнительные закрытые борды открывают кучу редких авторов»</span>
+        <span id="q-4-src">Отзывы</span>
       </div>
     </section>
 
-    <!-- LIVE CHECKOUT & INSTANT KEY FULFILLMENT BOX -->
-    <section id="checkout-panel" class="p-6 rounded-2xl bg-[#121215] border subtle-border max-w-3xl mx-auto space-y-5">
-      <div class="flex flex-wrap items-center justify-between gap-2 border-b subtle-border pb-3">
+    <!-- ALL PLANS INCLUDE -->
+    <section class="perks-box">
+      <h2 class="perks-title" id="t-perks-title">Все планы включают…</h2>
+      <div class="perks-grid">
+        <div class="perk"><i>✓</i><span id="p-1">Полное отключение всей рекламы</span></div>
+        <div class="perk"><i>✓</i><span id="p-2">Все 11 Booru-бордов (включая Pro)</span></div>
+        <div class="perk"><i>✓</i><span id="p-3">Скачивание HD видео и всей страницы</span></div>
+        <div class="perk"><i>✓</i><span id="p-4">До 5 устройств по одному ключу</span></div>
+      </div>
+    </section>
+
+    <!-- 3 PRICING CARDS (like r34.app/ru/premium) -->
+    <section class="plans-grid" role="radiogroup" aria-label="Тарифы Premium">
+      <!-- 30 Days -->
+      <div class="plan-card" id="card-monthly" onclick="selectPlan('monthly')">
         <div>
-          <h2 class="text-base font-bold text-white" id="chk-title">Instant Digital License Checkout — Annual Pro (€59.99 EUR)</h2>
-          <p class="text-xs text-zinc-400">Choose Card/EUR (Stripe / Sell.app) or Instant Crypto Invoice (-20% discount). Live order polling delivers your key automatically once confirmed.</p>
+          <h3 class="plan-name" id="plan-m-title">30 дней доступа</h3>
+          <p class="plan-sub" id="plan-m-sub">Месячный доступ</p>
+          <div class="plan-price">
+            <strong>€7</strong>
+            <span id="plan-m-unit">/ мес.</span>
+          </div>
+          <p class="plan-note" id="plan-m-note">€5.60 при оплате криптовалютой (−20%)</p>
         </div>
-        <span class="px-2.5 py-1 rounded bg-emerald-500/15 text-emerald-300 text-xs font-mono" id="chk-badge">EUR • TLS 1.3</span>
+        <div class="plan-select-indicator" id="btn-sel-monthly">Выбрать 30 дней</div>
       </div>
 
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+      <!-- Annual (Best Value) -->
+      <div class="plan-card is-selected" id="card-annual" onclick="selectPlan('annual')">
+        <span class="plan-badge" id="plan-a-badge">Выгода 29% • Популярный</span>
         <div>
-          <label class="block text-zinc-400 mb-1">Delivery Email Address</label>
-          <input id="chk-email" type="email" value="" placeholder="you@email.com" class="w-full bg-[#09090B] border subtle-border rounded-lg px-3 py-2 text-white" />
+          <h3 class="plan-name" id="plan-a-title">Годовой Pro (365 дней)</h3>
+          <p class="plan-sub" id="plan-a-sub">Оплата раз в год (€59.99)</p>
+          <div class="plan-price">
+            <span class="plan-strike">€7.00</span>
+            <strong>€4.97</strong>
+            <span id="plan-a-unit">/ мес.</span>
+          </div>
+          <p class="plan-note" id="plan-a-note">€47.99 за весь год в крипте (−20%)</p>
         </div>
+        <div class="plan-select-indicator" id="btn-sel-annual">Выбрано • €4.97 / мес.</div>
+      </div>
+
+      <!-- Lifetime -->
+      <div class="plan-card" id="card-lifetime" onclick="selectPlan('lifetime')">
         <div>
-          <label class="block text-zinc-400 mb-1">Payment Rail</label>
-          <select id="chk-provider" onchange="onProviderChange()" class="w-full bg-[#09090B] border subtle-border rounded-lg px-3 py-2 text-white">
-            <option value="stripe_hubcloud">Card / Apple Pay (HubCloud.dev Stripe EUR)</option>
-            <option value="sellapp">Sell.app Storefront (Card / PayPal / Crypto)</option>
-            <option value="crypto">Instant Crypto Invoice (USDT / BTC / SOL / ETH / TON • -20%)</option>
-          </select>
+          <h3 class="plan-name" id="plan-l-title">Пожизненно (Lifetime)</h3>
+          <p class="plan-sub" id="plan-l-sub">Единовременный платёж навсегда</p>
+          <div class="plan-price">
+            <span class="plan-strike">€699.99</span>
+            <strong>€199.99</strong>
+          </div>
+          <p class="plan-note" id="plan-l-note">€159.99 при оплате криптовалютой (−20%)</p>
         </div>
-        <div id="crypto-coin-wrap" class="hidden">
-          <label class="block text-zinc-400 mb-1">Crypto Network (-20% OFF)</label>
-          <select id="chk-crypto-coin" onchange="updateCryptoInvoicePreview()" class="w-full bg-[#09090B] border subtle-border rounded-lg px-3 py-2 text-emerald-300 font-mono">
-            <option value="USDT_TRC20">USDT (TRC-20 Tron)</option>
-            <option value="BTC">BTC (Bitcoin Native SegWit)</option>
-            <option value="SOL">SOL (Solana Mainnet)</option>
-            <option value="ETH">ETH / USDT (ERC-20)</option>
-            <option value="TON">TON (The Open Network)</option>
-            <option value="XMR">XMR (Monero Privacy)</option>
-          </select>
+        <div class="plan-select-indicator" id="btn-sel-lifetime">Выбрать Навсегда</div>
+      </div>
+    </section>
+
+    <!-- CLEAN CHECKOUT ACTION BOX -->
+    <section class="checkout-box" id="checkout-panel">
+      <div class="checkout-head">
+        <div>
+          <h2 id="chk-heading">Оформление: Годовой Pro — €59.99 (€4.97/мес)</h2>
+          <p id="chk-sub">Лицензионный ключ выдается автоматически сразу после подтверждения оплаты.</p>
         </div>
       </div>
 
-      <div class="flex flex-col sm:flex-row gap-3">
-        <button onclick="completeStorefrontPurchase()" id="chk-submit-btn" class="flex-1 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-bold text-white shadow-lg">
-          Create Live Order & Continue to Checkout →
+      <div class="email-row">
+        <label for="chk-email" id="lbl-email">Ваш Email (для отправки и восстановления лицензионного ключа)</label>
+        <input id="chk-email" class="field" type="email" placeholder="you@email.com" autocomplete="email" />
+      </div>
+
+      <div class="pay-buttons">
+        <button type="button" class="btn-stripe" onclick="startStripeCardCheckout()">
+          <span>💳</span>
+          <span id="btn-pay-card">Оплатить картой (Stripe / Apple Pay)</span>
         </button>
-        <a id="chk-external-gateway-link" href="#" target="_blank" rel="noopener" class="hidden px-4 py-3 rounded-xl bg-[#18181C] hover:bg-zinc-800 border subtle-border text-xs font-semibold text-zinc-200 text-center">
-          Open External Checkout Portal ↗
-        </a>
+        <button type="button" class="btn-crypto" onclick="startCryptoCheckout()">
+          <span>⚡</span>
+          <span id="btn-pay-crypto">Оплатить криптовалютой (−20%)</span>
+        </button>
       </div>
 
-      <!-- 1-Click Card-to-USDT TRC-20 Instant Checkout Box (Visa / MasterCard / Apple Pay / Google Pay) -->
-      <div id="card-invoice-box" class="p-4 rounded-xl bg-[#09090B] border border-indigo-500/30 space-y-3 text-xs">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <span class="text-indigo-300 font-bold uppercase font-mono">💳 VISA / MASTERCARD / APPLE PAY INSTANT CHECKOUT</span>
-            <p class="text-zinc-400 text-[11px]">Pay in EUR/USD with your bank card via our verified fiat-to-crypto processors (ChangeNOW / Guardarian / Mercuryo / NOWPayments). Funds settle directly into merchant wallet <code class="text-emerald-400 font-mono">TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX</code>.</p>
-          </div>
-          <span class="px-2.5 py-1 rounded bg-indigo-500/15 text-indigo-300 font-mono font-bold" id="card-amount-badge">€59.99 EUR</span>
+      <!-- Stripe / Card Instant Panel -->
+      <div id="stripe-card-drawer" class="drawer-box hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+          <strong style="font-size:14px;" id="card-drawer-title">Оплата банковской картой (Visa / MasterCard / Apple Pay / Google Pay)</strong>
+          <span style="font-size:12px;color:var(--accent);font-family:monospace;" id="card-order-badge"></span>
         </div>
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
-          <a id="card-btn-changenow" href="https://changenow.io/?from=eur&to=usdttrc20&fiatMode=true&amount=59.99&recipient=TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX" target="_blank" rel="noopener" class="py-2.5 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-center">
-            1. Pay with Card (ChangeNOW) ↗
+        <p style="margin:6px 0 10px;font-size:12px;color:var(--muted);" id="card-drawer-desc">
+          Выберите удобный шлюз ниже для мгновенной оплаты картой в EUR/USD (нейтральное описание платежа, без упоминания 18+). После оплаты ключ активируется автоматически:
+        </p>
+        <div class="gateway-grid">
+          <a id="gw-stripe-primary" href="#" target="_blank" rel="noopener" class="gw-btn primary">💳 Stripe / Guardarian (Apple Pay & Карта) ↗</a>
+          <a id="gw-mercuryo" href="#" target="_blank" rel="noopener" class="gw-btn">💳 Mercuryo (Visa / MasterCard) ↗</a>
+          <a id="gw-changenow" href="#" target="_blank" rel="noopener" class="gw-btn">💳 ChangeNOW (Карта EUR/USD) ↗</a>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
+          <input id="card-receipt-input" class="field" style="flex:1;min-width:200px;padding:8px 12px;font-size:12px;" type="text" placeholder="После оплаты: вставьте ID чека / заказа для мгновенной проверки" />
+          <button type="button" class="btn-activate" style="padding:8px 14px;" onclick="submitReceipt('card')" id="btn-verify-card">Я оплатил картой</button>
+        </div>
+      </div>
+
+      <!-- Crypto Instant Panel -->
+      <div id="crypto-drawer" class="drawer-box hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+          <strong style="font-size:14px;color:#6ee7b7;" id="crypto-drawer-title">Оплата криптовалютой со скидкой 20% (NOWPayments Live / Direct USDT)</strong>
+          <span style="font-size:12px;color:#6ee7b7;font-family:monospace;" id="crypto-order-badge"></span>
+        </div>
+        <div style="display:flex;gap:8px;margin:10px 0;flex-wrap:wrap;">
+          <a id="np-invoice-btn" href="#" target="_blank" rel="noopener" class="gw-btn primary" style="flex:1;background:#10b981;color:#04131d;font-weight:800;">
+            ⚡ Открыть счёт NOWPayments (100+ монет, автовыдача ключа) ↗
           </a>
-          <a id="card-btn-guardarian" href="https://guardarian.com/calculator?from_currency=EUR&to_currency=USDT&to_network=TRX&from_amount=59.99&payout_address=TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX" target="_blank" rel="noopener" class="py-2.5 px-3 rounded-lg bg-[#18181C] hover:bg-zinc-800 border subtle-border text-zinc-200 font-semibold text-center">
-            2. Apple/Google Pay (Guardarian) ↗
-          </a>
-          <a id="card-btn-mercuryo" href="https://exchange.mercuryo.io/?fiat_currency=EUR&fiat_amount=59.99&currency=USDT&network=TRON&address=TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX" target="_blank" rel="noopener" class="py-2.5 px-3 rounded-lg bg-[#18181C] hover:bg-zinc-800 border subtle-border text-zinc-200 font-semibold text-center">
-            3. Visa/MasterCard (Mercuryo) ↗
-          </a>
         </div>
-        <div class="flex flex-col sm:flex-row gap-2 pt-1">
-          <input id="card-receipt-input" type="text" placeholder="After paying by card: Paste Receipt ID / Order ID / TXID for instant activation" class="flex-1 bg-[#121215] border subtle-border rounded-lg px-3 py-2 text-white font-mono text-xs" />
-          <button type="button" onclick="submitCardReceipt()" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold">I Paid — Verify Card Payment</button>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:6px;" id="crypto-direct-lbl">Или прямой перевод USDT (TRC-20 Tron) на кошелек мерчанта:</div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
+          <input id="direct-usdt-wallet" class="field" style="padding:8px 12px;font-family:monospace;font-size:12px;color:#6ee7b7;" type="text" readonly value="TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX" />
+          <button type="button" class="pill-btn" style="padding:9px 14px;color:var(--text);" onclick="copyUsdtWallet()">Копировать</button>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <input id="crypto-tx-input" class="field" style="flex:1;min-width:200px;padding:8px 12px;font-size:12px;" type="text" placeholder="Необязательно: вставьте TXID перевода для быстрой выдачи ключа" />
+          <button type="button" class="btn-activate" style="padding:8px 14px;" onclick="submitReceipt('crypto')">Подтвердить TXID</button>
         </div>
       </div>
 
-      <!-- Crypto Instant Invoice Box -->
-      <div id="crypto-invoice-box" class="hidden p-4 rounded-xl bg-[#09090B] border border-indigo-500/30 space-y-3 text-xs">
-        <div class="flex flex-wrap items-center justify-between gap-2">
+      <!-- Live Order Status Banner -->
+      <div id="order-status-box" class="drawer-box hidden" style="border-color:rgba(61,214,140,0.45);">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
           <div>
-            <span class="text-indigo-300 font-bold uppercase font-mono" id="crypto-net-label">USDT_TRC20 INSTANT INVOICE (-20% APPLIED)</span>
-            <p class="text-zinc-400 text-[11px]">Send exact EUR equivalent to the address below or open NOWPayments/Sell.app checkout, then paste your TXID or wait for webhook confirmation.</p>
+            <div style="font-size:13px;font-weight:750;color:#6ee7b7;" id="status-headline">Ожидание подтверждения платежа…</div>
+            <div style="font-size:12px;color:var(--muted);font-family:monospace;margin-top:2px;" id="status-subline">Автоматическая проверка статуса каждые 4 секунды</div>
           </div>
-          <span class="px-2.5 py-1 rounded bg-emerald-500/15 text-emerald-300 font-mono font-bold" id="crypto-amount-badge">€47.99 EUR</span>
-        </div>
-        <div class="flex items-center gap-2">
-          <input id="crypto-wallet-address" type="text" readonly value="" class="flex-1 bg-[#121215] border subtle-border rounded-lg px-3 py-2 text-emerald-400 font-mono text-xs" />
-          <button type="button" onclick="copyWalletAddress()" class="px-3 py-2 rounded-lg bg-[#18181C] hover:bg-zinc-700 text-white font-semibold">Copy Wallet</button>
-        </div>
-        <div class="flex flex-col sm:flex-row gap-2 pt-1">
-          <input id="crypto-tx-input" type="text" placeholder="Optional: Paste Transaction Hash (TXID) for faster verification" class="flex-1 bg-[#121215] border subtle-border rounded-lg px-3 py-2 text-white font-mono text-xs" />
-          <button type="button" onclick="submitCryptoTxHash()" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold">Submit TXID</button>
+          <a href="/" class="btn-activate" style="padding:9px 14px;display:inline-flex;align-items:center;" id="status-go-app">Перейти в R34Hub →</a>
         </div>
       </div>
+    </section>
 
-      <!-- Live Order Status & Automatic Key Delivery Result -->
-      <div id="chk-result" class="hidden p-4 rounded-xl bg-[#09090B] border border-emerald-500/40 space-y-3">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-          <div class="flex items-center gap-2">
-            <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse" id="chk-status-dot"></span>
-            <span class="text-xs font-bold text-emerald-400" id="chk-status-label">Live Order Created — Waiting for Payment Confirmation</span>
-          </div>
-          <span class="text-[11px] font-mono text-zinc-400" id="chk-order-id">Order #ord_123</span>
-        </div>
-        <div class="p-3 rounded-lg bg-[#121215] border subtle-border flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <div class="text-[11px] text-zinc-400 uppercase font-mono">License Key Delivery Status</div>
-            <div class="text-sm font-mono font-bold text-zinc-200 mt-0.5" id="chk-minted-key">Polling `/api/hubcloud/order-status` every 4s for webhook fulfillment…</div>
-          </div>
-          <div class="flex flex-wrap gap-2">
-            <button type="button" onclick="checkOrderStatusNow()" class="px-3 py-1.5 rounded-lg bg-[#18181C] hover:bg-zinc-700 border subtle-border text-xs font-semibold text-zinc-200">
-              Check Status Now
-            </button>
-            <button type="button" id="chk-activate-btn" onclick="activateAndRedirect()" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-white">
-              Return to R34Hub.app
-            </button>
-          </div>
-        </div>
+    <!-- ALREADY HAVE A LICENSE KEY -->
+    <section class="license-box">
+      <div>
+        <strong style="font-size:15px;" id="t-have-key">Уже есть лицензионный ключ?</strong>
+        <div style="font-size:12px;color:var(--muted);" id="t-have-key-sub">Вставьте ваш ключ (R34H-..., SHOP2-..., SLX-...) для мгновенной активации Premium на этом устройстве.</div>
       </div>
+      <form class="license-form" onsubmit="activateKeyOnPage(); return false;">
+        <input id="page-license-input" class="field" type="text" placeholder="R34H-XXXX-XXXX-XXXX" spellcheck="false" autocomplete="off" />
+        <button type="submit" class="btn-activate" id="btn-activate-key">Активировать</button>
+      </form>
+    </section>
 
-      <!-- Existing Order Lookup -->
-      <div class="pt-3 border-t subtle-border flex flex-col sm:flex-row items-center justify-between gap-2 text-xs">
-        <span class="text-zinc-400">Already paid via Stripe, Sell.app, or Crypto? Check your Order ID for instant key retrieval:</span>
-        <div class="flex items-center gap-2 w-full sm:w-auto">
-          <input id="lookup-order-id" type="text" placeholder="ord_xxxxxx" class="bg-[#09090B] border subtle-border rounded-lg px-3 py-1.5 text-white font-mono text-xs flex-1 sm:w-40" />
-          <button type="button" onclick="lookupExistingOrder()" class="px-3 py-1.5 rounded-lg bg-[#18181C] hover:bg-zinc-700 border subtle-border text-zinc-200 font-semibold">Lookup Order</button>
+    <!-- FAQ (Matches r34.app/ru/premium) -->
+    <section class="faq-section">
+      <h3 id="t-faq-heading">Частые вопросы</h3>
+      <div class="faq-grid">
+        <div class="faq-card">
+          <h4 id="faq-1-q">Какие способы оплаты принимаются?</h4>
+          <p id="faq-1-a">Мы принимаем банковские карты (Visa, MasterCard, Apple Pay, Google Pay) через защищенный шлюз Stripe / партнёров, а также криптовалюту (USDT, BTC, TON, SOL, XMR) со скидкой 20%.</p>
+        </div>
+        <div class="faq-card">
+          <h4 id="faq-2-q">Не получили письмо с лицензией?</h4>
+          <p id="faq-2-a">Ваш ключ автоматически появляется прямо на этой странице сразу после оплаты и сохраняется в браузере. Также вы всегда можете восстановить его по Email или ID заказа.</p>
+        </div>
+        <div class="faq-card">
+          <h4 id="faq-3-q">Могу ли я отменить подписку?</h4>
+          <p id="faq-3-a">Да, вы можете отменить подписку в любое время в один клик. Разовые покупки (30 дней, Год или Пожизненно через крипто/разовый чекаут) не требуют отмены и не списывают деньги повторно.</p>
+        </div>
+        <div class="faq-card">
+          <h4 id="faq-4-q">Что произойдёт после окончания периода?</h4>
+          <p id="faq-4-a">Вы сохраните полный доступ к Premium до конца оплаченного периода. Все ваши сохранённые публикации в браузере останутся у вас навсегда.</p>
         </div>
       </div>
     </section>
   </main>
 
-  <div id="hc-toast" class="fixed bottom-5 right-5 hidden px-4 py-2.5 rounded-xl bg-[#18181C] border subtle-border text-xs font-semibold text-white shadow-2xl z-50"></div>
+  <div id="toast" class="toast hidden"></div>
 
   <script>
-    let currentPlan = 'annual';
-    let currentBasePrice = 59.99;
+    let currentLang = location.pathname.startsWith('/en/') ? 'en' : 'ru';
+    let selectedPlan = 'annual';
     let activeOrderId = '';
     let pollTimer = null;
-    let hubConfig = {
-      checkoutLinks: {},
-      cryptoWallets: {
-        USDT_TRC20: 'TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX',
-        usdt_trc20: 'TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX',
-        TRX: 'TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX',
-        trx: 'TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX',
-        BTC: 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
-        SOL: '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU',
-        ETH: '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
-        TON: 'UQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqEBI',
-        XMR: '44Affq5kSiGBoZ4NMDwYtN18obc8AemS33DBLWs3H7otXft3XjrpDtQGv7SqSsaBYBb98uNbr2VBBEt7f2wfn3RVGQBEP3A'
+
+    const PLANS = {
+      monthly: { eur: 7.00, cryptoEur: 5.60, ruName: '30 дней доступа — €7.00', enName: '30-Day Access — €7.00' },
+      annual: { eur: 59.99, cryptoEur: 47.99, ruName: 'Годовой Pro — €59.99 (€4.97/мес)', enName: 'Annual Pro — €59.99 (€4.97/mo)' },
+      lifetime: { eur: 199.99, cryptoEur: 159.99, ruName: 'Пожизненно (Lifetime) — €199.99', enName: 'Lifetime VIP — €199.99' }
+    };
+
+    const COPY = {
+      ru: {
+        back: '← На сайт',
+        badge: '✦ R34Hub Premium • Мгновенная выдача ключа',
+        title: 'Просмотр без рекламы и сохранение публикаций',
+        subtitle: 'Сосредоточьтесь на контенте без отвлечений, открывайте все 11 бордов, скачивайте видео и страницы в 1 клик.',
+        perksTitle: 'Все планы включают…',
+        p1: 'Полное отключение всей рекламы',
+        p2: 'Все 11 Booru-бордов (включая Pro)',
+        p3: 'Скачивание HD видео и всей страницы',
+        p4: 'До 5 устройств по одному ключу',
+        mTitle: '30 дней доступа',
+        mSub: 'Единовременный или месячный платёж',
+        mUnit: '/ мес.',
+        mNote: '€5.60 при оплате криптовалютой (−20%)',
+        aBadge: 'Выгода 29% • Популярный',
+        aTitle: 'Годовой Pro (365 дней)',
+        aSub: '€59.99 за год (вместо €84)',
+        aUnit: '/ мес.',
+        aNote: '€47.99 за весь год в крипте (−20%)',
+        lTitle: 'Пожизненно (Lifetime)',
+        lSub: 'Единовременный платёж навсегда',
+        lNote: '€159.99 при оплате криптовалютой (−20%)',
+        chkSub: 'Лицензионный ключ выдается автоматически сразу после подтверждения оплаты.',
+        lblEmail: 'Ваш Email (для отправки и восстановления лицензионного ключа)',
+        btnCard: 'Оплатить картой (Stripe / Apple Pay)',
+        btnCrypto: 'Оплатить криптовалютой (−20%)',
+        haveKey: 'Уже есть лицензионный ключ?',
+        haveKeySub: 'Вставьте ваш ключ (R34H-..., SHOP2-..., SLX-...) для мгновенной активации Premium на этом устройстве.',
+        btnActivate: 'Активировать',
+        faqHeading: 'Частые вопросы'
+      },
+      en: {
+        back: '← Back to app',
+        badge: '✦ R34Hub Premium • Instant License Key Delivery',
+        title: 'Browse Ad-Free & Save Posts',
+        subtitle: 'Focus on content without distractions, unlock all 11 boards, download HD videos and full pages in 1 click.',
+        perksTitle: 'All plans include…',
+        p1: 'Zero ads across all feeds & videos',
+        p2: 'All 11 Booru boards unlocked',
+        p3: '1-click video & full page downloads',
+        p4: 'Up to 5 devices per license key',
+        mTitle: '30 Days Access',
+        mSub: 'Monthly or one-time pass',
+        mUnit: '/ mo',
+        mNote: '€5.60 when paying with crypto (−20%)',
+        aBadge: 'Save 29% • Most Popular',
+        aTitle: 'Annual Pro (365 Days)',
+        aSub: 'Billed €59.99/yr (instead of €84)',
+        aUnit: '/ mo',
+        aNote: '€47.99/yr when paying with crypto (−20%)',
+        lTitle: 'Lifetime VIP',
+        lSub: 'One-time payment forever',
+        lNote: '€159.99 when paying with crypto (−20%)',
+        chkSub: 'Your license key is issued automatically right after payment confirmation.',
+        lblEmail: 'Your Email (for license key delivery & recovery)',
+        btnCard: 'Pay by Card (Stripe / Apple Pay)',
+        btnCrypto: 'Pay with Crypto (−20% OFF)',
+        haveKey: 'Already have a license key?',
+        haveKeySub: 'Paste your key (R34H-..., SHOP2-..., SLX-...) to activate Premium on this device.',
+        btnActivate: 'Activate',
+        faqHeading: 'Frequently Asked Questions'
       }
     };
 
-    const PLAN_PRICES = {
-      monthly: 7.00,
-      annual: 59.99,
-      '30d_pass': 12.99,
-      lifetime: 199.99
-    };
-
-    function toast(msg) {
-      const el = document.getElementById('hc-toast');
+    function showToast(msg) {
+      const el = document.getElementById('toast');
       el.textContent = msg;
       el.classList.remove('hidden');
-      clearTimeout(window.__hcToast);
-      window.__hcToast = setTimeout(() => el.classList.add('hidden'), 3200);
+      clearTimeout(window.__premToast);
+      window.__premToast = setTimeout(() => el.classList.add('hidden'), 3200);
     }
 
-    async function loadHubCloudConfig() {
-      try {
-        const res = await fetch('/api/hubcloud/config');
-        const data = await res.json();
-        if (data && data.ok) {
-          hubConfig = data;
-          if (data.descriptor) {
-            document.getElementById('hero-descriptor').textContent = data.descriptor;
-          }
+    function setLang(lang) {
+      currentLang = lang === 'en' ? 'en' : 'ru';
+      document.getElementById('lang-ru').classList.toggle('is-on', currentLang === 'ru');
+      document.getElementById('lang-en').classList.toggle('is-on', currentLang === 'en');
+      const c = COPY[currentLang];
+      document.getElementById('nav-back').textContent = c.back;
+      document.getElementById('t-badge').textContent = c.badge;
+      document.getElementById('t-title').textContent = c.title;
+      document.getElementById('t-subtitle').textContent = c.subtitle;
+      document.getElementById('t-perks-title').textContent = c.perksTitle;
+      document.getElementById('p-1').textContent = c.p1;
+      document.getElementById('p-2').textContent = c.p2;
+      document.getElementById('p-3').textContent = c.p3;
+      document.getElementById('p-4').textContent = c.p4;
+      document.getElementById('plan-m-title').textContent = c.mTitle;
+      document.getElementById('plan-m-sub').textContent = c.mSub;
+      document.getElementById('plan-m-unit').textContent = c.mUnit;
+      document.getElementById('plan-m-note').textContent = c.mNote;
+      document.getElementById('plan-a-badge').textContent = c.aBadge;
+      document.getElementById('plan-a-title').textContent = c.aTitle;
+      document.getElementById('plan-a-sub').textContent = c.aSub;
+      document.getElementById('plan-a-unit').textContent = c.aUnit;
+      document.getElementById('plan-a-note').textContent = c.aNote;
+      document.getElementById('plan-l-title').textContent = c.lTitle;
+      document.getElementById('plan-l-sub').textContent = c.lSub;
+      document.getElementById('plan-l-note').textContent = c.lNote;
+      document.getElementById('chk-sub').textContent = c.chkSub;
+      document.getElementById('lbl-email').textContent = c.lblEmail;
+      document.getElementById('btn-pay-card').textContent = c.btnCard;
+      document.getElementById('btn-pay-crypto').textContent = c.btnCrypto;
+      document.getElementById('t-have-key').textContent = c.haveKey;
+      document.getElementById('t-have-key-sub').textContent = c.haveKeySub;
+      document.getElementById('btn-activate-key').textContent = c.btnActivate;
+      document.getElementById('t-faq-heading').textContent = c.faqHeading;
+      selectPlan(selectedPlan);
+    }
+
+    function selectPlan(plan) {
+      if (!PLANS[plan]) plan = 'annual';
+      selectedPlan = plan;
+      ['monthly', 'annual', 'lifetime'].forEach(p => {
+        const card = document.getElementById(`card-${p}`);
+        const btn = document.getElementById(`btn-sel-${p}`);
+        const on = p === plan;
+        card.classList.toggle('is-selected', on);
+        if (currentLang === 'ru') {
+          btn.textContent = on ? 'Выбрано ✓' : 'Выбрать тариф';
+        } else {
+          btn.textContent = on ? 'Selected ✓' : 'Select plan';
         }
-      } catch (_) {}
-
-      const params = new URLSearchParams(location.search);
-      const qPlan = params.get('plan');
-      const qProvider = params.get('provider');
-      const qEmail = params.get('email');
-      const qOrder = params.get('orderId') || params.get('order') || params.get('session');
-      if (qEmail) document.getElementById('chk-email').value = qEmail;
-      if (qPlan && PLAN_PRICES[qPlan]) {
-        currentPlan = qPlan;
-        currentBasePrice = PLAN_PRICES[qPlan];
-      }
-      if (qProvider) {
-        const sel = document.getElementById('chk-provider');
-        if (qProvider.includes('crypto') || qProvider.includes('nowpayments')) sel.value = 'crypto';
-        else if (qProvider.includes('sellapp')) sel.value = 'sellapp';
-        else sel.value = 'stripe_hubcloud';
-      }
-      onProviderChange();
-      if (qOrder) {
-        activeOrderId = qOrder;
-        document.getElementById('lookup-order-id').value = qOrder;
-        checkOrderStatusNow();
-      }
+      });
+      const info = PLANS[plan];
+      document.getElementById('chk-heading').textContent = currentLang === 'ru'
+        ? `Оформление: ${info.ruName}`
+        : `Checkout: ${info.enName}`;
     }
 
-    function openCheckoutModal(plan, provider, price) {
-      currentPlan = plan;
-      currentBasePrice = PLAN_PRICES[plan] || price;
-      const sel = document.getElementById('chk-provider');
-      sel.value = provider === 'crypto' ? 'crypto' : provider === 'sellapp' ? 'sellapp' : 'stripe_hubcloud';
-      onProviderChange();
-      document.getElementById('checkout-panel').scrollIntoView({ behavior: 'smooth' });
-    }
-
-    function onProviderChange() {
-      const provider = document.getElementById('chk-provider').value;
-      const isCrypto = provider === 'crypto';
-      const price = isCrypto ? Number((currentBasePrice * 0.8).toFixed(2)) : currentBasePrice;
-      document.getElementById('chk-title').textContent = `Instant Digital License Checkout — ${currentPlan.toUpperCase()} (€${price.toFixed(2)} EUR${isCrypto ? ' • -20% Crypto' : ''})`;
-      document.getElementById('crypto-coin-wrap').classList.toggle('hidden', !isCrypto);
-      document.getElementById('crypto-invoice-box').classList.toggle('hidden', !isCrypto);
-      const cardBox = document.getElementById('card-invoice-box');
-      if (cardBox) {
-        cardBox.classList.toggle('hidden', isCrypto);
-        const w = (hubConfig && hubConfig.cryptoWallets && hubConfig.cryptoWallets.USDT_TRC20) || 'TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX';
-        document.getElementById('card-amount-badge').textContent = `€${currentBasePrice.toFixed(2)} EUR`;
-        document.getElementById('card-btn-changenow').href = `https://changenow.io/?from=eur&to=usdttrc20&fiatMode=true&amount=${encodeURIComponent(currentBasePrice)}&recipient=${encodeURIComponent(w)}`;
-        document.getElementById('card-btn-guardarian').href = `https://guardarian.com/calculator?from_currency=EUR&to_currency=USDT&to_network=TRX&from_amount=${encodeURIComponent(currentBasePrice)}&payout_address=${encodeURIComponent(w)}`;
-        document.getElementById('card-btn-mercuryo').href = `https://exchange.mercuryo.io/?fiat_currency=EUR&fiat_amount=${encodeURIComponent(currentBasePrice)}&currency=USDT&network=TRON&address=${encodeURIComponent(w)}`;
-      }
-      if (isCrypto) updateCryptoInvoicePreview();
-    }
-
-    function updateCryptoInvoicePreview() {
-      const coin = document.getElementById('chk-crypto-coin').value;
-      const discounted = Number((currentBasePrice * 0.8).toFixed(2));
-      document.getElementById('crypto-net-label').textContent = `${coin} INSTANT INVOICE (-20% APPLIED)`;
-      document.getElementById('crypto-amount-badge').textContent = `€${discounted.toFixed(2)} EUR`;
-      const wallets = (hubConfig && hubConfig.cryptoWallets) || {};
-      document.getElementById('crypto-wallet-address').value = wallets[coin] || wallets.USDT_TRC20 || '';
-    }
-
-    function copyWalletAddress() {
-      const addr = document.getElementById('crypto-wallet-address').value;
-      if (!addr) return;
-      navigator.clipboard.writeText(addr);
-      toast(`Copied ${document.getElementById('chk-crypto-coin').value} address!`);
-    }
-
-    async function completeStorefrontPurchase() {
+    async function startStripeCardCheckout() {
       const email = document.getElementById('chk-email').value.trim() || 'buyer@r34hub.app';
-      const provider = document.getElementById('chk-provider').value;
-      const cryptoCurrency = document.getElementById('chk-crypto-coin').value;
-      const txHash = document.getElementById('crypto-tx-input').value.trim();
+      document.getElementById('crypto-drawer').classList.add('hidden');
+      document.getElementById('stripe-card-drawer').classList.remove('hidden');
 
-      const res = await fetch('/api/hubcloud/create-order', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan: currentPlan, provider, email, cryptoCurrency, txHash })
-      });
-      const data = await res.json();
-      if (!data.ok) {
-        toast(data.error || 'Could not create order');
-        return;
+      try {
+        const res = await fetch('/api/stripe/create-checkout-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ plan: selectedPlan, email })
+        });
+        const data = await res.json();
+        if (!data.ok) {
+          showToast(data.error || 'Ошибка создания сессии');
+          return;
+        }
+        activeOrderId = data.orderId;
+        document.getElementById('card-order-badge').textContent = `#${data.orderId} • €${Number(data.amountEur).toFixed(2)} EUR`;
+        const urls = data.cardToCryptoUrls || {};
+        const primaryUrl = data.stripeSessionUrl || urls.guardarian || data.checkoutUrl;
+        document.getElementById('gw-stripe-primary').href = primaryUrl;
+        document.getElementById('gw-mercuryo').href = urls.mercuryo || primaryUrl;
+        document.getElementById('gw-changenow').href = urls.changenow || primaryUrl;
+
+        document.getElementById('order-status-box').classList.remove('hidden');
+        startPolling();
+
+        if (data.stripeSessionUrl) {
+          window.open(data.stripeSessionUrl, '_blank', 'noopener');
+        } else {
+          window.open(primaryUrl, '_blank', 'noopener');
+        }
+      } catch (err) {
+        showToast('Не удалось запустить оплату картой');
       }
-
-      activeOrderId = data.orderId;
-      document.getElementById('lookup-order-id').value = activeOrderId;
-      document.getElementById('chk-result').classList.remove('hidden');
-      document.getElementById('chk-order-id').textContent = `Order #${data.orderId} (€${Number(data.amountEur).toFixed(2)})`;
-      document.getElementById('chk-status-label').textContent = provider === 'crypto'
-        ? `Crypto Invoice Active (${cryptoCurrency}) — Waiting for Webhook / TX Confirmation`
-        : `Order Logged — Complete Payment on Gateway or Await Webhook`;
-      document.getElementById('chk-minted-key').textContent = 'Waiting for payment confirmation (`POST /api/webhooks/payment`)…';
-
-      const extBtn = document.getElementById('chk-external-gateway-link');
-      const liveInvoice = provider === 'crypto' ? (data.invoice_url || data.externalCheckoutUrl) : (data.cardCheckoutUrl || data.externalCheckoutUrl || data.invoice_url);
-      if (liveInvoice) {
-        extBtn.href = liveInvoice;
-        extBtn.textContent = provider === 'crypto' ? 'Pay Now on NOWPayments Live Invoice ↗' : 'Pay Now with Card (Visa / MasterCard / Apple Pay) ↗';
-        extBtn.classList.remove('hidden');
-      }
-      if (liveInvoice) {
-        document.getElementById('chk-status-label').textContent = provider === 'crypto'
-          ? `NOWPayments Live Invoice Ready (#${data.nowPaymentsInvoice ? data.nowPaymentsInvoice.id : data.orderId}) — Checkout Opened`
-          : `Card Checkout Ready (Order #${data.orderId}) — Complete Visa/MasterCard/Apple Pay Payment`;
-        window.open(liveInvoice, '_blank', 'noopener');
-      }
-
-      toast(`Created live order ${data.orderId}`);
-      startOrderPolling();
     }
 
-    async function submitCryptoTxHash() {
-      const txHash = document.getElementById('crypto-tx-input').value.trim();
-      if (!txHash) {
-        toast('Paste your transaction hash (TXID) first');
-        return;
+    async function startCryptoCheckout() {
+      const email = document.getElementById('chk-email').value.trim() || 'buyer@r34hub.app';
+      document.getElementById('stripe-card-drawer').classList.add('hidden');
+      document.getElementById('crypto-drawer').classList.remove('hidden');
+
+      try {
+        const res = await fetch('/api/hubcloud/create-order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ plan: selectedPlan, provider: 'crypto', cryptoCurrency: 'USDT_TRC20', email })
+        });
+        const data = await res.json();
+        if (!data.ok) {
+          showToast(data.error || 'Ошибка создания крипто-счёта');
+          return;
+        }
+        activeOrderId = data.orderId;
+        document.getElementById('crypto-order-badge').textContent = `#${data.orderId} • €${Number(data.amountEur).toFixed(2)} EUR (−20%)`;
+        if (data.walletAddress) {
+          document.getElementById('direct-usdt-wallet').value = data.walletAddress;
+        }
+        const invUrl = data.invoice_url || data.externalCheckoutUrl;
+        const npBtn = document.getElementById('np-invoice-btn');
+        if (invUrl) {
+          npBtn.href = invUrl;
+          window.open(invUrl, '_blank', 'noopener');
+        }
+        document.getElementById('order-status-box').classList.remove('hidden');
+        startPolling();
+      } catch (err) {
+        showToast('Не удалось создать крипто-счёт');
       }
-      if (!activeOrderId) {
-        await completeStorefrontPurchase();
+    }
+
+    function copyUsdtWallet() {
+      const val = document.getElementById('direct-usdt-wallet').value;
+      navigator.clipboard.writeText(val);
+      showToast(currentLang === 'ru' ? 'Кошелёк USDT TRC-20 скопирован!' : 'USDT TRC-20 wallet copied!');
+    }
+
+    async function submitReceipt(kind) {
+      const inputId = kind === 'card' ? 'card-receipt-input' : 'crypto-tx-input';
+      const val = document.getElementById(inputId).value.trim();
+      if (!val) {
+        showToast(currentLang === 'ru' ? 'Введите ID платежа или TXID' : 'Paste your receipt ID or TXID first');
         return;
       }
       const email = document.getElementById('chk-email').value.trim();
       const res = await fetch('/api/hubcloud/submit-tx', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderId: activeOrderId, txHash, email })
+        body: JSON.stringify({ orderId: activeOrderId, txHash: `${kind.toUpperCase()}:${val}`, email })
       });
       const data = await res.json();
       if (data.ok) {
-        document.getElementById('chk-status-label').textContent = `TXID Submitted (${txHash.slice(0, 12)}…) — Verifying on Blockchain`;
-        toast('Transaction hash saved to order! Awaiting confirmation.');
+        document.getElementById('status-headline').textContent = currentLang === 'ru'
+          ? `Платёж #${activeOrderId} отправлен на проверку — ожидайте ключ`
+          : `Payment #${activeOrderId} submitted — awaiting key issuance`;
+        showToast(currentLang === 'ru' ? 'Данные оплаты сохранены!' : 'Payment reference saved!');
       }
     }
 
-    async function submitCardReceipt() {
-      const receipt = document.getElementById('card-receipt-input').value.trim();
-      if (!receipt) {
-        toast('Paste your Card Receipt ID or Order Reference first');
-        return;
-      }
-      if (!activeOrderId) {
-        await completeStorefrontPurchase();
-      }
-      const email = document.getElementById('chk-email').value.trim();
-      const res = await fetch('/api/hubcloud/submit-tx', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderId: activeOrderId, txHash: 'CARD_RECEIPT:' + receipt, email })
-      });
-      const data = await res.json();
-      if (data.ok) {
-        document.getElementById('chk-status-label').textContent = `Card Receipt Submitted (${receipt.slice(0, 14)}) — Verifying Payment`;
-        toast('Card payment receipt logged! Polling for instant key issuance.');
-      }
-    }
-
-    function startOrderPolling() {
+    function startPolling() {
       clearInterval(pollTimer);
-      pollTimer = setInterval(checkOrderStatusNow, 4000);
+      pollTimer = setInterval(checkOrderStatus, 4000);
     }
 
-    async function checkOrderStatusNow() {
+    async function checkOrderStatus() {
       if (!activeOrderId) return;
       try {
         const res = await fetch(`/api/hubcloud/order-status?orderId=${encodeURIComponent(activeOrderId)}`);
         const data = await res.json();
         if (!data.ok) return;
-        document.getElementById('chk-result').classList.remove('hidden');
-        document.getElementById('chk-order-id').textContent = `Order #${data.orderId} (€${Number(data.amountEur || 0).toFixed(2)})`;
+        document.getElementById('order-status-box').classList.remove('hidden');
         if (data.status === 'paid' && data.licenseKey) {
           clearInterval(pollTimer);
           localStorage.setItem('bp_license', data.licenseKey);
-          document.getElementById('chk-status-dot').className = 'w-2 h-2 rounded-full bg-emerald-400';
-          document.getElementById('chk-status-label').textContent = 'Payment Confirmed! License Key Activated & Saved';
-          document.getElementById('chk-minted-key').textContent = `Issued Key: ${data.licenseKey} (Auto-saved to browser)`;
-          document.getElementById('chk-activate-btn').textContent = `Activate ${data.licenseKey} on R34Hub →`;
-          toast(`License key ${data.licenseKey} delivered!`);
-        } else {
-          document.getElementById('chk-status-label').textContent = `Order Status: ${String(data.status).toUpperCase()}`;
+          document.getElementById('page-license-input').value = data.licenseKey;
+          document.getElementById('status-headline').textContent = currentLang === 'ru'
+            ? `✓ Оплата подтверждена! Ваш ключ: ${data.licenseKey}`
+            : `✓ Payment confirmed! Your key: ${data.licenseKey}`;
+          document.getElementById('status-subline').textContent = currentLang === 'ru'
+            ? 'Ключ автоматически сохранён и активирован в этом браузере.'
+            : 'License key automatically saved and activated in this browser.';
+          showToast(`Premium: ${data.licenseKey}`);
         }
       } catch (_) {}
     }
 
-    function lookupExistingOrder() {
-      const val = document.getElementById('lookup-order-id').value.trim();
-      if (!val) return;
-      activeOrderId = val;
-      checkOrderStatusNow();
-      startOrderPolling();
+    async function activateKeyOnPage() {
+      const key = document.getElementById('page-license-input').value.trim();
+      if (!key) return;
+      const res = await fetch('/api/licenses/activate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key })
+      });
+      const data = await res.json();
+      if (data.ok && data.valid) {
+        localStorage.setItem('bp_license', data.licenseKey);
+        showToast(currentLang === 'ru' ? 'Premium активирован! Переходим на сайт…' : 'Premium activated! Redirecting…');
+        setTimeout(() => { location.href = '/'; }, 1000);
+      } else {
+        showToast(data.error || (currentLang === 'ru' ? 'Неверный ключ' : 'Invalid license key'));
+      }
     }
 
-    function activateAndRedirect() {
-      window.location.href = '/';
-    }
-
-    loadHubCloudConfig();
+    (function init() {
+      const params = new URLSearchParams(location.search);
+      const qPlan = params.get('plan');
+      if (qPlan && PLANS[qPlan]) selectedPlan = qPlan;
+      const qOrder = params.get('order') || params.get('orderId') || params.get('session');
+      const existingKey = localStorage.getItem('bp_license') || '';
+      if (existingKey) document.getElementById('page-license-input').value = existingKey;
+      setLang(currentLang);
+      if (qOrder) {
+        activeOrderId = qOrder;
+        checkOrderStatus();
+        startPolling();
+      }
+    })();
   </script>
 </body>
 </html>

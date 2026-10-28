@@ -146,6 +146,18 @@
       "destination": "/api/index.js"
     },
     {
+      "source": "/en/premium",
+      "destination": "/hubcloud.html"
+    },
+    {
+      "source": "/ru/premium",
+      "destination": "/hubcloud.html"
+    },
+    {
+      "source": "/premium",
+      "destination": "/hubcloud.html"
+    },
+    {
       "source": "/admin",
       "destination": "/admin.html"
     },

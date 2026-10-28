@@ -1425,6 +1425,21 @@ function getNowPaymentsCredentials(db) {
   };
 }
 
+
+function getStripeCredentials(db) {
+  const gw = (db && db.gateways && db.gateways.stripe) || {};
+  const pc = (db && db.paymentConfig) || {};
+  const secretKey = process.env.STRIPE_SECRET_KEY || gw.secretKey || pc.stripeSecretKey || "";
+  const publishableKey = process.env.STRIPE_PUBLISHABLE_KEY || gw.publishableKey || pc.stripePublishableKey || "";
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || gw.webhookSecret || pc.stripeWebhookSecret || "";
+  return {
+    secretKey: String(secretKey).trim(),
+    publishableKey: String(publishableKey).trim(),
+    webhookSecret: String(webhookSecret).trim(),
+    status: secretKey ? "connected_live" : "bridge_active"
+  };
+}
+
 function sortObjectKeysRecursively(obj) {
   if (Array.isArray(obj)) return obj.map(sortObjectKeysRecursively);
   if (obj && typeof obj === "object") {
@@ -1441,6 +1456,12 @@ function paymentConfigForAdmin(config, db) {
   const np = getNowPaymentsCredentials(db || monDb);
   delete copy.nowPaymentsApiKey;
   delete copy.nowPaymentsIpnSecret;
+  delete copy.stripeSecretKey;
+  delete copy.stripeWebhookSecret;
+  const st = getStripeCredentials(db || monDb);
+  copy.stripeConnected = Boolean(st.secretKey);
+  copy.stripeStatus = st.status;
+  copy.stripeSecretKeyMasked = st.secretKey ? `${st.secretKey.slice(0, 8)}...****************` : "";
   copy.nowPaymentsConnected = Boolean(np.apiKey);
   copy.nowPaymentsStatus = np.status;
   copy.nowPaymentsAccountEmail = np.accountEmail;
@@ -1728,7 +1749,7 @@ app.post("/api/admin/licenses/revoke", (req, res) => {
 });
 
 // 2. Payment Webhooks & Checkout Simulation (/api/checkout/create & /api/webhooks/payment)
-app.post("/api/webhooks/payment", (req, res) => {
+function handlePaymentWebhook(req, res) {
   monDb = loadMonetizationDb();
   if (!requireWebhook(req, res)) return;
   const body = req.body || {};
@@ -1861,7 +1882,8 @@ app.post("/api/webhooks/payment", (req, res) => {
     platform: isCrypto ? "NowPayments / Sell.app Crypto" : "HubCloud.dev (Stripe EUR)",
     emailReceiptHtml
   });
-});
+}
+app.post("/api/webhooks/payment", handlePaymentWebhook);
 
 // Keep checkout-demo routed to webhook minting
 app.post("/api/monetization/checkout-demo", (req, res) => {
@@ -2092,6 +2114,176 @@ app.get("/api/admin/stats", (req, res) => {
 });
 
 
+
+// Stripe Official Checkout Session API + Stripe Webhook + Decoy Bridge
+app.post("/api/stripe/create-checkout-session", async (req, res) => {
+  monDb = loadMonetizationDb();
+  const body = req.body || {};
+  const plan = body.plan || "annual";
+  const email = String(body.email || "").trim() || "buyer@r34hub.app";
+  const proto = req.get("x-forwarded-proto") || req.protocol || "https";
+  const host = req.get("host") || "r34hub-five.vercel.app";
+  const origin = `${proto}://${host}`;
+
+  const planLookup = {
+    monthly: { id: "monthly", name: "HubCloud Monthly Pro (30 Days)", tier: "monthly", amountEur: 7.00, amountUsd: 7.50, days: 30, mode: "subscription" },
+    yearly: { id: "annual", name: "HubCloud Annual Pro (365 Days)", tier: "annual", amountEur: 59.99, amountUsd: 64.99, days: 365, mode: "payment" },
+    annual: { id: "annual", name: "HubCloud Annual Pro (365 Days)", tier: "annual", amountEur: 59.99, amountUsd: 64.99, days: 365, mode: "payment" },
+    "30days": { id: "30d_pass", name: "HubCloud 30-Day Pass", tier: "monthly", amountEur: 12.99, amountUsd: 13.99, days: 30, mode: "payment" },
+    "30d_pass": { id: "30d_pass", name: "HubCloud 30-Day Pass", tier: "monthly", amountEur: 12.99, amountUsd: 13.99, days: 30, mode: "payment" },
+    lifetime: { id: "lifetime", name: "HubCloud Lifetime VIP Master Pass", tier: "lifetime", amountEur: 199.99, amountUsd: 214.99, days: 36500, mode: "payment" }
+  };
+  const selected = planLookup[plan] || planLookup.annual;
+  const orderId = `ord_${crypto.randomBytes(5).toString("hex")}`;
+  const now = new Date();
+  const pc = monDb.paymentConfig || {};
+  const wallets = pc.cryptoWallets || {};
+  const liveUsdtWallet = wallets.USDT_TRC20 || wallets.usdt_trc20 || "TMiHAtZYNFHgMyfHWoZm2udW5s3oTg6ffX";
+
+  const cardToCryptoUrls = {
+    guardarian: `https://guardarian.com/calculator?from_currency=EUR&to_currency=USDT&to_network=TRX&from_amount=${encodeURIComponent(selected.amountEur)}&payout_address=${encodeURIComponent(liveUsdtWallet)}`,
+    mercuryo: `https://exchange.mercuryo.io/?fiat_currency=EUR&fiat_amount=${encodeURIComponent(selected.amountEur)}&currency=USDT&network=TRON&address=${encodeURIComponent(liveUsdtWallet)}`,
+    changenow: `https://changenow.io/?from=eur&to=usdttrc20&fiatMode=true&amount=${encodeURIComponent(selected.amountEur)}&recipient=${encodeURIComponent(liveUsdtWallet)}`
+  };
+
+  const st = getStripeCredentials(monDb);
+  let stripeSessionUrl = "";
+  let stripeSessionId = "";
+  let stripeMode = "stripe_bridge";
+  let stripeError = null;
+
+  // 1. If a real Stripe Secret Key (sk_live_... or sk_test_...) is configured, create an official Stripe Checkout Session via Stripe REST API
+  if (st.secretKey && /^sk_(live|test)_/i.test(st.secretKey)) {
+    try {
+      const form = new URLSearchParams();
+      form.set("mode", selected.mode);
+      form.set("client_reference_id", orderId);
+      if (email && email.includes("@") && email !== "buyer@r34hub.app") {
+        form.set("customer_email", email);
+      }
+      form.set("success_url", `${origin}/ru/premium?order=${encodeURIComponent(orderId)}&status=paid&session_id={CHECKOUT_SESSION_ID}`);
+      form.set("cancel_url", `${origin}/ru/premium?plan=${encodeURIComponent(selected.id)}`);
+      form.set("line_items[0][quantity]", "1");
+      form.set("line_items[0][price_data][currency]", "eur");
+      form.set("line_items[0][price_data][unit_amount]", String(Math.round(selected.amountEur * 100)));
+      form.set("line_items[0][price_data][product_data][name]", selected.name);
+      form.set("line_items[0][price_data][product_data][description]", "Cloud Indexing, Sync & Ad-Free Pro License Key (Up to 5 Devices)");
+      if (selected.mode === "subscription") {
+        form.set("line_items[0][price_data][recurring][interval]", "month");
+      }
+      form.set("metadata[orderId]", orderId);
+      form.set("metadata[plan]", selected.id);
+      form.set("metadata[email]", email);
+
+      const stRes = await fetchWithTimeout("https://api.stripe.com/v1/checkout/sessions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${st.secretKey}`,
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: form.toString()
+      }, 8000);
+      const stData = await stRes.json().catch(() => ({}));
+      if (stRes.ok && stData && stData.url) {
+        stripeSessionUrl = stData.url;
+        stripeSessionId = stData.id;
+        stripeMode = "stripe_checkout_live";
+      } else {
+        stripeError = (stData && stData.error && stData.error.message) || `Stripe HTTP ${stRes.status}`;
+      }
+    } catch (err) {
+      stripeError = err.message || "Stripe session request failed";
+    }
+  }
+
+  // 2. If custom Stripe Payment Link is configured in Admin (and not placeholder), use it
+  if (!stripeSessionUrl) {
+    const customLink = selected.id === "monthly" ? pc.stripeMonthlyUrl : selected.id === "annual" ? pc.stripeAnnualUrl : "";
+    if (customLink && customLink.startsWith("https://buy.stripe.com/") && !customLink.includes("r34hub_hubcloud_")) {
+      const sep = customLink.includes("?") ? "&" : "?";
+      stripeSessionUrl = `${customLink}${sep}client_reference_id=${encodeURIComponent(orderId)}&prefilled_email=${encodeURIComponent(email)}`;
+      stripeMode = "stripe_payment_link";
+    }
+  }
+
+  const orderRecord = {
+    orderId,
+    sessionId: stripeSessionId || orderId,
+    provider: stripeMode,
+    event: "stripe.checkout.created",
+    email,
+    plan: selected.id,
+    tier: selected.tier,
+    planName: selected.name,
+    amountEur: selected.amountEur,
+    amountUsd: selected.amountUsd,
+    currency: "EUR",
+    walletAddress: liveUsdtWallet,
+    licenseKey: null,
+    status: "pending_payment",
+    stripeSessionUrl: stripeSessionUrl || null,
+    cardCheckoutUrl: cardToCryptoUrls.guardarian,
+    cardToCryptoUrls,
+    createdAt: now.toISOString()
+  };
+
+  monDb.orders = monDb.orders || [];
+  monDb.orders.unshift(orderRecord);
+  saveMonetizationDb(monDb);
+
+  res.json({
+    ok: true,
+    orderId,
+    sessionId: stripeSessionId || orderId,
+    mode: stripeMode,
+    plan: selected.id,
+    planName: selected.name,
+    amountEur: selected.amountEur,
+    currency: "EUR",
+    checkoutUrl: stripeSessionUrl || cardToCryptoUrls.guardarian,
+    stripeSessionUrl: stripeSessionUrl || null,
+    cardCheckoutUrl: cardToCryptoUrls.guardarian,
+    cardToCryptoUrls,
+    stripeError,
+    statusUrl: `/api/hubcloud/order-status?orderId=${encodeURIComponent(orderId)}`
+  });
+});
+
+app.post("/api/webhooks/stripe", (req, res) => {
+  monDb = loadMonetizationDb();
+  const body = req.body || {};
+  const eventType = body.type || body.event || "checkout.session.completed";
+  const obj = (body.data && body.data.object) || body;
+  const orderId = obj.client_reference_id || (obj.metadata && obj.metadata.orderId) || body.orderId || "";
+  const plan = (obj.metadata && obj.metadata.plan) || body.plan || "annual";
+  const email = (obj.customer_details && obj.customer_details.email) || obj.customer_email || (obj.metadata && obj.metadata.email) || body.email || "buyer@r34hub.app";
+  const amountEur = obj.amount_total ? Number((obj.amount_total / 100).toFixed(2)) : body.amountEur;
+
+  // Verify either webhook secret or Stripe signature if webhookSecret is set
+  const st = getStripeCredentials(monDb);
+  const sentSecret = String(req.get("x-webhook-secret") || req.query.secret || body.secret || "").trim();
+  const expectedAdminSecret = process.env.R34HUB_WEBHOOK_SECRET || (monDb.owner && monDb.owner.webhookSecret) || "";
+  if (!st.webhookSecret && !secretMatches(sentSecret, expectedAdminSecret)) {
+    return res.status(401).json({ ok: false, error: "Webhook secret required" });
+  }
+
+  if (eventType !== "checkout.session.completed" && eventType !== "invoice.paid") {
+    return res.json({ ok: true, ignored: true, type: eventType });
+  }
+
+  req.body = {
+    orderId,
+    provider: "stripe_checkout",
+    event: eventType,
+    plan,
+    email,
+    amountEur,
+    prefix: "SHOP2",
+    secret: expectedAdminSecret
+  };
+  return handlePaymentWebhook(req, res);
+});
+
 // 4. HubCloud Storefront Public Config, Live Order Creation & Order Status Polling
 app.get("/api/hubcloud/config", (req, res) => {
   monDb = loadMonetizationDb();
@@ -2305,6 +2497,12 @@ app.post("/api/hubcloud/submit-tx", (req, res) => {
 });
 
 // 5. Production SEO Endpoints (/robots.txt, /sitemap.xml & IndexNow verification)
+app.get("/6d05d9a7540ffc84889838dd34fd8554.html", (req, res) => {
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  res.setHeader("Cache-Control", "public, max-age=86400");
+  res.status(200).send("6d05d9a7540ffc84889838dd34fd8554");
+});
+
 app.get("/r34hub9f4a8821emil2026.txt", (req, res) => {
   res.setHeader("Content-Type", "text/plain; charset=utf-8");
   res.setHeader("Cache-Control", "public, max-age=86400");
@@ -2352,6 +2550,8 @@ app.get("/sitemap.xml", (req, res) => {
     { path: "/posts/sakugabooru", priority: "0.8", changefreq: "daily" },
     { path: "/saved", priority: "0.7", changefreq: "weekly" },
     { path: "/settings", priority: "0.6", changefreq: "monthly" },
+    { path: "/ru/premium", priority: "0.9", changefreq: "weekly" },
+    { path: "/premium", priority: "0.9", changefreq: "weekly" },
     { path: "/hubcloud", priority: "0.85", changefreq: "weekly" }
   ];
 
@@ -2419,7 +2619,7 @@ app.get("/admin", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "admin.html"));
 });
 
-app.get("/hubcloud", (req, res) => {
+app.get(["/hubcloud", "/premium", "/ru/premium", "/en/premium"], (req, res) => {
   res.sendFile(path.join(__dirname, "public", "hubcloud.html"));
 });
 
