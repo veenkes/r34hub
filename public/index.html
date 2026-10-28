@@ -199,46 +199,59 @@
             </button>
             <div id="source-pills" class="domain-menu hidden" role="listbox"></div>
           </div>
+          <button type="button" id="multiboard-pill-btn" class="filter-pill" onclick="selectSourceInPlace('multiboard', false)" title="Search top boards in parallel"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-layers"/></svg><span>Multi-Board</span></button>
+          <button type="button" class="filter-pill" onclick="openBoardsCompareModal()" title="Compare all 11 boards"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chart"/></svg><span class="hide-xs">Boards</span></button>
           <a id="visit-board" class="linkish hidden" href="#" target="_blank" rel="noopener">Visit</a>
         </div>
-        <button id="batch-download-btn" class="linkish" type="button">Download page</button>
-      </div>
-      <div class="page-head">
-        <div>
-          <h1 id="feed-heading">Posts</h1>
-          <p id="feed-summary-text" class="fine">Loading posts…</p>
-        </div>
-        <div style="display:flex;align-items:center;gap:6px;">
-          <div id="grid-density-bar" class="seg" style="padding:2px;" title="Grid Thumbnail Size">
-            <button type="button" class="density-btn" data-density="s" onclick="setGridDensity('s')" style="padding:4px 7px;font-size:11px;">S</button>
-            <button type="button" class="density-btn is-on" data-density="m" onclick="setGridDensity('m')" style="padding:4px 7px;font-size:11px;">M</button>
-            <button type="button" class="density-btn" data-density="l" onclick="setGridDensity('l')" style="padding:4px 7px;font-size:11px;">L</button>
+        <div class="posts-right-tools">
+          <div class="seg view-mode-seg" role="group" aria-label="View mode">
+            <button type="button" id="view-btn-reels" class="view-mode-btn" onclick="switchTab('reels')" title="Vertical Posts Feed"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-reels"/></svg><span>Posts</span></button>
+            <button type="button" id="view-btn-gallery" class="view-mode-btn" onclick="switchTab('gallery')" title="Masonry Grid"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-grid"/></svg><span>Grid</span></button>
           </div>
-          <button id="share-feed-btn" class="icon-btn bare" type="button" aria-label="Share this feed">
+          <div id="grid-density-bar" class="seg" title="Grid Thumbnail Size">
+            <button type="button" class="density-btn" data-density="s" onclick="setGridDensity('s')">S</button>
+            <button type="button" class="density-btn is-on" data-density="m" onclick="setGridDensity('m')">M</button>
+            <button type="button" class="density-btn" data-density="l" onclick="setGridDensity('l')">L</button>
+          </div>
+          <button id="share-feed-btn" class="icon-btn bare" type="button" aria-label="Share this feed" title="Share feed">
             <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-share"/></svg>
           </button>
         </div>
       </div>
-      <div id="advanced-filter-strip" class="filter-strip">
-        <button type="button" class="filter-pill rating-btn is-on" data-rating="s">Safe</button>
-        <button type="button" class="filter-pill rating-btn" data-rating="q">Questionable</button>
-        <button type="button" class="filter-pill rating-btn" data-rating="e">Explicit 18+</button>
-        <button type="button" class="filter-pill rating-btn" data-rating="all">All</button>
-        <span class="filter-sep"></span>
-        <button type="button" class="filter-pill media-btn is-on" data-media="all" onclick="setMediaFilter('all')">All Media</button>
-        <button type="button" class="filter-pill media-btn" data-media="image" onclick="setMediaFilter('image')"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-image"/></svg>Images</button>
-        <button type="button" class="filter-pill media-btn" data-media="gif" onclick="setMediaFilter('gif')"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-spark"/></svg>GIFs</button>
-        <button type="button" class="filter-pill media-btn" data-media="video" onclick="setMediaFilter('video')"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-film"/></svg>Video</button>
-        <span class="filter-sep"></span>
-        <button type="button" class="filter-pill sort-btn is-on" data-sort="score"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-flame"/></svg>Popular</button>
-        <button type="button" class="filter-pill sort-btn" data-sort="latest"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-clock"/></svg>Newest</button>
-        <button type="button" class="filter-pill sort-btn" data-sort="no_ai"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-ban"/></svg>No AI</button>
-        <button type="button" class="filter-pill sort-btn" data-sort="random"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-shuffle"/></svg>Random</button>
-        <span class="filter-sep"></span>
-        <button type="button" id="multiboard-pill-btn" class="filter-pill" onclick="selectSourceInPlace('multiboard', false)"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-layers"/></svg>Multi-Board</button>
-        <button type="button" class="filter-pill" onclick="openBoardsCompareModal()"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chart"/></svg>Boards</button>
+
+      <div id="feed-search-mount" class="feed-search-wrap"></div>
+
+      <div class="filter-toolbar-row">
+        <div id="advanced-filter-strip" class="filter-strip">
+          <button type="button" class="filter-pill rating-btn is-on" data-rating="s">Safe</button>
+          <button type="button" class="filter-pill rating-btn" data-rating="q">Questionable</button>
+          <button type="button" class="filter-pill rating-btn" data-rating="e">Explicit 18+</button>
+          <button type="button" class="filter-pill rating-btn" data-rating="all">All</button>
+          <span class="filter-sep"></span>
+          <button type="button" class="filter-pill sort-btn is-on" data-sort="score"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-flame"/></svg>Popular</button>
+          <button type="button" class="filter-pill sort-btn" data-sort="latest"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-clock"/></svg>Newest</button>
+          <button type="button" class="filter-pill sort-btn" data-sort="no_ai"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-ban"/></svg>No AI</button>
+          <button type="button" class="filter-pill sort-btn" data-sort="random"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-shuffle"/></svg>Random</button>
+          <span class="filter-sep"></span>
+          <button type="button" class="filter-pill media-btn is-on" data-media="all" onclick="setMediaFilter('all')">All Media</button>
+          <button type="button" class="filter-pill media-btn" data-media="image" onclick="setMediaFilter('image')"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-image"/></svg>Images</button>
+          <button type="button" class="filter-pill media-btn" data-media="gif" onclick="setMediaFilter('gif')"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-spark"/></svg>GIFs</button>
+          <button type="button" class="filter-pill media-btn" data-media="video" onclick="setMediaFilter('video')"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-film"/></svg>Video</button>
+        </div>
+        <button type="button" class="filter-pill filter-more-btn" onclick="openFilterDrawer()" title="All Filters">
+          <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-sliders"/></svg>
+          <span>Filters</span>
+        </button>
       </div>
-            <span id="reels-counter" class="sr">0 posts</span>
+
+      <div class="page-head">
+        <div class="page-head-copy">
+          <h1 id="feed-heading">Posts</h1>
+          <p id="feed-summary-text" class="fine">Loading posts…</p>
+        </div>
+        <button id="batch-download-btn" class="linkish" type="button">Download page</button>
+      </div>
+      <span id="reels-counter" class="sr">0 posts</span>
     </div>
 
     <section id="tab-home">
@@ -329,6 +342,20 @@
 
     <section id="tab-settings" class="hidden">
       <div style="display:grid;gap:14px;">
+        <div class="panel" style="background:linear-gradient(180deg,rgba(16,185,129,0.08) 0%,var(--surface) 100%);border-color:rgba(16,185,129,0.3);display:grid;gap:10px;">
+          <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;">
+            <div>
+              <div class="kicker" style="color:#34d399;">R34Hub Premium</div>
+              <h2 style="margin:2px 0 4px;">Zero Ads · All 11 Boards · Page Downloads</h2>
+              <p style="margin:0;">Activate your license key below or get instant crypto access on <a href="/premium" style="color:#38bdf8;text-decoration:underline;">/premium</a>.</p>
+            </div>
+            <a href="/premium" class="btn btn-primary" style="text-decoration:none;">Open Premium Plans →</a>
+          </div>
+          <form onsubmit="activateSettingsKey();return false;" style="display:flex;flex-wrap:wrap;gap:8px;">
+            <input id="settings-license-input" class="field" type="text" placeholder="R34PRO-XXXX-XXXX-XXXX" autocomplete="off" spellcheck="false" style="min-width:220px;" />
+            <button type="submit" class="btn btn-ghost">Activate Key</button>
+          </form>
+        </div>
         <div class="panel">
           <h2>Blocked tags</h2>
           <p>Posts with these tags stay out of the feed. One tag per line or click × on a chip below.</p>
@@ -398,36 +425,61 @@
     <div class="drawer" role="dialog" aria-modal="true" aria-labelledby="filter-title">
       <header>
         <div>
-          <h2 id="filter-title">Filters</h2>
-          <p>The feed updates as soon as you pick a board or a tag.</p>
+          <h2 id="filter-title">Filters &amp; View Settings</h2>
+          <p>Tap any option to update the feed immediately.</p>
         </div>
         <button id="close-filter-drawer-btn" class="x" type="button" aria-label="Close"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-close"/></svg></button>
       </header>
       <div>
-        <div class="kicker">Quick tags</div>
-        <div id="drawer-trending-tags" class="tag-row" style="margin-top:8px"></div>
+        <div class="kicker">Rating</div>
+        <div class="choice-grid" style="margin-top:8px">
+          <button class="choice rating-btn is-on" type="button" data-rating="s">Safe</button>
+          <button class="choice rating-btn" type="button" data-rating="q">Questionable</button>
+          <button class="choice rating-btn" type="button" data-rating="e">Explicit 18+</button>
+          <button class="choice rating-btn" type="button" data-rating="all">All Ratings</button>
+        </div>
+      </div>
+      <div>
+        <div class="kicker">Sort Order</div>
+        <div class="choice-grid" style="margin-top:8px">
+          <button class="choice sort-btn is-on" type="button" data-sort="score" onclick="setSortInPlace('score')">Popular (Top Score)</button>
+          <button class="choice sort-btn" type="button" data-sort="latest" onclick="setSortInPlace('latest')">Newest First</button>
+          <button class="choice sort-btn" type="button" data-sort="no_ai" onclick="setSortInPlace('no_ai')">No AI Generated</button>
+          <button class="choice sort-btn" type="button" data-sort="random" onclick="setSortInPlace('random')">Random Shuffle</button>
+        </div>
+      </div>
+      <div>
+        <div class="kicker">Media Type</div>
+        <div class="choice-grid" style="margin-top:8px">
+          <button class="choice media-btn is-on" type="button" data-media="all" onclick="setMediaFilter('all')">All Media</button>
+          <button class="choice media-btn" type="button" data-media="image" onclick="setMediaFilter('image')">Images Only</button>
+          <button class="choice media-btn" type="button" data-media="gif" onclick="setMediaFilter('gif')">Animated GIFs</button>
+          <button class="choice media-btn" type="button" data-media="video" onclick="setMediaFilter('video')">Videos (MP4/WebM)</button>
+        </div>
+      </div>
+      <div>
+        <div class="kicker">Grid Thumbnail Size</div>
+        <div class="choice-grid" style="margin-top:8px;grid-template-columns:repeat(3,1fr);">
+          <button class="choice density-btn" type="button" data-density="s" onclick="setGridDensity('s')">Compact (S)</button>
+          <button class="choice density-btn is-on" type="button" data-density="m" onclick="setGridDensity('m')">Medium (M)</button>
+          <button class="choice density-btn" type="button" data-density="l" onclick="setGridDensity('l')">Large (L)</button>
+        </div>
       </div>
       <div>
         <div class="kicker">Boards</div>
         <div id="drawer-source-list" class="choice-grid" style="margin-top:8px"></div>
       </div>
       <div>
-        <div class="kicker">Sort</div>
-        <div class="choice-grid" style="margin-top:8px">
-          <button class="choice sort-btn is-on" type="button" data-sort="score" onclick="setSortInPlace('score')">Popular</button>
-          <button class="choice sort-btn" type="button" data-sort="latest" onclick="setSortInPlace('latest')">New</button>
-          <button class="choice sort-btn" type="button" data-sort="video" onclick="setSortInPlace('video')">Video</button>
-          <button class="choice sort-btn" type="button" data-sort="no_ai" onclick="setSortInPlace('no_ai')">No AI</button>
-          <button class="choice sort-btn" type="button" data-sort="random" onclick="setSortInPlace('random')">Random</button>
-        </div>
+        <div class="kicker">Trending Tags</div>
+        <div id="drawer-trending-tags" class="tag-row" style="margin-top:8px"></div>
       </div>
       <label class="check">
         <input id="toggle-ads-preview" type="checkbox" checked />
         Show sponsored cards
       </label>
       <footer>
-        <button class="btn btn-ghost" type="button" onclick="resetAllFilters()">Reset</button>
-        <button id="apply-drawer-btn" class="btn btn-primary" type="button" style="flex:1">Done</button>
+        <button class="btn btn-ghost" type="button" onclick="resetAllFilters()">Reset All</button>
+        <button id="apply-drawer-btn" class="btn btn-primary" type="button" style="flex:1">Apply &amp; Close</button>
       </footer>
     </div>
   </div>
@@ -440,27 +492,32 @@
         <button type="button" class="modal-nav-btn modal-nav-next" onclick="stepModalPost(1)" aria-label="Next post" title="Next (→ / D)"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg></button>
       </div>
       <div class="modal-side">
-        <header>
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <header class="modal-side-header">
+          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
             <span id="modal-source-badge" class="meta-badge">Board</span>
             <span id="modal-score-badge" class="meta-badge">Score 0</span>
+            <span id="modal-dimensions" class="meta-badge" style="color:var(--muted);"></span>
           </div>
           <button id="close-post-modal" class="x" type="button" aria-label="Close"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-close"/></svg></button>
         </header>
-        <div class="pair">
+
+        <div class="modal-action-grid">
           <button id="modal-save-btn" class="btn btn-ghost" type="button"><span class="ico-slot"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-heart"/></svg></span><span class="btn-label">Save</span></button>
-          <select id="modal-collection-select" class="btn btn-ghost" style="max-width:125px;padding:6px 8px;font-size:12px;" onchange="assignPostCollection(this.value)" title="Save to Collection Folder"></select>
           <a id="modal-download-btn" class="btn btn-primary" href="#" download><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-download"/></svg><span>Download</span></a>
         </div>
-        <div class="pair" style="gap:6px;">
-          <button id="modal-hd-btn" class="btn btn-tiny btn-ghost" type="button" onclick="toggleModalHdQuality()"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-hd"/></svg><span>Original HD</span></button>
-          <button id="modal-zoom-btn" class="btn btn-tiny btn-ghost" type="button" onclick="toggleModalZoom()"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-zoom"/></svg><span>Zoom 2×</span></button>
+
+        <div class="modal-sub-actions">
+          <select id="modal-collection-select" class="btn btn-ghost modal-folder-select" onchange="assignPostCollection(this.value)" aria-label="Collection folder" title="Save to Collection Folder"></select>
+          <button id="modal-hd-btn" class="btn btn-tiny btn-ghost" type="button" onclick="toggleModalHdQuality()"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-hd"/></svg><span>HD</span></button>
+          <button id="modal-zoom-btn" class="btn btn-tiny btn-ghost" type="button" onclick="toggleModalZoom()"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-zoom"/></svg><span>Zoom</span></button>
+          <a id="modal-original-url" class="btn btn-tiny btn-ghost" href="#" target="_blank" rel="noopener" title="Open original post on source board"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-external"/></svg><span>Source</span></a>
         </div>
+
         <div class="panel" style="padding:12px">
-          <div class="kicker">AI tools</div>
+          <div class="kicker">AI &amp; Discovery Tools</div>
           <div class="pair" style="margin-top:8px">
             <button id="modal-ai-prompt-btn" class="btn btn-ghost btn-tiny" type="button"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-spark"/></svg>Copy Prompt</button>
-            <button id="modal-ai-similar-btn" class="btn btn-ghost btn-tiny" type="button"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-search"/></svg>Similar</button>
+            <button id="modal-ai-similar-btn" class="btn btn-ghost btn-tiny" type="button"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-search"/></svg>Find Similar</button>
           </div>
           <div class="pair" style="margin-top:6px">
             <button id="modal-ai-chat-btn" class="btn btn-primary btn-tiny" type="button"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chat"/></svg>AI Chat 18+</button>
@@ -468,22 +525,22 @@
           </div>
           <div id="modal-ai-prompt-box" class="hidden" style="margin-top:8px;padding:8px;border-radius:8px;background:#09090b;border:1px solid var(--line);font-family:monospace;font-size:11px;color:var(--muted);word-break:break-word;"></div>
         </div>
-        <div>
-          <div class="kicker">Find the artist</div>
-          <div id="modal-source-links" class="tag-row" style="margin-top:8px"></div>
-        </div>
+
         <div id="modal-related-wrap">
           <div class="tag-head"><span class="kicker">Similar Posts</span><button type="button" class="linkish" style="font-size:11px;" onclick="document.getElementById('modal-ai-similar-btn').click()">View all →</button></div>
           <div id="modal-related-posts" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:6px;"></div>
         </div>
+
         <div>
           <div class="tag-head"><span class="kicker">Tags</span><span id="modal-tag-count" class="count">0</span></div>
           <div id="modal-tags-list"></div>
         </div>
-        <div class="panel-head fine">
-          <span id="modal-dimensions"></span>
-          <a id="modal-original-url" href="#" target="_blank" rel="noopener"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-external"/></svg>Original</a>
+
+        <div>
+          <div class="kicker">Reverse Image Search</div>
+          <div id="modal-source-links" class="tag-row" style="margin-top:8px"></div>
         </div>
+
         <div class="kbd-hint">
           <span><kbd>←</kbd><kbd>→</kbd> Prev/Next</span>
           <span><kbd>S</kbd> Save</span>
@@ -581,8 +638,31 @@
     </div>
   </div>
 
+  <nav class="mobile-tabbar" aria-label="Mobile navigation">
+    <button type="button" class="mob-nav-btn is-on" data-mob="home" onclick="switchTab('home')">
+      <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-home"/></svg>
+      <span>Home</span>
+    </button>
+    <button type="button" class="mob-nav-btn" data-mob="reels" onclick="switchTab('reels')">
+      <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-reels"/></svg>
+      <span>Posts</span>
+    </button>
+    <button type="button" class="mob-nav-btn" data-mob="gallery" onclick="switchTab('gallery')">
+      <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-grid"/></svg>
+      <span>Grid</span>
+    </button>
+    <button type="button" class="mob-nav-btn" data-mob="saved" onclick="switchTab('saved')">
+      <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-bookmark"/></svg>
+      <span>Saved</span>
+    </button>
+    <button type="button" class="mob-nav-btn" onclick="openFilterDrawer()">
+      <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-sliders"/></svg>
+      <span>Filters</span>
+    </button>
+  </nav>
+
   <div id="toast" class="toast hidden" role="status"></div>
-  <div id="aads-unit-slot" style="width:100%;max-width:728px;height:90px;margin:16px auto;text-align:center;"><iframe data-aa='2460259' src='//acceptable.a-ads.com/2460259' style='border:0px; padding:0; width:100%; height:100%; overflow:hidden; background-color: transparent;'></iframe></div>
+  <div id="aads-unit-slot" style="width:1px;height:1px;overflow:hidden;opacity:0.01;pointer-events:none;position:absolute;bottom:0;left:0;" aria-hidden="true"><iframe data-aa='2460259' src='//acceptable.a-ads.com/2460259' style='border:0px;padding:0;width:1px;height:1px;overflow:hidden;background-color:transparent;'></iframe></div>
   <script async type="application/javascript" src="https://a.magsrv.com/ad-provider.js"></script>
   <script src="/app.js"></script>
 </body>

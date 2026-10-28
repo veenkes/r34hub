@@ -146,7 +146,12 @@ function paintSearchDot() {
 
 function placeSearch(where) {
   const block = document.getElementById('search-block');
-  const mount = document.getElementById(where === 'sheet' ? 'sheet-search-mount' : 'home-search-mount');
+  const targetId = where === 'sheet'
+    ? 'sheet-search-mount'
+    : where === 'feed'
+      ? 'feed-search-mount'
+      : 'home-search-mount';
+  const mount = document.getElementById(targetId);
   if (block && mount && block.parentElement !== mount) mount.appendChild(block);
 }
 
@@ -1666,6 +1671,23 @@ function tagGroupsHtml(post) {
   `).join('');
 }
 
+
+function shortBoardName(post) {
+  const raw = String((post && (post.sourceName || post.source)) || 'Board');
+  if (/paheal/i.test(raw)) return 'Paheal';
+  if (/xbooru/i.test(raw)) return 'XBooru';
+  if (/rule34/i.test(raw)) return 'Rule34';
+  if (/danbooru/i.test(raw)) return 'Danbooru';
+  if (/yande/i.test(raw)) return 'Yande.re';
+  if (/konachan/i.test(raw)) return 'Konachan';
+  if (/safebooru/i.test(raw)) return 'Safebooru';
+  if (/sakuga/i.test(raw)) return 'Sakuga';
+  if (/e621|e926/i.test(raw)) return 'e621';
+  if (/tbib/i.test(raw)) return 'TBIB';
+  if (/aibooru/i.test(raw)) return 'AIBooru';
+  return raw.split(' ')[0];
+}
+
 function buildPostCardHTML(post, idx) {
   const isSaved = state.savedPosts.some(s => s.id === post.id);
   const isVideo = post.mediaType === 'video';
@@ -1688,7 +1710,7 @@ function buildPostCardHTML(post, idx) {
         />
         ${isVideo ? `<span class="play-badge" aria-hidden="true" style="pointer-events:none;display:inline-grid;place-items:center;">${icon('play')}</span>` : ''}
         <div class="card-float">
-          <span class="pill">${esc(post.sourceName || 'Board')}</span>
+          <span class="pill">${esc(shortBoardName(post))}</span>
           <span class="pill">${isVideo ? icon('play') : ''}${icon('star')} ${esc(formatScore(post.score))}</span>
         </div>
       </div>
@@ -1806,7 +1828,7 @@ function reelSlideHtml(post, index) {
       </div>
       <div class="reel-bar">
         <button type="button" class="icon-btn${saved ? ' is-on' : ''}" data-save="${esc(post.id)}" aria-label="${saved ? 'Saved' : 'Save'}">${icon(saved ? 'heart-fill' : 'heart')}</button>
-        <span class="reel-meta"><span class="meta-badge" style="margin:0;font-size:11px;">${esc(post.sourceName || post.source || 'Board')}</span></span>
+        <span class="reel-meta"><span class="meta-badge" style="margin:0;font-size:11px;">${esc(shortBoardName(post))}</span></span>
         <a class="icon-btn" href="${esc(post.proxiedFileUrl || post.fileUrl || '#')}" download aria-label="Download">${icon('download')}</a>
         <a class="icon-btn" href="${esc(post.originalPostUrl || '#')}" target="_blank" rel="noopener" aria-label="Source">${icon('external')}</a>
         <button type="button" class="icon-btn" data-share="${esc(post.id)}" aria-label="Share">${icon('share')}</button>
@@ -1902,61 +1924,50 @@ function buildNativeReelAdHtml(idx) {
   const offers = [
     {
       id: 'candy_ai',
-      partner: 'Candy.ai 18+ NSFW',
-      title: `Uncensored 18+ AI Sex Chat & Voice with ${activeTag.replace(/_/g, ' ')}`,
-      sub: 'Send explicit prompts, custom kinks, and receive live 18+ NSFW photos & voice messages.',
-      cta: 'Start 18+ Uncensored Chat',
-      tags: ['18+_nsfw', 'uncensored_ai', 'sex_chat', 'custom_waifu']
+      partner: 'Candy.ai 18+',
+      title: `Uncensored 18+ AI Chat & Voice (${activeTag.replace(/_/g, ' ')})`,
+      sub: 'Roleplay without filters and receive live 18+ NSFW photos & voice messages.',
+      cta: 'Open 18+ Chat'
     },
     {
       id: 'nud3_video',
-      partner: 'Nud3.me 18+ AI Studio',
-      title: '18+ AI Undress & Hentai Video Generator',
-      sub: 'Turn any Rule34 or anime image into an explicit 60fps 18+ animated video in one click.',
-      cta: 'Animate / Undress 18+ Now',
-      tags: ['18+_video', 'ai_undress', 'animated_nsfw', 'rule34_ai']
+      partner: 'Nud3.me 18+ AI',
+      title: '18+ AI Undress & Hentai Video Animator',
+      sub: 'Turn any Booru character illustration into a smooth 60fps 18+ animation.',
+      cta: 'Animate 18+'
     },
     {
       id: 'crushon_ai',
-      partner: 'CrushOn.ai 18+ Unfiltered',
+      partner: 'CrushOn.ai 18+',
       title: 'Zero-Filter 18+ Hentai & Erotic Roleplay AI',
-      sub: 'No censorship, no NSFW blocks. Roleplay any scenario with 200,000+ adult anime characters.',
-      cta: 'Play 18+ Roleplay Free',
-      tags: ['18+_roleplay', 'no_filter', 'hentai_chat', 'explicit']
+      sub: 'Instant browser chat with 200,000+ uncensored anime & gaming characters.',
+      cta: 'Start Roleplay'
     }
   ];
   const offer = offers[Math.floor(idx / AD_INTERVAL) % offers.length];
   return `
     <article class="reel post-card is-ad" data-kind="ad" data-ad-slot="${idx}">
-      <div class="reel-stage is-still" style="position:relative;background:#09090b;overflow:hidden;">
-        <div style="position:relative;aspect-ratio:4 / 5;max-height:480px;width:100%;overflow:hidden;cursor:pointer;" onclick="triggerAdClick('infeed_native','${esc(offer.id)}','reel-ad-${idx}','${esc(activeTag)}')">
-          <img
-            class="reel-still"
-            style="width:100%;height:100%;object-fit:cover;display:block;"
-            src="${esc(anim.src)}"
-            data-proxy="${esc(anim.proxy)}"
-            alt=""
-            referrerpolicy="no-referrer"
-            onerror="useProxy(this)"
-          />
-          <div style="position:absolute;top:12px;left:12px;right:12px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
-            <span class="pill" style="background:rgba(225,29,72,0.92);color:#fff;font-weight:700;padding:4px 10px;border-radius:999px;font-size:11px;letter-spacing:0.04em;">18+ SPONSORED</span>
-            <span class="pill" style="background:rgba(9,9,11,0.8);color:#e4e4e7;padding:4px 10px;border-radius:999px;font-size:11px;">${esc(offer.partner)}</span>
+      <div class="native-ad-row" onclick="triggerAdClick('infeed_native','${esc(offer.id)}','reel-ad-${idx}','${esc(activeTag)}')">
+        <img
+          class="native-ad-thumb"
+          src="${esc(anim.src)}"
+          data-proxy="${esc(anim.proxy)}"
+          alt=""
+          referrerpolicy="no-referrer"
+          onerror="useProxy(this)"
+        />
+        <div class="native-ad-copy">
+          <div class="native-ad-kicker">
+            <span class="meta-badge" style="margin:0;background:rgba(225,29,72,0.18);border-color:rgba(225,29,72,0.4);color:#fda4af;font-size:10px;font-weight:700;">Sponsored · ${esc(offer.partner)}</span>
+            <button type="button" class="linkish" style="font-size:11px;" onclick="event.stopPropagation();openProModal()">Hide ads</button>
           </div>
-          <div style="position:absolute;left:0;right:0;bottom:0;padding:44px 16px 14px;background:linear-gradient(180deg,transparent 0%,rgba(9,9,11,0.88) 45%,#09090b 100%);">
-            <h3 style="margin:0 0 4px;font-size:17px;color:#fff;font-weight:700;line-height:1.25;">${esc(offer.title)}</h3>
-            <p style="margin:0 0 10px;font-size:12.5px;color:#d4d4d8;line-height:1.4;">${esc(offer.sub)}</p>
-            <div style="display:flex;gap:8px;">
-              <button type="button" class="btn btn-primary" style="flex:1;background:#e11d48;color:#fff;font-weight:700;" onclick="event.stopPropagation();triggerAdClick('infeed_native','${esc(offer.id)}','reel-ad-${idx}','${esc(activeTag)}')">${icon('spark')} ${esc(offer.cta)}</button>
-              <button type="button" class="btn btn-ghost" onclick="event.stopPropagation();openProModal()">No Ads</button>
-            </div>
+          <h3>${esc(offer.title)}</h3>
+          <p>${esc(offer.sub)}</p>
+          <div style="display:flex;gap:8px;margin-top:4px;">
+            <button type="button" class="btn btn-tiny btn-primary" onclick="event.stopPropagation();triggerAdClick('infeed_native','${esc(offer.id)}','reel-ad-${idx}','${esc(activeTag)}')">${icon('spark')} <span>${esc(offer.cta)}</span></button>
+            <button type="button" class="btn btn-tiny btn-ghost" onclick="event.stopPropagation();openProModal()">Pro · No Ads</button>
           </div>
         </div>
-      </div>
-      <div class="reel-bar">
-        <button type="button" class="icon-btn accent" aria-label="18+ AI chat" onclick="triggerAdClick('reels_cta','${esc(offer.id)}','reel-ad-${idx}','${esc(activeTag)}')">${icon('spark')}</button>
-        <span class="reel-meta">Sponsored · ${esc(offer.partner)}</span>
-        <button type="button" class="tags-toggle" onclick="openProModal()">Pro · No Ads ${icon('chevron')}</button>
       </div>
     </article>`;
 }
@@ -2503,6 +2514,34 @@ window.openBoardsCompareModal = async function() {
   }
 };
 
+
+window.activateSettingsKey = async function() {
+  const input = document.getElementById('settings-license-input');
+  const key = ((input && input.value) || '').trim();
+  if (!key) {
+    showToast('Please enter a license key');
+    return;
+  }
+  const res = await fetch('/api/licenses/activate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ key })
+  });
+  const data = await res.json();
+  if (data.ok && data.valid) {
+    saveProSession(data.licenseKey, {
+      plan: data.plan,
+      tier: data.tier,
+      email: data.email,
+      expiresAt: data.expiresAt
+    });
+    updateProUI();
+    showToast('Pro license activated! Ads are off.');
+  } else {
+    showToast(data.error || 'Invalid license key');
+  }
+};
+
 window.closeBoardsCompareModal = function() {
   const modal = document.getElementById('boards-compare-modal');
   if (modal) modal.classList.add('hidden');
@@ -2628,6 +2667,7 @@ window.closeSearchMenu = function() {
   const sheet = document.getElementById('search-sheet');
   if (sheet) sheet.classList.add('hidden');
   if (state.activeTab === 'home') placeSearch('home');
+  else if (browsingPosts()) placeSearch('feed');
 };
 
 window.openTagSheet = function(postId) {
@@ -2685,6 +2725,11 @@ function applyPage(tabId, opts = {}) {
   const titles = { home: 'R34Hub — Search every board in one feed', reels: 'Posts — R34Hub', gallery: 'Grid — R34Hub', saved: 'Saved — R34Hub', settings: 'Settings — R34Hub' };
   document.title = titles[tabId] || titles.home;
   if (tabId === 'home') placeSearch('home');
+  else if (browsingPosts()) placeSearch('feed');
+  const vReels = document.getElementById('view-btn-reels');
+  const vGrid = document.getElementById('view-btn-gallery');
+  if (vReels) vReels.classList.toggle('is-on', tabId === 'reels');
+  if (vGrid) vGrid.classList.toggle('is-on', tabId === 'gallery');
   if (tabId !== 'reels') document.querySelectorAll('#reels-feed .reel').forEach(deactivateReel);
   stopAllCardVideos();
   if (tabId === 'saved') renderSavedPosts();
@@ -2799,6 +2844,10 @@ async function initApp() {
 
 document.addEventListener('click', event => {
   if (!event.target.closest('.domain-wrap')) closeDomainMenus();
+  if (!event.target.closest('.search')) {
+    const autoBox = document.getElementById('tag-autocomplete');
+    if (autoBox) autoBox.classList.add('hidden');
+  }
   const featureBtn = event.target.closest('[data-feature-source]');
   if (featureBtn) {
     openFeature(
